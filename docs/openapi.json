@@ -7981,6 +7981,9 @@
             "get": {
                 "operationId": "getWs",
                 "summary": "Stream events over a WebSocket",
+                "tags": [
+                    "Events"
+                ],
                 "description": "Upgrade to a WebSocket. Authenticate with the Authorization header, or send `{\"op\":\"auth\",\"token\":\"…\"}` as the first message. Never put the token in the URL.\n\nThen subscribe: `{\"op\":\"subscribe\",\"topics\":[\"player.join\",\"world.time\"],\"filter\":{\"player\":\"Steve\"}}`. The server answers `subscribed`, a `snapshot` of the current state where a topic has one, then `event` messages as things happen. `heartbeat` arrives every few seconds; `dropped` says how many events a slow client missed.\n\nTopics: `player.join`, `player.leave`, `player.kick`, `player.death`, `player.respawn`, `player.advancement`, `player.chat`, `player.command`, `player.move`, `player.world_change`, `player.portal`, `player.health`, `player.damage`, `player.kill`, `player.inventory`, `player.gamemode`, `player.level_up`, `player.sleep`, `player.fish`, `player.craft`, `player.enchant`, `player.trade`, `world.time`, `world.weather`, `world.night_skipped`, `world.lightning`, `world.load`, `world.unload`, `entity.boss_killed`, `entity.death`, `entity.explode`, `raid.start`, `raid.finish`, `block.break`, `block.place`, `server.performance`, `server.status`, `server.plugin`, `script.log`.\n\nScope: `read`.",
                 "x-scope": "read",
                 "responses": {

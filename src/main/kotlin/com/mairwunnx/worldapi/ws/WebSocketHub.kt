@@ -233,6 +233,7 @@ class WebSocketHub(
             putJsonObject("get") {
                 put("operationId", "getWs")
                 put("summary", "Stream events over a WebSocket")
+                put("tags", kotlinx.serialization.json.JsonArray(listOf(kotlinx.serialization.json.JsonPrimitive("Events"))))
                 put(
                     "description",
                     """
