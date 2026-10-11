@@ -149,7 +149,12 @@ private fun WorldPatch.apply(world: World) {
     fullTime?.let { world.fullTime = it }
     addTime?.let { world.fullTime = world.fullTime + it }
     when (weather) {
-        "clear" -> world.setClearWeatherDuration(clearWeatherDurationTicks ?: weatherDurationTicks ?: (12_000..180_000).random())
+        "clear" -> {
+            // The clear timer alone stops the rain only on the next tick; stop it now so the answer is current.
+            world.setStorm(false)
+            world.isThundering = false
+            world.clearWeatherDuration = clearWeatherDurationTicks ?: weatherDurationTicks ?: (12_000..180_000).random()
+        }
         "rain" -> {
             world.setStorm(true)
             world.isThundering = false
