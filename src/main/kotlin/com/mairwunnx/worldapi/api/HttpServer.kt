@@ -51,15 +51,18 @@ class HttpServer(
     // Settings the Ktor engine reads once; a change to these needs a restart (see changesNeedRestart).
     private val config = api.config
 
-    @Volatile
-    private var authCache: Pair<com.mairwunnx.worldapi.config.Auth, Authenticator>? = null
+    private class AuthCache(val config: com.mairwunnx.worldapi.config.Auth, val generation: Int, val authenticator: Authenticator)
 
-    /** Tokens and anonymous access follow /worldapi reload without a restart. */
+    @Volatile
+    private var authCache: AuthCache? = null
+
+    /** Tokens and anonymous access follow /worldapi reload and new in-game tokens without a restart. */
     private val auth: Authenticator
         get() {
             val current = api.config.auth
-            authCache?.takeIf { it.first === current }?.let { return it.second }
-            return Authenticator(current).also { authCache = current to it }
+            val generation = api.tokens.generation
+            authCache?.takeIf { it.config === current && it.generation == generation }?.let { return it.authenticator }
+            return Authenticator(current, api.tokens.tokens).also { authCache = AuthCache(current, generation, it) }
         }
     private val base = config.http.basePath
     private var engine: EmbeddedServer<*, *>? = null

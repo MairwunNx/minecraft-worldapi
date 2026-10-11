@@ -1,6 +1,7 @@
 package com.mairwunnx.worldapi
 
 import com.mairwunnx.worldapi.api.HttpServer
+import com.mairwunnx.worldapi.command.TokenCommands
 import com.mairwunnx.worldapi.command.WorldApiCommand
 import com.mairwunnx.worldapi.config.ConfigFile
 import com.mairwunnx.worldapi.config.WorldApiConfig
@@ -17,6 +18,8 @@ import com.mairwunnx.worldapi.script.ScriptManager
 import com.mairwunnx.worldapi.stats.Statistics
 import com.mairwunnx.worldapi.store.History
 import com.mairwunnx.worldapi.store.Store
+import com.mairwunnx.worldapi.tokens.TokenMenu
+import com.mairwunnx.worldapi.tokens.TokenStore
 import com.mairwunnx.worldapi.ws.WebSocketHub
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents
 import kotlinx.coroutines.CoroutineScope
@@ -57,7 +60,15 @@ class WorldApiPlugin : JavaPlugin() {
         val bus = EventBus(history) { config.get().events.chat }
         val main = BukkitMainThread(this) { config.get().http.mainThreadTimeoutMillis }
         val scripts = ScriptManager(this, bus, config::get, logger)
-        api = WorldApi(server, main, history, bus, Statistics(server, main), scripts, config, pluginMeta.version)
+        val tokens = TokenStore(dataFolder.toPath().resolve("tokens.yml"))
+        try {
+            tokens.load()
+        } catch (error: Exception) {
+            logger.severe("tokens.yml is invalid, so in-game tokens don't work until it's fixed: ${error.message}")
+        }
+        api = WorldApi(server, main, history, bus, Statistics(server, main), scripts, tokens, config, pluginMeta.version)
+        val menu = TokenMenu(this, tokens, { config.get().scripts.enabled }, logger)
+        server.pluginManager.registerEvents(menu, this)
 
         hub = WebSocketHub(config::get, { token -> http?.authenticate(token) }, Snapshots(server, main))
         bus.subscribe(hub)
@@ -75,7 +86,7 @@ class WorldApiPlugin : JavaPlugin() {
         server.scheduler.runTaskTimerAsynchronously(this, Runnable { history.prune(config.get().events.retentionDays) }, 20 * 60, 20 * 60 * 60 * 24)
 
         lifecycleManager.registerEventHandler(LifecycleEvents.COMMANDS) { event ->
-            event.registrar().register(WorldApiCommand.build(::reload, ::status), "Reload or inspect WorldAPI")
+            event.registrar().register(WorldApiCommand.build(::reload, ::status, tokenCommands(menu)), "Reload WorldAPI, inspect it, or manage tokens")
         }
 
         startHttp()
@@ -116,6 +127,7 @@ class WorldApiPlugin : JavaPlugin() {
     private fun reload(): Result<String> = runCatching {
         val old = config.get()
         val new = ConfigFile.load(dataFolder.toPath().resolve("config.yml")).first
+        api.tokens.load()
         config.set(new)
         if (http == null || HttpServer.changesNeedRestart(old, new)) {
             hub.closeAll("WorldAPI is restarting its HTTP server")
@@ -127,11 +139,45 @@ class WorldApiPlugin : JavaPlugin() {
         }
     }
 
+    private fun tokenCommands(menu: TokenMenu) = object : TokenCommands {
+        private val namePattern = Regex("[A-Za-z0-9_-]{1,32}")
+
+        override fun create(player: org.bukkit.entity.Player, name: String): String? {
+            if (!namePattern.matches(name)) return "Names are 1–32 letters, digits, dashes, or underscores."
+            if (config.get().auth.tokens.any { it.name == name } || api.tokens.tokens.any { it.name == name }) return "A token named $name already exists."
+            menu.open(player, name)
+            return null
+        }
+
+        override fun list(): List<String> {
+            val now = Instant.now()
+            val fromConfig = config.get().auth.tokens.map { "${it.name}: ${it.scopes.joinToString { s -> s.id }} (config.yml)" }
+            val issued = api.tokens.tokens.map {
+                val state = when {
+                    it.expired(now) -> "expired ${it.expiresAt}"
+                    it.expiresAt != null -> "expires ${it.expiresAt}"
+                    else -> "never expires"
+                }
+                "${it.name}: ${it.scopes.joinToString { s -> s.id }} ($state, made by ${it.createdBy})"
+            }
+            return (fromConfig + issued).ifEmpty { listOf("No tokens yet. Create one with /worldapi token create <name>.") }
+        }
+
+        override fun revoke(name: String): Result<String> = runCatching {
+            if (config.get().auth.tokens.any { it.name == name }) error("$name lives in config.yml; remove it there and run /worldapi reload.")
+            if (!api.tokens.revoke(name)) error("No in-game token named $name.")
+            logger.info("Token \"$name\" revoked")
+            "Token $name revoked. Clients using it get 401 from now on."
+        }
+
+        override fun issuedNames() = api.tokens.tokens.map { it.name }
+    }
+
     private fun status(): List<String> {
         val settings = config.get()
         return listOf(
             "WorldAPI ${pluginMeta.version}: " + if (http != null) "listening on ${settings.http.host}:${settings.http.port}${settings.http.basePath}" else "HTTP server is down",
-            "Tokens: ${settings.auth.tokens.joinToString { it.name }.ifEmpty { "none" }}; anonymous reads " + if (settings.auth.anonymous.enabled) "on" else "off",
+            "Tokens: ${(settings.auth.tokens.map { it.name } + api.tokens.tokens.map { it.name }).joinToString().ifEmpty { "none" }}; anonymous reads " + if (settings.auth.anonymous.enabled) "on" else "off",
             "WebSocket clients: ${hub.size}",
             "Scripts: " + if (settings.scripts.enabled) "${api.scripts.list().size} loaded" else "off",
         )

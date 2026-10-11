@@ -2,18 +2,23 @@ package com.mairwunnx.worldapi.api
 
 import com.mairwunnx.worldapi.config.Auth
 import com.mairwunnx.worldapi.config.RateLimit
+import com.mairwunnx.worldapi.tokens.IssuedToken
 import java.security.MessageDigest
+import java.time.Instant
+import java.util.HexFormat
 
 /**
  * Resolves a bearer token to a principal. Tokens are compared as SHA-256 digests with
  * [MessageDigest.isEqual], and every configured token is checked, so the time a lookup takes
  * says nothing about which token came close.
  */
-class Authenticator(config: Auth) {
-    private class Entry(val digest: ByteArray, val principal: Principal, val rateLimit: RateLimit?)
+class Authenticator(config: Auth, issued: List<IssuedToken> = emptyList(), private val clock: () -> Instant = Instant::now) {
+    private class Entry(val digest: ByteArray, val principal: Principal, val rateLimit: RateLimit?, val expiresAt: Instant? = null)
 
     private val entries = config.tokens.map {
         Entry(sha256(it.token), Principal(it.name, it.scopes.toSet(), "token:${it.name}"), it.rateLimit)
+    } + issued.map {
+        Entry(HexFormat.of().parseHex(it.sha256), Principal(it.name, it.scopes.toSet(), "token:${it.name}"), null, it.expiresAt?.let(Instant::parse))
     }
     private val anonymous = config.anonymous
     private val anonymousPatterns = anonymous.endpoints.map(::PathPattern)
@@ -25,7 +30,8 @@ class Authenticator(config: Auth) {
         for (entry in entries) {
             if (MessageDigest.isEqual(entry.digest, digest)) found = entry
         }
-        return found?.principal
+        // An expired token counts as unknown; the check runs after the loop to keep its timing flat.
+        return found?.takeIf { entry -> entry.expiresAt?.let { clock() < it } ?: true }?.principal
     }
 
     fun rateLimitOf(principal: Principal): RateLimit? = entries.firstOrNull { it.principal == principal }?.rateLimit

@@ -34,11 +34,12 @@ class TestApi(config: com.mairwunnx.worldapi.config.WorldApiConfig) : AutoClosea
     val store = com.mairwunnx.worldapi.store.Store(java.nio.file.Files.createTempFile("worldapi", ".db"))
     val history = com.mairwunnx.worldapi.store.History(store)
     val bus = com.mairwunnx.worldapi.events.EventBus(history) { ref.get().events.chat }
+    val tokens = com.mairwunnx.worldapi.tokens.TokenStore(java.nio.file.Files.createTempDirectory("worldapi").resolve("tokens.yml"))
     val api = com.mairwunnx.worldapi.core.WorldApi(
         fakeServer(), com.mairwunnx.worldapi.core.MainThread.Immediate, history, bus,
         com.mairwunnx.worldapi.stats.Statistics(fakeServer(), com.mairwunnx.worldapi.core.MainThread.Immediate),
         com.mairwunnx.worldapi.script.ScriptManager(fakePlugin(), bus, ref::get, java.util.logging.Logger.getAnonymousLogger()),
-        ref, "test",
+        tokens, ref, "test",
     )
 
     override fun close() = store.close()
