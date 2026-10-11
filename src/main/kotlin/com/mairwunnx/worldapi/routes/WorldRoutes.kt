@@ -24,7 +24,7 @@ import org.bukkit.World
 val worldRoutes = endpoints("Worlds") {
     get("/worlds", "Every loaded world") {
         val admin = principal.has(Scope.ADMIN)
-        main { api.server.worlds.map { WorldSummary(it.name, it.key.asString(), it.environment.name.lowercase(), it.playerCount, if (admin) it.seed else null) } }
+        main { api.server.worlds.map { WorldSummary(it.name, it.key.asString(), it.environment.name.lowercase(), it.playerCount, if (admin) it.seed.toString() else null) } }
     }
 
     get("/worlds/{world}", "Time, weather, moon, border, rules, and load of one world") {
@@ -116,7 +116,7 @@ private fun worldView(world: World, admin: Boolean) = WorldView(
     name = world.name,
     key = world.key.asString(),
     environment = world.environment.name.lowercase(),
-    seed = if (admin) world.seed else null,
+    seed = if (admin) world.seed.toString() else null,
     time = worldTime(world),
     weather = weather(world),
     difficulty = world.difficulty.name.lowercase(),

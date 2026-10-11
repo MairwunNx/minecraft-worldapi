@@ -10,8 +10,8 @@ data class WorldSummary(
     val key: String,
     val environment: String,
     val players: Int,
-    /** Only for tokens with the admin scope. */
-    val seed: Long? = null,
+    /** Only for tokens with the admin scope. A string, because JavaScript can't hold a 64-bit number exactly. */
+    val seed: String? = null,
 )
 
 @Serializable
@@ -19,7 +19,8 @@ data class WorldView(
     val name: String,
     val key: String,
     val environment: String,
-    val seed: Long? = null,
+    /** Only for tokens with the admin scope; a string, like in the world list. */
+    val seed: String? = null,
     val time: WorldTime,
     val weather: Weather,
     val difficulty: String,
