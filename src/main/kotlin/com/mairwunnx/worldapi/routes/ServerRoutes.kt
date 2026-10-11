@@ -80,7 +80,13 @@ val serverRoutes = endpoints("Server") {
         main {
             val output = mutableListOf<String>()
             val sender = api.server.createCommandSender { output += it.plain() }
-            val success = api.server.dispatchCommand(sender, command)
+            // A command with bad syntax is the caller's mistake, not a server error: report it as output.
+            val success = try {
+                api.server.dispatchCommand(sender, command)
+            } catch (error: org.bukkit.command.CommandException) {
+                output += generateSequence<Throwable>(error) { it.cause }.last().message ?: "The command failed"
+                false
+            }
             CommandResult(success, output)
         }
     }
