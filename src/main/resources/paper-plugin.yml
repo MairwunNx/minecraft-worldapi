@@ -1,0 +1,11 @@
+name: WorldAPI
+version: '${version}'
+main: com.mairwunnx.worldapi.WorldApiPlugin
+api-version: '26.3'
+description: Exposes the world, players, and events over REST and WebSocket
+author: MairwunNx
+website: https://github.com/MairwunNx/minecraft-worldapi
+permissions:
+  worldapi.admin:
+    description: Use /worldapi
+    default: op
