@@ -108,3 +108,44 @@ limits:
   maxEntityRadius: 256.0
   maxStructureRadius: 100
 
+scripts:
+  # Lets tokens with the "code" scope compile and run Java on this server (POST /scripts).
+  # Scripts see only Java and the Paper API, and the calls below are blocked, but that is a
+  # guard rail, not a sandbox: Java has no way to fully contain code. Give "code" only to
+  # tokens you would also give SSH access. Admin doesn't include it.
+  enabled: false
+  maxLoaded: 20
+  runTimeoutMillis: 10000
+  logLines: 500
+  # Classes and methods scripts may not call: "java/lang/ProcessBuilder" blocks a class,
+  # "java/lang/System#exit" one method (by name prefix), "java/nio/file/" a package.
+  blockedApis:
+    - java/lang/ProcessBuilder
+    - java/lang/ProcessHandle
+    - java/lang/Runtime#exec
+    - java/lang/Runtime#halt
+    - java/lang/Runtime#exit
+    - java/lang/Runtime#load
+    - java/lang/Runtime#loadLibrary
+    - java/lang/System#exit
+    - java/lang/System#load
+    - java/lang/System#loadLibrary
+    - java/lang/System#setIn
+    - java/lang/System#setOut
+    - java/lang/System#setErr
+    - java/lang/System#getenv
+    - java/lang/reflect/
+    - java/lang/invoke/MethodHandles$Lookup#find
+    - java/lang/invoke/MethodHandles$Lookup#unreflect
+    - java/lang/Class#forName
+    - java/lang/Class#getDeclared
+    - java/lang/Class#getMethod
+    - java/lang/Class#getField
+    - java/lang/Class#getConstructor
+    - java/lang/ClassLoader
+    - java/net/URLClassLoader
+    - java/lang/foreign/
+    - java/io/File
+    - java/io/RandomAccessFile
+    - java/nio/file/
+    - java/nio/channels/FileChannel

@@ -27,6 +27,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
     implementation("com.charleskorn.kaml:kaml:0.104.0")
+    // Compiles scripts on servers that run a JRE without javac.
+    implementation("org.eclipse.jdt:ecj:3.46.100")
 
     testImplementation("io.papermc.paper:paper-api:26.3.build.169-beta")
     testImplementation("org.xerial:sqlite-jdbc:3.53.4.0")
@@ -61,7 +63,10 @@ tasks.shadowJar {
     dependencies { exclude(dependency("org.slf4j:.*")) }
     listOf("kotlin", "kotlinx", "io.ktor", "com.charleskorn.kaml", "it.krzeminski.snakeyaml", "okio", "net.thauvin", "com.typesafe.config")
         .forEach { relocate(it, "com.mairwunnx.worldapi.libs.$it") }
+    // ECJ stays where it is: it finds its message bundles by package name, and nothing else ships it.
     exclude("META-INF/*.kotlin_module", "META-INF/versions/*/module-info.class", "module-info.class")
+    // ECJ's jar is signed; its signature doesn't cover a shaded jar.
+    exclude("META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA", "META-INF/*.EC")
 }
 
 tasks.jar { enabled = false }

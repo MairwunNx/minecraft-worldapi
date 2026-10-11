@@ -14,6 +14,7 @@ data class WorldApiConfig(
     val websocket: WebSocket = WebSocket(),
     val events: Events = Events(),
     val limits: Limits = Limits(),
+    val scripts: Scripts = Scripts(),
 )
 
 @Serializable
@@ -135,3 +136,47 @@ data class Limits(
     val maxStructureRadius: Int = 100,
 )
 
+@Serializable
+data class Scripts(
+    /** Off by default: a script is arbitrary code on the server, whatever the filters below catch. */
+    val enabled: Boolean = false,
+    val maxLoaded: Int = 20,
+    /** How long a one-off script may run before the caller stops waiting. */
+    val runTimeoutMillis: Long = 10_000,
+    val logLines: Int = 500,
+    /**
+     * Classes and methods compiled scripts may not call, as `java/lang/ProcessBuilder` (the whole
+     * class), `java/lang/System#exit` (one method), or `java/lang/reflect/` (a package).
+     */
+    val blockedApis: List<String> = listOf(
+        "java/lang/ProcessBuilder",
+        "java/lang/ProcessHandle",
+        "java/lang/Runtime#exec",
+        "java/lang/Runtime#halt",
+        "java/lang/Runtime#exit",
+        "java/lang/Runtime#load",
+        "java/lang/Runtime#loadLibrary",
+        "java/lang/System#exit",
+        "java/lang/System#load",
+        "java/lang/System#loadLibrary",
+        "java/lang/System#setIn",
+        "java/lang/System#setOut",
+        "java/lang/System#setErr",
+        "java/lang/System#getenv",
+        "java/lang/reflect/",
+        "java/lang/invoke/MethodHandles\$Lookup#find",
+        "java/lang/invoke/MethodHandles\$Lookup#unreflect",
+        "java/lang/Class#forName",
+        "java/lang/Class#getDeclared",
+        "java/lang/Class#getMethod",
+        "java/lang/Class#getField",
+        "java/lang/Class#getConstructor",
+        "java/lang/ClassLoader",
+        "java/net/URLClassLoader",
+        "java/lang/foreign/",
+        "java/io/File",
+        "java/io/RandomAccessFile",
+        "java/nio/file/",
+        "java/nio/channels/FileChannel",
+    ),
+)
