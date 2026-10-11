@@ -8,7 +8,8 @@ import org.bukkit.OfflinePlayer
 import org.bukkit.Server
 import org.bukkit.entity.Player
 
-fun OfflinePlayer.ref() = PlayerRef(uniqueId.toString(), name)
+// Whitelisted or banned players who never joined have no name of their own, but their profile does.
+fun OfflinePlayer.ref() = PlayerRef(uniqueId.toString(), name ?: runCatching { playerProfile.name }.getOrNull())
 
 /** An online player by UUID or exact name. */
 fun Server.findOnline(id: String): Player? = uuidOrNull(id)?.let(::getPlayer) ?: getPlayerExact(id)
