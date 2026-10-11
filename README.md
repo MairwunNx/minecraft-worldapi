@@ -177,7 +177,7 @@ The server answers with `hello` (heartbeat interval, scopes, the topics you may 
 | `player.chat` | Chat messages, only when `events.chat` is on |
 | `player.command` | Commands players run; admin tokens only |
 | `player.move` | Positions, at most once a second per player, only when they moved. Hidden from anonymous clients by default |
-| `player.health`, `player.damage` | Health, food, and absorption when they change; damage with its cause, at most four a second |
+| `player.health`, `player.damage` | Health with its maximum, food, absorption, active effects, and whether the player is frozen, when any of them change; damage with its cause, at most four a second |
 | `player.inventory` | The full inventory when it changes |
 | `player.gamemode`, `player.level_up`, `player.sleep`, `player.world_change`, `player.portal` | What the names say |
 | `player.kill`, `player.fish`, `player.enchant`, `player.trade`, `player.craft` | Mob kills, catches, enchanting, villager trades, and crafting (added up over a few seconds) |

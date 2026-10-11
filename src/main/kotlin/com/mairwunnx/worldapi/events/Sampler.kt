@@ -7,6 +7,7 @@ import com.mairwunnx.worldapi.model.WorldTime
 import com.mairwunnx.worldapi.routes.performance
 import com.mairwunnx.worldapi.routes.worldTime
 import com.mairwunnx.worldapi.bukkit.view
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.bukkit.Location
@@ -27,7 +28,7 @@ class Sampler(private val server: Server, private val bus: EventBus, private val
     private var lastInventory = 0L
     private val clocks = mutableMapOf<String, Long>()
     private val positions = mutableMapOf<UUID, Location>()
-    private val vitals = mutableMapOf<UUID, List<Number>>()
+    private val vitals = mutableMapOf<UUID, List<Any>>()
     private val inventories = mutableMapOf<UUID, Int>()
 
     fun tick(now: Long = System.currentTimeMillis()) {
@@ -75,15 +76,9 @@ class Sampler(private val server: Server, private val bus: EventBus, private val
     }
 
     private fun health(player: Player) {
-        val now = listOf(player.health, player.foodLevel, player.saturation, player.absorptionAmount)
+        val now = listOf(player.health, player.foodLevel, player.saturation, player.absorptionAmount, effectIds(player), player.isFrozen)
         if (vitals.put(player.uniqueId, now) == now) return
-        bus.publish(player.event(Topic.PLAYER_HEALTH, buildJsonObject {
-            put("health", player.health)
-            put("maxHealth", player.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH)?.value ?: 20.0)
-            put("absorption", player.absorptionAmount)
-            put("food", player.foodLevel)
-            put("saturation", player.saturation)
-        }))
+        bus.publish(player.event(Topic.PLAYER_HEALTH, vitalsJson(player)))
     }
 
     private fun inventory(player: Player) {
@@ -103,3 +98,21 @@ fun inventoryView(player: Player): InventoryView {
     )
 }
 
+
+/** Active effects as ids, sorted so an unchanged set compares equal: ["minecraft:poison"]. */
+private fun effectIds(player: Player): List<String> = player.activePotionEffects.map { it.type.key.asString() }.sorted()
+
+/**
+ * What the game's HUD draws for a player: health with its maximum and absorption, food, and
+ * what changes how the hearts and food look (effects such as poison, wither, and hunger, and
+ * being fully frozen). Shared by the live events and the snapshot.
+ */
+fun vitalsJson(player: Player) = buildJsonObject {
+    put("health", player.health)
+    put("maxHealth", player.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH)?.value ?: 20.0)
+    put("absorption", player.absorptionAmount)
+    put("food", player.foodLevel)
+    put("saturation", player.saturation)
+    put("effects", kotlinx.serialization.json.JsonArray(effectIds(player).map(::JsonPrimitive)))
+    put("frozen", player.isFrozen)
+}

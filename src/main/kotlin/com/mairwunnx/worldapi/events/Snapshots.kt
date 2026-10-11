@@ -30,14 +30,7 @@ class Snapshots(private val server: Server, private val main: MainThread) : Snap
             // For join and leave, the snapshot is who is online right now.
             Topic.PLAYER_JOIN, Topic.PLAYER_LEAVE -> players.map { it.event(Topic.PLAYER_JOIN, buildJsonObject { put("online", true) }) }
             Topic.PLAYER_MOVE -> players.map { it.event(topic, buildJsonObject { put("location", it.location.json()) }) }
-            Topic.PLAYER_HEALTH -> players.map {
-                it.event(topic, buildJsonObject {
-                    put("health", it.health)
-                    put("absorption", it.absorptionAmount)
-                    put("food", it.foodLevel)
-                    put("saturation", it.saturation)
-                })
-            }
+            Topic.PLAYER_HEALTH -> players.map { it.event(topic, vitalsJson(it)) }
             Topic.PLAYER_GAMEMODE -> players.map { it.event(topic, buildJsonObject { put("to", it.gameMode.name.lowercase()) }) }
             Topic.PLAYER_INVENTORY -> players.map { it.event(topic, InventoryView.serializer().json(inventoryView(it))) }
             else -> emptyList()
