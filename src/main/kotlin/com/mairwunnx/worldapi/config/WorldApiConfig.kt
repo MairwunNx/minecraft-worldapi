@@ -24,6 +24,10 @@ data class Http(
     val basePath: String = "/api/v1",
     /** Take the client address from X-Forwarded-For. Turn on only behind a proxy you control. */
     val trustForwardedFor: Boolean = false,
+    /** Proxies whose X-Forwarded-For counts; anyone else's header is ignored. Addresses or CIDR ranges. */
+    val trustedProxies: List<String> = listOf("127.0.0.1/32", "::1/128", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"),
+    /** Larger request bodies are refused with 413 before anything reads them. */
+    val maxBodyBytes: Long = 1_048_576,
     /** How long a request waits for the server thread before it gives up with 503. */
     val mainThreadTimeoutMillis: Long = 5_000,
 )
@@ -93,6 +97,8 @@ data class AnonymousPrivacy(
 data class WebSocket(
     val heartbeatSeconds: Int = 20,
     val maxClients: Int = 64,
+    /** Connections one IP address (anonymous) or one token may hold at once. */
+    val maxClientsPerClient: Int = 8,
     /** Events a slow client may fall behind by before the oldest get dropped. */
     val queueSize: Int = 256,
     val anonymousTopics: List<String> = listOf(

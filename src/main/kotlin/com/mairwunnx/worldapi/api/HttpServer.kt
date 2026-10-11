@@ -18,7 +18,9 @@ import io.ktor.server.plugins.origin
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.request.httpMethod
 import io.ktor.server.request.path
-import io.ktor.server.request.receiveText
+import io.ktor.server.request.receiveChannel
+import io.ktor.utils.io.readRemaining
+import kotlinx.io.readByteArray
 import io.ktor.server.response.header
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
@@ -119,7 +121,7 @@ class HttpServer(
                 }
                 webSocket("/ws") {
                     val principal = guard(call, read = true, allowMissingToken = true)
-                    hub.serve(this, principal, clientKey(call))
+                    hub.serve(this, principal)
                 }
             }
         }
@@ -140,7 +142,7 @@ class HttpServer(
                 val apiCall = ApiCall(call, endpoint, api, principal)
                 var status = HttpStatusCode.InternalServerError
                 try {
-                    val body = endpoint.body?.let { decode(it, call.receiveText()) }
+                    val body = endpoint.body?.let { decode(it, receiveLimited(call)) }
                     val result = apiCall.(endpoint.handler)(body)
                     @Suppress("UNCHECKED_CAST")
                     val response = endpoint.response as KSerializer<Any?>?
@@ -161,6 +163,19 @@ class HttpServer(
                 }
             }
         }
+    }
+
+    /**
+     * Reads the body, refusing anything past http.maxBodyBytes, whether or not the client
+     * declared its length, so a huge upload can't exhaust memory.
+     */
+    private suspend fun receiveLimited(call: ApplicationCall): String {
+        val limit = api.config.http.maxBodyBytes
+        val tooLarge = ApiException(HttpStatusCode.PayloadTooLarge, "body_too_large", "The body is larger than $limit bytes")
+        call.request.headers[HttpHeaders.ContentLength]?.toLongOrNull()?.let { if (it > limit) throw tooLarge }
+        val bytes = call.receiveChannel().readRemaining(limit + 1).readByteArray()
+        if (bytes.size > limit) throw tooLarge
+        return bytes.decodeToString()
     }
 
     private fun decode(serializer: KSerializer<*>, text: String): Any? =
@@ -197,14 +212,21 @@ class HttpServer(
     fun authenticate(token: String) = auth.authenticate(token)
     fun anonymousAllowed(path: String) = auth.anonymousAllowed(path)
 
+    /**
+     * The client's address for rate limits. X-Forwarded-For counts only when the direct peer is
+     * a trusted proxy; then the rightmost address that isn't a trusted proxy wins, because
+     * everything left of it could be made up by the client.
+     */
     private fun clientAddress(call: ApplicationCall): String {
-        if (api.config.http.trustForwardedFor) {
-            call.request.headers["X-Forwarded-For"]?.split(',')?.firstOrNull()?.trim()?.takeIf { it.isNotEmpty() }?.let { return it }
-        }
-        return call.request.origin.remoteHost
+        val peer = call.request.origin.remoteAddress
+        val settings = api.config.http
+        if (!settings.trustForwardedFor) return peer
+        val proxies = settings.trustedProxies.mapNotNull(Cidr::parse)
+        fun trusted(address: String) = proxies.any { it.contains(address) }
+        if (!trusted(peer)) return peer
+        val chain = call.request.headers.getAll("X-Forwarded-For").orEmpty().flatMap { it.split(',') }.map { it.trim() }.filter { it.isNotEmpty() }
+        return chain.lastOrNull { !trusted(it) } ?: chain.firstOrNull() ?: peer
     }
-
-    private fun clientKey(call: ApplicationCall) = clientAddress(call)
 
     private fun audit(call: ApiCall, status: HttpStatusCode) {
         val target = call.auditTarget ?: call.call.request.path().removePrefix(base)

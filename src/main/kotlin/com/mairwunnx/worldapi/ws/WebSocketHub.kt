@@ -58,10 +58,15 @@ class WebSocketHub(
         clients.clear()
     }
 
-    suspend fun serve(session: DefaultWebSocketSession, initial: Principal, address: String) {
+    suspend fun serve(session: DefaultWebSocketSession, initial: Principal) {
         val settings = config()
         if (clients.size >= settings.websocket.maxClients) {
             session.close(CloseReason(CloseReason.Codes.TRY_AGAIN_LATER, "Too many clients"))
+            return
+        }
+        // One IP or one token can't take every slot and lock everyone else out.
+        if (clients.count { it.key == initial.key } >= settings.websocket.maxClientsPerClient) {
+            session.close(CloseReason(CloseReason.Codes.TRY_AGAIN_LATER, "Too many connections from this client"))
             return
         }
         val client = Client(session, initial, settings.websocket.queueSize)
@@ -74,6 +79,8 @@ class WebSocketHub(
     }
 
     private inner class Client(val session: DefaultWebSocketSession, @Volatile var principal: Principal, private val queueSize: Int) {
+        /** Fixed at connect time: the slot counts against whoever opened it. */
+        val key = principal.key
         val subscriptions = ConcurrentHashMap<Topic, Filter>()
         private val lock = Any()
         private val events = ArrayDeque<ApiEvent>()

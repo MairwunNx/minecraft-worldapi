@@ -2,6 +2,7 @@ package com.mairwunnx.worldapi.config
 
 import com.charleskorn.kaml.Yaml
 import com.charleskorn.kaml.YamlConfiguration
+import com.mairwunnx.worldapi.api.Cidr
 import java.nio.file.Files
 import java.nio.file.Path
 import java.security.SecureRandom
@@ -51,6 +52,9 @@ object ConfigFile {
             if (limits.any { it.requestsPerMinute <= 0 || it.burst <= 0 }) add("rate limits must be positive")
             if (config.websocket.heartbeatSeconds <= 0) add("websocket.heartbeatSeconds must be positive")
             if (config.websocket.queueSize <= 0) add("websocket.queueSize must be positive")
+            if (config.websocket.maxClientsPerClient <= 0) add("websocket.maxClientsPerClient must be positive")
+            if (config.http.maxBodyBytes < 1024) add("http.maxBodyBytes must be at least 1024")
+            config.http.trustedProxies.filter { Cidr.parse(it) == null }.forEach { add("http.trustedProxies: \"$it\" isn't an address or range") }
             if (config.limits.maxPageSize <= 0) add("limits.maxPageSize must be positive")
         }
         require(problems.isEmpty()) { problems.joinToString("; ") }

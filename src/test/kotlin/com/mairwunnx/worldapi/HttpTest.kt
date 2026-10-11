@@ -123,6 +123,14 @@ class HttpTest {
     }
 
     @Test
+    fun `oversized bodies are refused before they're read`() = test {
+        val big = """{"name":"${"x".repeat(2_000_000)}"}"""
+        val response = client.post("/api/v1/echo") { bearerAuth(world); contentType(ContentType.Application.Json); setBody(big) }
+        assertEquals(HttpStatusCode.PayloadTooLarge, response.status)
+        assertEquals("body_too_large", code(response.bodyAsText()))
+    }
+
+    @Test
     fun `query parameters reach the handler`() = test {
         assertEquals("""{"name":"Steve","count":1}""", client.get("/api/v1/query?name=Steve") { bearerAuth(read) }.bodyAsText())
     }

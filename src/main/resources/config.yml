@@ -9,6 +9,10 @@ http:
   basePath: /api/v1
   # Take the client address from X-Forwarded-For (for rate limits). Turn on only behind your own proxy.
   trustForwardedFor: false
+  # Only these proxies may set X-Forwarded-For; a header from anyone else is ignored.
+  trustedProxies: ["127.0.0.1/32", "::1/128", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
+  # Bigger request bodies get 413 before anything reads them.
+  maxBodyBytes: 1048576
   # How long a request waits for the server thread before it answers 503.
   mainThreadTimeoutMillis: 5000
 
@@ -69,6 +73,8 @@ privacy:
 websocket:
   heartbeatSeconds: 20
   maxClients: 64
+  # Connections one IP address (anonymous) or one token may hold at once.
+  maxClientsPerClient: 8
   # Events a slow client may fall behind by; older ones are dropped and the client is told how many.
   queueSize: 256
   # Topics clients without a token may subscribe to.
