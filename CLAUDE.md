@@ -47,7 +47,7 @@ A Paper 26.3 plugin that serves the server's state over REST and a WebSocket: wo
 
 1. Bump the default version in `build.gradle.kts` and commit “Release X.Y.Z”.
 2. Push the tag `vX.Y.Z`; CI builds the jar and attaches it to a GitHub release.
-3. Upload the jar to the `plugins` release of MairwunNx/minecraft, change `minecraft/extras/jars.txt` there, and deploy as that repo's CLAUDE.md says. The server restarts only with the owner's go-ahead.
+3. To put it on Moonlands, follow “Shipping a plugin or backend update” in `~/c/personal/minecraft/CLAUDE.md` (MairwunNx/minecraft): the jar goes to that repo's private `plugins` release and `minecraft/extras/jars.txt`. The server restarts only with the owner's go-ahead.
 
 ## Commits
 
