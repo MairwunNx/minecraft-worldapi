@@ -94,19 +94,21 @@ fun worldTime(world: World): WorldTime = WorldTime(
     fullTime = world.fullTime,
     gameTime = world.gameTime,
     day = world.fullTime / 24_000 + 1,
-    isDay = world.isDayTime,
+    // Bukkit refreshes isDayTime on the next tick, so right after a time change it would be stale.
+    isDay = world.time % 24_000 !in 13_000 until 23_000,
     moonPhase = moonPhases.getOrElse(world.moonPhase.ordinal) { world.moonPhase.name.lowercase() },
     fixedTime = world.isFixedTime,
 )
 
 fun weather(world: World): Weather = Weather(
     state = when {
-        world.isThundering -> "thunder"
+        // The thunder flag can outlive the rain; without rain there is no storm.
+        world.hasStorm() && world.isThundering -> "thunder"
         world.hasStorm() -> "rain"
         else -> "clear"
     },
     raining = world.hasStorm(),
-    thundering = world.isThundering,
+    thundering = world.hasStorm() && world.isThundering,
     weatherDurationTicks = world.weatherDuration,
     thunderDurationTicks = world.thunderDuration,
     clearWeatherDurationTicks = world.clearWeatherDuration,
