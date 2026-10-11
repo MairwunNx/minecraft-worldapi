@@ -1,0 +1,110 @@
+# WorldAPI: REST and WebSocket access to this server.
+# /worldapi reload applies changes without a restart. A change under http or cors restarts the
+# HTTP server, which drops open WebSocket connections; clients reconnect.
+
+http:
+  # Keep WorldAPI behind a reverse proxy; don't expose this port to the internet.
+  host: 0.0.0.0
+  port: 8100
+  basePath: /api/v1
+  # Take the client address from X-Forwarded-For (for rate limits). Turn on only behind your own proxy.
+  trustForwardedFor: false
+  # How long a request waits for the server thread before it answers 503.
+  mainThreadTimeoutMillis: 5000
+
+cors:
+  # Origins that may call the API from a browser, for example https://example.com. "*" allows any.
+  allowedOrigins: []
+
+auth:
+  # Clients send a token as "Authorization: Bearer <token>". Scopes:
+  #   read           every GET and the WebSocket
+  #   write:world    world, weather, time, blocks, entities
+  #   write:players  player state, inventories, teleports, effects
+  #   admin          kicks, bans, whitelist, ops, console commands, server control; includes every other scope
+  # The first start generated the admin token below. Keep it secret.
+  tokens:
+    - name: admin
+      token: "{generated}"
+      scopes: [admin]
+      # Optional: a rate limit for this token only.
+      # rateLimit: { requestsPerMinute: 6000, burst: 500 }
+
+  # Clients without a token may read these paths (under basePath). "*" matches one path segment,
+  # "**" any number. Anonymous clients can never write, whatever this list says.
+  anonymous:
+    enabled: true
+    endpoints:
+      - /server
+      - /server/performance
+      - /worlds
+      - /worlds/*
+      - /players
+      - /players/*
+      - /players/*/statistics
+      - /players/*/advancements
+      - /leaderboards
+      - /leaderboards/*
+      - /aggregates
+      - /events
+      - /openapi.json
+      - /docs
+      - /ws
+
+rateLimit:
+  # A token bucket per client: it refills at requestsPerMinute and holds up to burst requests.
+  # Anonymous clients are counted per IP address, token holders per token.
+  anonymous: { requestsPerMinute: 120, burst: 30 }
+  tokens: { requestsPerMinute: 1200, burst: 200 }
+
+privacy:
+  # What clients without a token see. Token holders see everything, except IP addresses,
+  # which need the admin scope.
+  anonymous:
+    coordinates: false
+    inventories: false
+    addresses: false
+    chat: false
+
+websocket:
+  heartbeatSeconds: 20
+  maxClients: 64
+  # Events a slow client may fall behind by; older ones are dropped and the client is told how many.
+  queueSize: 256
+  # Topics clients without a token may subscribe to.
+  anonymousTopics:
+    - player.join
+    - player.leave
+    - player.death
+    - player.advancement
+    - player.sleep
+    - world.time
+    - world.weather
+    - world.night_skipped
+    - entity.boss_killed
+    - raid.start
+    - raid.finish
+    - server.performance
+    - server.status
+  timeIntervalSeconds: 1
+  performanceIntervalSeconds: 5
+  moveIntervalMillis: 1000
+  # Block breaks and places are added up per player over this window, then sent as one event.
+  blockWindowSeconds: 5
+
+events:
+  # Record chat in the event history and stream it over the WebSocket.
+  chat: false
+  # Days to keep the event history and the audit log; 0 keeps them forever.
+  retentionDays: 0
+
+limits:
+  maxPageSize: 500
+  maxFillBlocks: 32768
+  maxSpawnCount: 50
+  maxMessageLength: 512
+  maxExplosionPower: 10.0
+  maxParticleCount: 1000
+  maxEntityRadius: 256.0
+  maxStructureRadius: 100
+
