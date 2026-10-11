@@ -1,6 +1,7 @@
 package com.mairwunnx.worldapi
 
 import com.mairwunnx.worldapi.script.CompileError
+import com.mairwunnx.worldapi.script.FilteringClassLoader
 import com.mairwunnx.worldapi.script.ScriptCompiler
 import com.mairwunnx.worldapi.script.ScriptManager
 import com.mairwunnx.worldapi.config.Scripts
@@ -58,6 +59,36 @@ class ScriptTest {
         val error = assertFailsWith<CompileError> { compiler.compile(ScriptCompiler.wrapSnippet("return nope;"), Files.createTempDirectory("script")) }
         assertTrue(error.diagnostics.single().startsWith("line ${ScriptCompiler.SNIPPET_OFFSET + 1}:"), error.diagnostics.toString())
         assertFailsWith<CompileError> { compiler.compile("class NotPublic {}", Files.createTempDirectory("script")) }
+    }
+
+    @Test
+    fun `scripts see only allowed packages`() {
+        val loader = FilteringClassLoader(javaClass.classLoader)
+        assertEquals(org.bukkit.Bukkit::class.java, loader.loadClass("org.bukkit.Bukkit"))
+        assertFailsWith<ClassNotFoundException> { loader.loadClass("com.mairwunnx.worldapi.WorldApiPlugin") }
+        assertFailsWith<ClassNotFoundException> { loader.loadClass("kotlin.Unit") }
+    }
+
+    @Test
+    fun `an unloaded script can be garbage collected`() {
+        val source = "public class Answer implements com.mairwunnx.worldapi.script.api.WorldApiScript { public Object run(com.mairwunnx.worldapi.script.api.ScriptContext ctx) { return 42; } }"
+        val compiled = compiler.compile(source, Files.createTempDirectory("script"))
+        val reference = loadAndRun(compiled)
+        repeat(50) {
+            if (reference.get() == null) return
+            System.gc()
+            Thread.sleep(20)
+        }
+        error("The script's class loader is still reachable after closing it")
+    }
+
+    // A separate function, so no local variable keeps the loader alive in the test's frame.
+    private fun loadAndRun(compiled: com.mairwunnx.worldapi.script.Compiled): java.lang.ref.WeakReference<ClassLoader> {
+        val loader = java.net.URLClassLoader(arrayOf(compiled.directory.toUri().toURL()), FilteringClassLoader(javaClass.classLoader))
+        val script = loader.loadClass(compiled.mainClass).getDeclaredConstructor().newInstance() as com.mairwunnx.worldapi.script.api.WorldApiScript
+        assertEquals(42, script.run(null))
+        loader.close()
+        return java.lang.ref.WeakReference(loader)
     }
 
     @Test
