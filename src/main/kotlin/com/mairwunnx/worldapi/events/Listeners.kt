@@ -353,6 +353,17 @@ class Listeners(
         }, world = event.entity.world.name))
     }
 
+    /** Explosions without an entity behind them: beds in the nether, respawn anchors, and the API's own. */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    fun onBlockExplode(event: org.bukkit.event.block.BlockExplodeEvent) {
+        publish(ApiEvent(Topic.ENTITY_EXPLODE, buildJsonObject {
+            put("entity", null as String?)
+            put("block", event.explodedBlockState.type.key.asString())
+            put("blocks", event.blockList().size)
+            put("location", event.block.location.json())
+        }, world = event.block.world.name))
+    }
+
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     fun onRaidStart(event: RaidTriggerEvent) {
         publish(ApiEvent(Topic.RAID_START, buildJsonObject {
