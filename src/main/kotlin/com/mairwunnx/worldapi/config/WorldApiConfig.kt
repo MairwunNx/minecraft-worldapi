@@ -20,7 +20,7 @@ data class WorldApiConfig(
 @Serializable
 data class Http(
     val host: String = "0.0.0.0",
-    val port: Int = 8100,
+    val port: Int = 8110,
     val basePath: String = "/api/v1",
     /** Take the client address from X-Forwarded-For. Turn on only behind a proxy you control. */
     val trustForwardedFor: Boolean = false,

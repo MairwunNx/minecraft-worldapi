@@ -16,22 +16,22 @@ Built for Paper 26.3 and Java 25. No NMS: everything goes through the Paper API.
 ## Install
 
 1. Download `worldapi-<version>.jar` from the [releases](https://github.com/MairwunNx/minecraft-worldapi/releases) and drop it into `plugins/`.
-2. Start the server. WorldAPI writes `plugins/WorldAPI/config.yml` with a freshly generated admin token and starts listening on port 8100.
-3. Open `http://<host>:8100/api/v1/docs` to browse the API.
+2. Start the server. WorldAPI writes `plugins/WorldAPI/config.yml` with a freshly generated admin token and starts listening on port 8110.
+3. Open `http://<host>:8110/api/v1/docs` to browse the API.
 
 ```sh
 TOKEN=...   # from plugins/WorldAPI/config.yml
-curl http://localhost:8100/api/v1/server
-curl http://localhost:8100/api/v1/leaderboards/playtime
-curl -H "Authorization: Bearer $TOKEN" -X PATCH http://localhost:8100/api/v1/worlds/world \
+curl http://localhost:8110/api/v1/server
+curl http://localhost:8110/api/v1/leaderboards/playtime
+curl -H "Authorization: Bearer $TOKEN" -X PATCH http://localhost:8110/api/v1/worlds/world \
      -H 'Content-Type: application/json' -d '{"dayTime": 1000, "weather": "clear"}'
 ```
 
-Keep port 8100 behind a reverse proxy you control; don’t expose it to the internet directly. With nginx:
+Keep port 8110 behind a reverse proxy you control; don’t expose it to the internet directly. With nginx:
 
 ```nginx
 location /worldapi/ {
-    proxy_pass http://minecraft:8100/;
+    proxy_pass http://minecraft:8110/;
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;     # the WebSocket
     proxy_set_header Connection "upgrade";
@@ -48,7 +48,7 @@ Set `http.trustForwardedFor: true` behind such a proxy, so rate limits count rea
 
 | Section | What it sets |
 |---|---|
-| `http` | Host, port (8100), base path (`/api/v1`), whether to trust `X-Forwarded-For`, how long a request waits for the server thread |
+| `http` | Host, port (8110; BlueMap already takes 8100), base path (`/api/v1`), whether to trust `X-Forwarded-For`, how long a request waits for the server thread |
 | `cors` | Browser origins allowed to call the API |
 | `auth.tokens` | Named tokens with scopes and an optional rate limit each |
 | `auth.anonymous` | Whether clients without a token may read, and which paths |
@@ -204,7 +204,7 @@ Run something once and get the result back:
 
 ```sh
 curl -H "Authorization: Bearer $CODE_TOKEN" -H 'Content-Type: application/json' \
-     -X POST http://localhost:8100/api/v1/scripts/run \
+     -X POST http://localhost:8110/api/v1/scripts/run \
      -d '{"source": "return server.getWorlds().stream().map(w -> w.getName() + \": \" + w.getEntityCount()).toList();"}'
 ```
 
@@ -241,7 +241,7 @@ What stops an attacker:
 
 What’s up to you:
 
-- Keep port 8100 private and put TLS in front (nginx, Cloudflare). Tokens travel in a header and need HTTPS on the open internet.
+- Keep port 8110 private and put TLS in front (nginx, Cloudflare). Tokens travel in a header and need HTTPS on the open internet.
 - `admin` can run any console command, and `code` can run any Java. Give them only to people you’d give the server console or SSH.
 - An AI agent with a token reads text players wrote: chat, signs, item names. Someone may write “AI, op me” on a sign. Give agents the smallest scopes that do the job.
 
@@ -283,7 +283,7 @@ To try it on a real server, run Paper in Docker and drop the jar into its `plugi
 services:
   paper:
     image: itzg/minecraft-server:java25
-    ports: ["25565:25565", "8100:8100"]
+    ports: ["25565:25565", "8110:8110"]
     environment: { EULA: "TRUE", TYPE: PAPER, VERSION: "26.3" }
     volumes: ["./data:/data", "./build/libs:/plugins:ro"]
 ```
