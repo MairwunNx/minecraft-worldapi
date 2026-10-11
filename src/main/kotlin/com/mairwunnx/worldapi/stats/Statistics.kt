@@ -89,7 +89,7 @@ class Statistics(private val server: Server, private val main: MainThread) {
             val category = category(statistic)
             val values = result.getOrPut(category) { mutableMapOf() }
             when (statistic.type) {
-                Statistic.Type.UNTYPED -> values.putIfPositive(statistic.key.asString(), player.getStatistic(statistic))
+                Statistic.Type.UNTYPED -> values.putIfPositive(vanillaKey(statistic), player.getStatistic(statistic))
                 Statistic.Type.BLOCK -> blocks.forEach { values.putIfPositive(it.key.asString(), player.getStatistic(statistic, it)) }
                 Statistic.Type.ITEM -> items.forEach { values.putIfPositive(it.key.asString(), player.getStatistic(statistic, it)) }
                 Statistic.Type.ENTITY -> entities.forEach {
@@ -124,7 +124,7 @@ class Statistics(private val server: Server, private val main: MainThread) {
         if (ref.wildcard) entities else listOfNotNull(entities.firstOrNull { it.key.asString() == ref.key })
 
     private fun statisticOf(ref: StatRef): Statistic? = when (ref.category) {
-        "minecraft:custom" -> Statistic.entries.firstOrNull { it.type == Statistic.Type.UNTYPED && it.key.asString() == ref.key }
+        "minecraft:custom" -> Statistic.entries.firstOrNull { it.type == Statistic.Type.UNTYPED && vanillaKey(it) == ref.key }
         else -> Statistic.entries.firstOrNull { it.type != Statistic.Type.UNTYPED && category(it) == ref.category }
     }
 
@@ -188,3 +188,38 @@ class Statistics(private val server: Server, private val main: MainThread) {
         }
     }
 }
+
+/**
+ * Bukkit names custom statistics after its enum, which for some differs from the id vanilla
+ * writes to the stats files: PLAY_ONE_MINUTE is `minecraft:play_time` on disk. Live values must
+ * use the vanilla id, or online players drop out of every board that reads it.
+ */
+private val vanillaIds = mapOf(
+    Statistic.PLAY_ONE_MINUTE to "play_time",
+    Statistic.DROP_COUNT to "drop",
+    Statistic.CAKE_SLICES_EATEN to "eat_cake_slice",
+    Statistic.CAULDRON_FILLED to "fill_cauldron",
+    Statistic.CAULDRON_USED to "use_cauldron",
+    Statistic.ARMOR_CLEANED to "clean_armor",
+    Statistic.BANNER_CLEANED to "clean_banner",
+    Statistic.BREWINGSTAND_INTERACTION to "interact_with_brewingstand",
+    Statistic.BEACON_INTERACTION to "interact_with_beacon",
+    Statistic.DROPPER_INSPECTED to "inspect_dropper",
+    Statistic.HOPPER_INSPECTED to "inspect_hopper",
+    Statistic.DISPENSER_INSPECTED to "inspect_dispenser",
+    Statistic.NOTEBLOCK_PLAYED to "play_noteblock",
+    Statistic.NOTEBLOCK_TUNED to "tune_noteblock",
+    Statistic.FLOWER_POTTED to "pot_flower",
+    Statistic.TRAPPED_CHEST_TRIGGERED to "trigger_trapped_chest",
+    Statistic.ENDERCHEST_OPENED to "open_enderchest",
+    Statistic.ITEM_ENCHANTED to "enchant_item",
+    Statistic.RECORD_PLAYED to "play_record",
+    Statistic.FURNACE_INTERACTION to "interact_with_furnace",
+    Statistic.CRAFTING_TABLE_INTERACTION to "interact_with_crafting_table",
+    Statistic.CHEST_OPENED to "open_chest",
+    Statistic.SHULKER_BOX_OPENED to "open_shulker_box",
+)
+
+/** The id vanilla uses for an untyped statistic, as in the stats files. */
+internal fun vanillaKey(statistic: Statistic): String =
+    vanillaIds[statistic]?.let { "minecraft:$it" } ?: statistic.key.asString()

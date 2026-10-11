@@ -3,6 +3,7 @@ package com.mairwunnx.worldapi
 import com.mairwunnx.worldapi.stats.Board
 import com.mairwunnx.worldapi.stats.StatRef
 import com.mairwunnx.worldapi.stats.Statistics
+import com.mairwunnx.worldapi.stats.vanillaKey
 import com.mairwunnx.worldapi.stats.rank
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -42,6 +43,12 @@ class StatsTest {
         assertEquals(7.0, Board.of("advancements")!!.score(stats, 7))
         assertEquals("custom:jump", Board.of("custom:jump")!!.id)
         assertNull(Board.of("bogus"))
+    }
+
+    @Test
+    fun `live custom statistics use the ids from the stats files`() {
+        assertEquals("minecraft:play_time", vanillaKey(org.bukkit.Statistic.PLAY_ONE_MINUTE))
+        assertEquals("minecraft:deaths", vanillaKey(org.bukkit.Statistic.DEATHS))
     }
 
     @Test
