@@ -2,6 +2,7 @@ package com.mairwunnx.worldapi.routes
 
 import com.mairwunnx.worldapi.api.Scope
 import com.mairwunnx.worldapi.api.badRequest
+import com.mairwunnx.worldapi.api.boolean
 import com.mairwunnx.worldapi.api.endpoints
 import com.mairwunnx.worldapi.api.integer
 import com.mairwunnx.worldapi.model.ScriptLoadRequest
@@ -47,9 +48,13 @@ val scriptRoutes = endpoints("Scripts") {
         api.scripts.logs(path("id"), limit)
     }
 
-    delete("/scripts/{id}", "Unload a script: remove its listeners and tasks, and forget a saved copy", Scope.CODE) {
+    delete(
+        "/scripts/{id}", "Unload a script: remove its listeners and tasks", Scope.CODE,
+        description = "A persistent script's saved copy goes too, unless `keepSaved` is true; then it loads again on the next start.",
+        query = listOf(boolean("keepSaved", "Keep the saved copy of a persistent script")),
+    ) {
         auditTarget = path("id")
-        api.scripts.unload(path("id"))
+        api.scripts.unload(path("id"), forget = bool("keepSaved") != true)
     }
 }
 

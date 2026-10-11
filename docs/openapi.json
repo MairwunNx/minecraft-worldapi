@@ -3803,8 +3803,8 @@
             },
             "delete": {
                 "operationId": "deleteScriptsId",
-                "summary": "Unload a script: remove its listeners and tasks, and forget a saved copy",
-                "description": "Scope: `code`.",
+                "summary": "Unload a script: remove its listeners and tasks",
+                "description": "A persistent script's saved copy goes too, unless `keepSaved` is true; then it loads again on the next start.\n\nScope: `code`.",
                 "tags": [
                     "Scripts"
                 ],
@@ -3824,6 +3824,15 @@
                         "description": "Script id",
                         "schema": {
                             "type": "string"
+                        }
+                    },
+                    {
+                        "name": "keepSaved",
+                        "in": "query",
+                        "required": false,
+                        "description": "Keep the saved copy of a persistent script",
+                        "schema": {
+                            "type": "boolean"
                         }
                     }
                 ],
