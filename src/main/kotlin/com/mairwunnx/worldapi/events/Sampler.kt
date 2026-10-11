@@ -34,7 +34,8 @@ class Sampler(private val server: Server, private val bus: EventBus, private val
         val settings = config().websocket
         if (now - lastTime >= settings.timeIntervalSeconds * 1000L) {
             lastTime = now
-            if (bus.interest(Topic.WORLD_TIME)) server.worlds.forEach(::time)
+            // The nether and the end have a fixed clock; the snapshot covers them, ticking them is noise.
+            if (bus.interest(Topic.WORLD_TIME)) server.worlds.filterNot { it.isFixedTime }.forEach(::time)
         }
         if (now - lastPerformance >= settings.performanceIntervalSeconds * 1000L) {
             lastPerformance = now
