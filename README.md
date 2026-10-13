@@ -18,6 +18,7 @@
 - 📡 **83 REST operations**: the server and its load, the console log, worlds, game rules, the border, blocks and biomes with nearby search, chunks, entities, players online and offline, inventories, effects, statistics, advancements, play sessions, recipes, leaderboards, and the event history.
 - ⚡ **A live feed over WebSocket** with 39 topics: joins, deaths, advancements, chat if you turn it on, positions, health, time, weather, boss kills, raids, and more. You get a snapshot on subscribe, then changes.
 - 🏆 **Live statistics.** Leaderboards move while people play, not at the next autosave.
+- 🎒 **Inventories in depth.** Every item comes with its enchantments, attributes, durability, potion effects, armor trim, and what’s inside shulker boxes and bundles.
 - 🔑 **Tokens with scopes**, made in a chest menu in game. A site reads without one; changes need a token with the right scope.
 - 🗄️ **SQLite out of the box**, or your own PostgreSQL, MySQL, or MariaDB.
 - 📖 **Built-in docs** at `/api/v1/docs`, and an OpenAPI 3.1 document for code generators.
