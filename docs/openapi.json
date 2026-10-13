@@ -4963,6 +4963,164 @@
                 }
             }
         },
+        "/server/restart": {
+            "post": {
+                "operationId": "postServerRestart",
+                "summary": "Restart the server after a countdown in chat",
+                "description": "Warns players in chat at set marks (a minute, 30 seconds, 10, 5 to 1), saves every world and player, then stops the server. Whatever runs the server must start it again, such as Docker's restart policy or a start script loop. Scheduling again replaces the pending restart; DELETE calls it off.\n\nScope: `admin`.",
+                "tags": [
+                    "Server"
+                ],
+                "x-scope": "admin",
+                "security": [
+                    {
+                        "bearer": [
+                            "admin"
+                        ]
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RestartRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RestartStatus"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or unknown token",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The token lacks the scope",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit hit; see Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "The server thread didn't answer in time",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "deleteServerRestart",
+                "summary": "Call off a pending restart",
+                "description": "Scope: `admin`.",
+                "tags": [
+                    "Server"
+                ],
+                "x-scope": "admin",
+                "security": [
+                    {
+                        "bearer": [
+                            "admin"
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RestartStatus"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or unknown token",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The token lacks the scope",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit hit; see Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "The server thread didn't answer in time",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/server/save": {
             "post": {
                 "operationId": "postServerSave",
@@ -11524,6 +11682,59 @@
                     "remaining",
                     "dryRun",
                     "byType"
+                ],
+                "additionalProperties": false
+            },
+            "RestartRequest": {
+                "type": "object",
+                "properties": {
+                    "countdownSeconds": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "message": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "additionalProperties": false
+            },
+            "RestartStatus": {
+                "type": "object",
+                "properties": {
+                    "scheduled": {
+                        "type": "boolean"
+                    },
+                    "at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "secondsLeft": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "format": "int64"
+                    },
+                    "message": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "cancelled": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "scheduled"
                 ],
                 "additionalProperties": false
             },

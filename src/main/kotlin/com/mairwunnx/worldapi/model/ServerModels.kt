@@ -82,6 +82,24 @@ data class WorldLoad(
 )
 
 @Serializable
+data class RestartRequest(
+    /** Seconds of warning in chat before the server stops, 0–3600. */
+    val countdownSeconds: Int = 60,
+    /** Said with each warning, such as why the server restarts. */
+    val message: String? = null,
+)
+
+@Serializable
+data class RestartStatus(
+    val scheduled: Boolean,
+    val at: String? = null,
+    val secondsLeft: Long? = null,
+    val message: String? = null,
+    /** On DELETE: whether a pending restart was called off. */
+    val cancelled: Boolean? = null,
+)
+
+@Serializable
 data class ServerLog(
     val lines: List<LogLine>,
     /** Lines held in memory; limits.consoleLines at most. */

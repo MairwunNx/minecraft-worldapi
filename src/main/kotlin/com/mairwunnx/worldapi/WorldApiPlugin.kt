@@ -124,6 +124,7 @@ class WorldApiPlugin : JavaPlugin() {
         api.bus.publish(ApiEvent(Topic.SERVER_STATUS, buildJsonObject { put("status", if (server.isStopping) "stopping" else "plugin_disabled") }))
         server.onlinePlayers.forEach { api.history.closeSession(it.uniqueId.toString(), Instant.now()) }
         api.scripts.unloadAll()
+        api.restart.close()
         hub.closeAll(if (server.isStopping) "Server stopping" else "WorldAPI disabled")
         stopConsole?.invoke()
         stopConsole = null

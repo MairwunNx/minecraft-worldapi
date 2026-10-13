@@ -7,6 +7,9 @@ import com.mairwunnx.worldapi.stats.Experience
 import com.mairwunnx.worldapi.stats.Statistics
 import com.mairwunnx.worldapi.tokens.TokenStore
 import com.mairwunnx.worldapi.store.History
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import org.bukkit.Server
 import java.util.concurrent.atomic.AtomicReference
 
@@ -27,4 +30,7 @@ class WorldApi(
 
     /** Recent console lines, filled by the plugin's Log4j appender. */
     val console = ConsoleLog({ config.limits.consoleLines }, { config.auth.tokens.map { it.token } })
+
+    /** A restart with a countdown, scheduled through POST /server/restart. */
+    val restart by lazy { Restart(server, main, CoroutineScope(SupervisorJob() + Dispatchers.Default)) }
 }

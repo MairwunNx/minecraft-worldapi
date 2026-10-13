@@ -18,6 +18,8 @@ import com.mairwunnx.worldapi.model.MessageKind
 import com.mairwunnx.worldapi.model.Mspt
 import com.mairwunnx.worldapi.model.Performance
 import com.mairwunnx.worldapi.model.PluginInfo
+import com.mairwunnx.worldapi.model.RestartRequest
+import com.mairwunnx.worldapi.model.RestartStatus
 import com.mairwunnx.worldapi.model.SaveRequest
 import com.mairwunnx.worldapi.model.SaveResult
 import com.mairwunnx.worldapi.model.ServerInfo
@@ -109,6 +111,24 @@ val serverRoutes = endpoints("Server") {
             }
             CommandResult(success, output)
         }
+    }
+
+    post<RestartRequest, RestartStatus>(
+        "/server/restart", "Restart the server after a countdown in chat", Scope.ADMIN,
+        description = "Warns players in chat at set marks (a minute, 30 seconds, 10, 5 to 1), saves every world and player, then stops the server. " +
+            "Whatever runs the server must start it again, such as Docker's restart policy or a start script loop. " +
+            "Scheduling again replaces the pending restart; DELETE calls it off.",
+    ) { request ->
+        if (request.countdownSeconds !in 0..3_600) badRequest("countdownSeconds must be between 0 and 3600")
+        val message = request.message?.trim()?.takeIf { it.isNotEmpty() }
+        if (message != null && message.length > config.limits.maxMessageLength) badRequest("message is longer than ${config.limits.maxMessageLength} characters")
+        auditTarget = "in ${request.countdownSeconds} s"
+        auditDetail = message
+        api.restart.schedule(request.countdownSeconds, message)
+    }
+
+    delete("/server/restart", "Call off a pending restart", Scope.ADMIN) {
+        RestartStatus(scheduled = false, cancelled = api.restart.cancel())
     }
 
     post<SaveRequest, SaveResult>("/server/save", "Save every world, and player data", Scope.ADMIN) { request ->
