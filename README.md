@@ -97,6 +97,33 @@ auth:
 
 Anonymous clients can only read, and only the paths in `auth.anonymous.endpoints`. The default list covers what a public site needs: the server, worlds, players, statistics, advancements, leaderboards, totals, events, the docs, and the WebSocket. No write is ever reachable without a token, whatever that list says.
 
+### Database
+
+WorldAPI keeps the event history, play sessions, the audit log, and experience totals in a database. By default that’s SQLite in `plugins/WorldAPI/worldapi.db`, which needs no setup. If you already run PostgreSQL, MySQL, or MariaDB, point the `database` section at it instead; the drivers ship in the jar. Give each server its own database, since the tables don’t say which server a row came from.
+
+```yaml
+database:
+  type: postgresql
+  host: db.example.com
+  port: 5432
+  name: worldapi
+  user: worldapi
+  password: "secret"
+  properties: { sslmode: require }
+```
+
+```yaml
+database:
+  type: mysql          # MySQL and MariaDB alike
+  host: db.example.com
+  port: 3306
+  name: worldapi
+  user: worldapi
+  password: "secret"
+```
+
+Create the database and the user first; WorldAPI creates its tables on start. `poolSize` sets how many connections serve reads (4 by default), and `properties` passes extra settings to the JDBC driver. WorldAPI reads this section only at startup: a change takes a restart, and `/worldapi reload` keeps the current connection. Switching databases starts the new one empty, since nothing is copied over. The log names the database but never the password.
+
 ## REST API
 
 The full reference lives at `/api/v1/docs`, and the same document is in [`docs/openapi.json`](docs/openapi.json). WorldAPI builds the document from its own endpoint list and data classes, and a test fails when the committed copy falls behind, so the two can’t drift apart.

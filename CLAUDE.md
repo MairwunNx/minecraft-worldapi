@@ -18,13 +18,13 @@ A Paper 26.3 plugin that serves the server's state over REST and a WebSocket: wo
 | `events/` | `Topic` (every stream and its privacy), listeners, the sampler for state topics, snapshots, and `Visibility`, which strips what anonymous clients mustn't see |
 | `ws/` | The WebSocket hub: per-client outboxes, state topics coalesce, event topics drop the oldest |
 | `stats/` | Statistics from live players and the stats files, leaderboards, aggregates |
-| `store/` | SQLite: event history, sessions, audit log; one connection on its own thread |
+| `store/` | Event history, sessions, audit log, experience: Exposed DSL over HikariCP on SQLite, PostgreSQL, or MySQL/MariaDB. Writes queue on one thread; reads wait for the writes queued before them. Table and column names stay as 1.x made them in SQLite |
 | `tokens/`, `command/` | Issued tokens (stored as SHA-256), the in-game token menu, `/worldapi` |
 | `script/`, `src/main/java/.../script/api` | Java scripts: compiled by the bundled ECJ, loaded by a filtered class loader, checked against blocked calls |
 
 ## Rules that keep it working
 
-- Bukkit calls happen on the server thread through `core/MainThread.kt`; IO, SQLite, and network never do.
+- Bukkit calls happen on the server thread through `core/MainThread.kt`; IO, the database, and network never do.
 - Anonymous clients never get coordinates, inventories, addresses, or chat. A new topic or field declares its `Privacy` in `Topic.kt`, and `Visibility` must strip it for anonymous clients. Moonlands opens topics to anonymous visitors in its own config, so check what a new field would show there.
 - `admin` doesn't include `code`. Scripts run arbitrary Java on the server; they stay off by default.
 - Never log or print a token. The token menu shows a new one once, to the player who made it.
@@ -41,7 +41,7 @@ A Paper 26.3 plugin that serves the server's state over REST and a WebSocket: wo
 
 - `./gradlew build` runs the tests and builds the shaded jar in `build/libs`; Java 25.
 - There is no MockBukkit for Paper 26.3; tests use the small fakes in `src/test`. Anything that needs a real server goes to a local Paper in Docker (the compose snippet in README.md).
-- Dependencies are shaded and relocated under `com.mairwunnx.worldapi.libs`. The SQLite driver comes from Paper.
+- Dependencies are shaded and relocated under `com.mairwunnx.worldapi.libs`. The SQLite driver comes from Paper; the PostgreSQL and MariaDB drivers are relocated too, so the store passes Hikari their class names from class references. `WORLDAPI_TEST_DATABASES=postgresql://u:p@host:port/db,mysql://...` runs `StoreTest` against real servers.
 
 ## Releasing and Moonlands
 
