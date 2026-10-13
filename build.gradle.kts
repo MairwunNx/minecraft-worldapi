@@ -127,7 +127,8 @@ hangarPublish {
         changelog = releaseNotes
         platforms {
             register(Platforms.PAPER) {
-                jar = tasks.shadowJar.flatMap { it.archiveFile }
+                // The jar is over Hangar's 15 MB limit, so Hangar links to the GitHub release instead.
+                url = "https://github.com/MairwunNx/minecraft-worldapi/releases/download/v${project.version}/worldapi-${project.version}.jar"
                 platformVersions = listOf("26.3")
             }
         }
