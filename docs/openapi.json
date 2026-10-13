@@ -42,6 +42,9 @@
             "name": "Leaderboards"
         },
         {
+            "name": "Recipes"
+        },
+        {
             "name": "Events"
         },
         {
@@ -3419,6 +3422,124 @@
                     },
                     "404": {
                         "description": "Not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit hit; see Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "The server thread didn't answer in time",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/recipes": {
+            "get": {
+                "operationId": "getRecipes",
+                "summary": "Recipes that make an item, or use it",
+                "description": "Give `item` for the recipes that make it, `uses` for the recipes that take it as an ingredient, or both. Covers crafting, furnaces, smokers, blast furnaces, campfires, stonecutters, and smithing tables, plugin recipes included.\n\nScope: `read`.",
+                "tags": [
+                    "Recipes"
+                ],
+                "x-scope": "read",
+                "security": [
+                    {
+                        "bearer": [
+                            "read"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "description": "How many items to return; the server caps it",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "cursor",
+                        "in": "query",
+                        "required": false,
+                        "description": "The `nextCursor` from the previous page",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "item",
+                        "in": "query",
+                        "required": false,
+                        "description": "Item key the recipe makes, such as `minecraft:torch`",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "uses",
+                        "in": "query",
+                        "required": false,
+                        "description": "Item key the recipe takes, such as `minecraft:coal`",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RecipeViewPage"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or unknown token",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The token lacks the scope",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -10717,6 +10838,108 @@
                     "x",
                     "y",
                     "z"
+                ],
+                "additionalProperties": false
+            },
+            "RecipeIngredient": {
+                "type": "object",
+                "properties": {
+                    "slot": {
+                        "type": "string"
+                    },
+                    "options": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "required": [
+                    "slot",
+                    "options"
+                ],
+                "additionalProperties": false
+            },
+            "RecipeView": {
+                "type": "object",
+                "properties": {
+                    "key": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "result": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "amount": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "shape": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "ingredients": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RecipeIngredient"
+                        }
+                    },
+                    "cookingTimeTicks": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "format": "int32"
+                    },
+                    "experience": {
+                        "type": [
+                            "number",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "key",
+                    "type",
+                    "ingredients"
+                ],
+                "additionalProperties": false
+            },
+            "RecipeViewPage": {
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RecipeView"
+                        }
+                    },
+                    "nextCursor": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "total": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "format": "int32"
+                    }
+                },
+                "required": [
+                    "items"
                 ],
                 "additionalProperties": false
             },

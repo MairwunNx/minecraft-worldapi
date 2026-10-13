@@ -1,8 +1,11 @@
 package com.mairwunnx.worldapi
 
 import com.mairwunnx.worldapi.model.ChunkSummary
+import com.mairwunnx.worldapi.model.RecipeIngredient
+import com.mairwunnx.worldapi.model.RecipeView
 import com.mairwunnx.worldapi.routes.ChunkSort
 import com.mairwunnx.worldapi.routes.canSleep
+import com.mairwunnx.worldapi.routes.matches
 import com.mairwunnx.worldapi.routes.ticksUntilNight
 import com.mairwunnx.worldapi.routes.topTypes
 import kotlin.test.Test
@@ -41,5 +44,16 @@ class WorldTest {
     fun `entity types are counted, most common first`() {
         val keys = List(5) { "minecraft:item" } + List(2) { "minecraft:cow" } + List(2) { "minecraft:bee" } + "minecraft:pig"
         assertEquals(listOf("minecraft:item" to 5, "minecraft:bee" to 2, "minecraft:cow" to 2), topTypes(keys, top = 3).toList())
+    }
+
+    @Test
+    fun `recipes match what they make and what they take`() {
+        val torch = RecipeView("minecraft:torch", "crafting_shaped", "minecraft:torch", 4, listOf("C", "S"),
+            listOf(RecipeIngredient("C", listOf("minecraft:coal", "minecraft:charcoal")), RecipeIngredient("S", listOf("minecraft:stick"))))
+        assertTrue(matches(torch, "minecraft:torch", null))
+        assertTrue(matches(torch, null, "minecraft:charcoal"))
+        assertTrue(matches(torch, "minecraft:torch", "minecraft:stick"))
+        assertFalse(matches(torch, "minecraft:stick", null))
+        assertFalse(matches(torch, "minecraft:torch", "minecraft:diamond"))
     }
 }
