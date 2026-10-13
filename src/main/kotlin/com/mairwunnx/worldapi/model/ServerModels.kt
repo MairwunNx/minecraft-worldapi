@@ -82,6 +82,24 @@ data class WorldLoad(
 )
 
 @Serializable
+data class ServerLog(
+    val lines: List<LogLine>,
+    /** Lines held in memory; limits.consoleLines at most. */
+    val buffered: Int,
+)
+
+@Serializable
+data class LogLine(
+    val at: String,
+    /** `trace`, `debug`, `info`, `warn`, `error`, or `fatal`. */
+    val level: String,
+    /** Who logged it, such as `Minecraft` or a plugin's name. */
+    val logger: String? = null,
+    /** Colors stripped; tokens replaced by `[token]` or `[redacted]`. Players write parts of it: chat, names, commands. */
+    val message: String,
+)
+
+@Serializable
 data class PluginInfo(
     val name: String,
     val version: String,

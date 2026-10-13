@@ -120,6 +120,8 @@ limits:
   maxBlockSearchRadius: 64
   # Biome search asks the world generator on the server thread.
   maxBiomeSearchRadius: 2048
+  # Console lines kept in memory for GET /server/logs (admin tokens only).
+  consoleLines: 1000
 
 scripts:
   # Lets tokens with the "code" scope compile and run Java on this server (POST /scripts).

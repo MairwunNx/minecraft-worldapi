@@ -24,4 +24,7 @@ class WorldApi(
     val version: String,
 ) {
     val config: WorldApiConfig get() = configRef.get()
+
+    /** Recent console lines, filled by the plugin's Log4j appender. */
+    val console = ConsoleLog({ config.limits.consoleLines }, { config.auth.tokens.map { it.token } })
 }

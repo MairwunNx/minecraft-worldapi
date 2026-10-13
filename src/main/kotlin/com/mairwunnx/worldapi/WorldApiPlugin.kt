@@ -6,6 +6,7 @@ import com.mairwunnx.worldapi.command.WorldApiCommand
 import com.mairwunnx.worldapi.config.ConfigFile
 import com.mairwunnx.worldapi.config.WorldApiConfig
 import com.mairwunnx.worldapi.core.BukkitMainThread
+import com.mairwunnx.worldapi.core.ConsoleAppender
 import com.mairwunnx.worldapi.core.WorldApi
 import com.mairwunnx.worldapi.events.ApiEvent
 import com.mairwunnx.worldapi.events.EventBus
@@ -43,6 +44,7 @@ class WorldApiPlugin : JavaPlugin() {
     private lateinit var api: WorldApi
     private lateinit var hub: WebSocketHub
     private var http: HttpServer? = null
+    private var stopConsole: (() -> Unit)? = null
 
     override fun onEnable() {
         val configPath = dataFolder.toPath().resolve("config.yml")
@@ -76,6 +78,12 @@ class WorldApiPlugin : JavaPlugin() {
             logger.severe("tokens.yml is invalid, so in-game tokens don't work until it's fixed: ${error.message}")
         }
         api = WorldApi(server, main, history, bus, Statistics(server, main), Experience(store), scripts, tokens, config, pluginMeta.version)
+        stopConsole = try {
+            ConsoleAppender.install(api.console)
+        } catch (error: Throwable) {
+            logger.warning("Can't read the console, so GET /server/logs stays empty: $error")
+            null
+        }
         val menu = TokenMenu(this, tokens, { config.get().scripts.enabled }, logger)
         server.pluginManager.registerEvents(menu, this)
 
@@ -117,6 +125,8 @@ class WorldApiPlugin : JavaPlugin() {
         server.onlinePlayers.forEach { api.history.closeSession(it.uniqueId.toString(), Instant.now()) }
         api.scripts.unloadAll()
         hub.closeAll(if (server.isStopping) "Server stopping" else "WorldAPI disabled")
+        stopConsole?.invoke()
+        stopConsole = null
         http?.stop()
         http = null
         scope.cancel()

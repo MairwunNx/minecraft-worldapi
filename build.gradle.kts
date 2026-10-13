@@ -20,6 +20,8 @@ dependencies {
     compileOnly("io.papermc.paper:paper-api:26.3.build.169-beta")
     // Paper ships the SQLite driver, so it stays out of the jar.
     compileOnly("org.xerial:sqlite-jdbc:3.53.4.0")
+    // Paper logs through Log4j; GET /server/logs hooks its root logger.
+    compileOnly("org.apache.logging.log4j:log4j-core:2.26.1")
 
     implementation("io.ktor:ktor-server-core:$ktorVersion")
     implementation("io.ktor:ktor-server-cio:$ktorVersion")

@@ -148,6 +148,8 @@ data class Limits(
     val maxBlockSearchRadius: Int = 64,
     /** Blocks; biome search runs on the server thread. */
     val maxBiomeSearchRadius: Int = 2_048,
+    /** Console lines kept in memory for GET /server/logs. */
+    val consoleLines: Int = 1_000,
 )
 
 @Serializable
