@@ -102,7 +102,8 @@ fun worldTime(world: World): WorldTime {
         moonPhase = moonPhases.getOrElse(world.moonPhase.ordinal) { world.moonPhase.name.lowercase() },
         fixedTime = world.isFixedTime,
         ticksUntilNight = if (world.isFixedTime) null else ticksUntilNight(time),
-        canSleep = world.isBedWorks && canSleep(time, world.hasStorm(), world.hasStorm() && world.isThundering),
+        // isBedWorks follows the sky's darkness, which catches up a tick after a time change; the clock doesn't lag.
+        canSleep = world.environment == World.Environment.NORMAL && canSleep(time, world.hasStorm(), world.hasStorm() && world.isThundering),
     )
 }
 
