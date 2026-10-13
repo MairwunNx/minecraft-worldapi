@@ -141,6 +141,8 @@ data class Limits(
     val maxExplosionPower: Float = 10f,
     val maxParticleCount: Int = 1_000,
     val maxEntityRadius: Double = 256.0,
+    /** Entities one bulk removal may take. */
+    val maxEntityRemoval: Int = 1_000,
     val maxStructureRadius: Int = 100,
     /** Blocks; block search reads every loaded chunk in range, off the server thread. */
     val maxBlockSearchRadius: Int = 64,

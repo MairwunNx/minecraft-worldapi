@@ -113,6 +113,8 @@ limits:
   maxExplosionPower: 10.0
   maxParticleCount: 1000
   maxEntityRadius: 256.0
+  # Entities one bulk removal (DELETE /worlds/{world}/entities) may take.
+  maxEntityRemoval: 1000
   maxStructureRadius: 100
   # Block search (GET /worlds/{world}/search) reads loaded chunks only, off the server thread.
   maxBlockSearchRadius: 64

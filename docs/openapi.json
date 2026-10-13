@@ -6632,6 +6632,177 @@
                     }
                 }
             },
+            "delete": {
+                "operationId": "deleteWorldsWorldEntities",
+                "summary": "Remove many entities by type, optionally around a point",
+                "description": "Removes loaded entities of the given types without drops, up to `max` at once (limits.maxEntityRemoval at most). Players are never removed. Named mobs and tamed pets are skipped unless `includeNamed` is true. With `dryRun`, nothing is removed and the answer says what would be.\n\nScope: `write:world`.",
+                "tags": [
+                    "Entities"
+                ],
+                "x-scope": "write:world",
+                "security": [
+                    {
+                        "bearer": [
+                            "write:world"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "world",
+                        "in": "path",
+                        "required": true,
+                        "description": "World name (`world_nether`) or key (`minecraft:the_nether`)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "required": true,
+                        "description": "Entity keys, separated by commas, such as `minecraft:item,minecraft:arrow`",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "x",
+                        "in": "query",
+                        "required": false,
+                        "description": "Center X",
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "y",
+                        "in": "query",
+                        "required": false,
+                        "description": "Center Y",
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "z",
+                        "in": "query",
+                        "required": false,
+                        "description": "Center Z",
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "radius",
+                        "in": "query",
+                        "required": false,
+                        "description": "Radius in blocks around x, y, z; the server caps it",
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "max",
+                        "in": "query",
+                        "required": false,
+                        "description": "Remove at most this many, nearest first; the rest stay and are counted in `remaining`",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "includeNamed",
+                        "in": "query",
+                        "required": false,
+                        "description": "Also remove named mobs and tamed pets",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "dryRun",
+                        "in": "query",
+                        "required": false,
+                        "description": "Only count what would be removed",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RemovedEntities"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or unknown token",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The token lacks the scope",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit hit; see Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "The server thread didn't answer in time",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
             "post": {
                 "operationId": "postWorldsWorldEntities",
                 "summary": "Spawn entities",
@@ -11175,6 +11346,41 @@
                 },
                 "required": [
                     "items"
+                ],
+                "additionalProperties": false
+            },
+            "RemovedEntities": {
+                "type": "object",
+                "properties": {
+                    "matched": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "removed": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "remaining": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "dryRun": {
+                        "type": "boolean"
+                    },
+                    "byType": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    }
+                },
+                "required": [
+                    "matched",
+                    "removed",
+                    "remaining",
+                    "dryRun",
+                    "byType"
                 ],
                 "additionalProperties": false
             },

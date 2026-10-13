@@ -81,6 +81,18 @@ data class SpawnRequest(
 data class Spawned(val uuids: List<String>)
 
 @Serializable
+data class RemovedEntities(
+    /** Entities that fit the filter, leaving out players, and named mobs and tamed pets unless included. */
+    val matched: Int,
+    val removed: Int,
+    /** Matching entities still there, past `max` or because it was a dry run. */
+    val remaining: Int,
+    val dryRun: Boolean,
+    /** What was removed, or would be on a dry run, by entity key. */
+    val byType: Map<String, Int>,
+)
+
+@Serializable
 data class EffectView(
     /** Effect key, such as `minecraft:speed`. */
     val type: String,

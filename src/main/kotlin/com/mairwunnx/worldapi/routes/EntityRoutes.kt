@@ -3,7 +3,9 @@ package com.mairwunnx.worldapi.routes
 import com.mairwunnx.worldapi.api.ApiCall
 import com.mairwunnx.worldapi.api.Scope
 import com.mairwunnx.worldapi.api.badRequest
+import com.mairwunnx.worldapi.api.boolean
 import com.mairwunnx.worldapi.api.endpoints
+import com.mairwunnx.worldapi.api.integer
 import com.mairwunnx.worldapi.api.number
 import com.mairwunnx.worldapi.api.orNotFound
 import com.mairwunnx.worldapi.api.page
@@ -24,6 +26,7 @@ import com.mairwunnx.worldapi.bukkit.world
 import com.mairwunnx.worldapi.model.EntityPatch
 import com.mairwunnx.worldapi.model.EntitySummary
 import com.mairwunnx.worldapi.model.EntityView
+import com.mairwunnx.worldapi.model.RemovedEntities
 import com.mairwunnx.worldapi.model.SpawnRequest
 import com.mairwunnx.worldapi.model.Spawned
 import io.papermc.paper.registry.RegistryKey
@@ -109,6 +112,59 @@ val entityRoutes = endpoints("Entities") {
         }
     }
 
+    delete(
+        "/worlds/{world}/entities", "Remove many entities by type, optionally around a point",
+        description = "Removes loaded entities of the given types without drops, up to `max` at once (limits.maxEntityRemoval at most). " +
+            "Players are never removed. Named mobs and tamed pets are skipped unless `includeNamed` is true. " +
+            "With `dryRun`, nothing is removed and the answer says what would be.",
+        scope = Scope.WRITE_WORLD,
+        query = listOf(
+            string("type", "Entity keys, separated by commas, such as `minecraft:item,minecraft:arrow`", required = true),
+            number("x", "Center X"), number("y", "Center Y"), number("z", "Center Z"),
+            number("radius", "Radius in blocks around x, y, z; the server caps it"),
+            integer("max", "Remove at most this many, nearest first; the rest stay and are counted in `remaining`"),
+            boolean("includeNamed", "Also remove named mobs and tamed pets"),
+            boolean("dryRun", "Only count what would be removed"),
+        ),
+    ) {
+        val types = query("type")!!.split(',').map { registryEntry(RegistryKey.ENTITY_TYPE, it.trim(), "entity") }.toSet()
+        if (EntityType.PLAYER in types) badRequest("Players can't be removed; kick them instead")
+        val center = listOf(double("x"), double("y"), double("z"))
+        val radius = double("radius")
+        if (center.any { it != null } && center.any { it == null }) badRequest("Give all of x, y, and z, or none")
+        if (radius != null && center[0] == null) badRequest("radius needs x, y, and z")
+        if (radius != null && (radius <= 0 || radius > config.limits.maxEntityRadius)) badRequest("radius must be between 0 and ${config.limits.maxEntityRadius}")
+        val cap = config.limits.maxEntityRemoval
+        val max = int("max") ?: cap
+        if (max !in 1..cap) badRequest("max must be between 1 and $cap")
+        val includeNamed = bool("includeNamed") ?: false
+        val dryRun = bool("dryRun") ?: false
+        main {
+            val world = world()
+            auditTarget = "${world.name} ${types.joinToString(",") { it.key.key }}"
+            val origin = center[0]?.let { Location(world, it, center[1]!!, center[2]!!) }
+            val nearby: Collection<Entity> = if (origin != null) {
+                val r = radius ?: 32.0
+                world.getNearbyEntities(origin, r, r, r) { it.location.distanceSquared(origin) <= r * r }
+            } else {
+                world.entities
+            }
+            val matching = nearby.filter { it.type in types && removable(it, includeNamed) }
+                .sortedBy { e -> origin?.let { e.location.distanceSquared(it) } ?: 0.0 }
+            val chosen = matching.take(max)
+            auditDetail = if (dryRun) "dry run, ${matching.size} matching" else "${chosen.size} removed"
+            if (!dryRun) chosen.forEach(Entity::remove)
+            val removed = if (dryRun) 0 else chosen.size
+            RemovedEntities(
+                matched = matching.size,
+                removed = removed,
+                remaining = matching.size - removed,
+                dryRun = dryRun,
+                byType = chosen.groupingBy { it.type.key.asString() }.eachCount().toSortedMap(),
+            )
+        }
+    }
+
     delete("/worlds/{world}/entities/{uuid}", "Remove an entity", Scope.WRITE_WORLD) {
         main {
             val entity = entity()
@@ -142,6 +198,15 @@ val entityRoutes = endpoints("Entities") {
             Spawned(uuids)
         }
     }
+}
+
+/** Players never go; named mobs and tamed pets only when asked for, since someone cares about them. */
+internal fun removable(entity: Entity, includeNamed: Boolean): Boolean = when {
+    entity is Player -> false
+    includeNamed -> true
+    entity.customName() != null -> false
+    entity is Tameable && entity.isTamed -> false
+    else -> true
 }
 
 private fun ApiCall.entity(): Entity {
