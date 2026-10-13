@@ -156,3 +156,39 @@ scripts:
     - java/io/RandomAccessFile
     - java/nio/file/
     - java/nio/channels/FileChannel
+
+database:
+  # Where WorldAPI keeps the event history, play sessions, the audit log, and experience totals.
+  # Read at startup only: a change here takes a server restart, and /worldapi reload keeps the
+  # current connection. Moving to another database starts it empty; nothing is copied over.
+  # sqlite (a file next to this config), postgresql, or mysql (MySQL and MariaDB).
+  type: sqlite
+  # SQLite only: the file, relative to the plugin folder.
+  file: worldapi.db
+  # PostgreSQL and MySQL only. Leave port out for the usual one: 5432 or 3306.
+  host: localhost
+  name: worldapi
+  user: worldapi
+  password: ""
+  # Connections for reads; the writer gets one more.
+  poolSize: 4
+  # Extra JDBC driver properties, as strings.
+  properties: {}
+  #
+  # PostgreSQL:
+  #   type: postgresql
+  #   host: db.example.com
+  #   port: 5432
+  #   name: worldapi
+  #   user: worldapi
+  #   password: "secret"
+  #   properties: { sslmode: require }
+  #
+  # MySQL or MariaDB:
+  #   type: mysql
+  #   host: db.example.com
+  #   port: 3306
+  #   name: worldapi
+  #   user: worldapi
+  #   password: "secret"
+  #   properties: { sslMode: verify-full }

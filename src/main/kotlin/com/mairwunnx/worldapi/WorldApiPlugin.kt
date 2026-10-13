@@ -56,7 +56,14 @@ class WorldApiPlugin : JavaPlugin() {
         config.set(loaded)
         if (created) logger.info("Wrote config.yml with a new admin token; read it from the file")
 
-        store = Store(dataFolder.toPath().resolve("worldapi.db"))
+        store = try {
+            Store(loaded.database, dataFolder.toPath())
+        } catch (error: Exception) {
+            logger.severe("Couldn't open the database, so WorldAPI stays off: ${error.message}")
+            server.pluginManager.disablePlugin(this)
+            return
+        }
+        logger.info("Keeping history in ${store.description}")
         val history = History(store)
         history.lastActivity()?.let { history.closeStaleSessions(Instant.ofEpochMilli(it)) }
         val bus = EventBus(history) { config.get().events.chat }
@@ -148,13 +155,15 @@ class WorldApiPlugin : JavaPlugin() {
         val new = ConfigFile.load(dataFolder.toPath().resolve("config.yml")).first
         api.tokens.load()
         config.set(new)
+        // The store keeps its connection; a new database takes a restart.
+        val database = if (new.database != old.database) "; the database change applies after a restart" else ""
         if (http == null || HttpServer.changesNeedRestart(old, new)) {
             hub.closeAll("WorldAPI is restarting its HTTP server")
             http?.stop()
             startHttp()
-            "WorldAPI reloaded and restarted its HTTP server"
+            "WorldAPI reloaded and restarted its HTTP server$database"
         } else {
-            "WorldAPI reloaded"
+            "WorldAPI reloaded$database"
         }
     }
 

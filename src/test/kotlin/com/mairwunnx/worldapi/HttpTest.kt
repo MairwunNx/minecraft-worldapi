@@ -11,6 +11,7 @@ import com.mairwunnx.worldapi.config.RateLimit
 import com.mairwunnx.worldapi.config.RateLimits
 import com.mairwunnx.worldapi.config.Token
 import com.mairwunnx.worldapi.config.WorldApiConfig
+import com.mairwunnx.worldapi.store.Audit
 import com.mairwunnx.worldapi.ws.WebSocketHub
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
@@ -23,15 +24,16 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
+import java.util.logging.Logger
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import java.util.logging.Logger
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
+import org.jetbrains.exposed.v1.jdbc.selectAll
 
 @Serializable
 data class Echo(val name: String, val count: Int = 1)
@@ -151,9 +153,7 @@ class HttpTest {
         client.post("/api/v1/echo") { bearerAuth(read); contentType(ContentType.Application.Json); setBody("""{"name":"dirt"}""") }
         delay(200)
         val rows = fake.store.read {
-            createStatement().executeQuery("SELECT token, method, target, status FROM audit ORDER BY id").use { rs ->
-                buildList { while (rs.next()) add("${rs.getString(1)} ${rs.getString(2)} ${rs.getString(3)} ${rs.getInt(4)}") }
-            }
+            Audit.selectAll().orderBy(Audit.id).map { "${it[Audit.token]} ${it[Audit.method]} ${it[Audit.target]} ${it[Audit.status]}" }
         }
         assertEquals(listOf("builder POST stone 200"), rows)
     }

@@ -2,6 +2,25 @@ package com.mairwunnx.worldapi.store
 
 import com.mairwunnx.worldapi.api.ApiJson
 import kotlinx.serialization.json.JsonObject
+import org.jetbrains.exposed.v1.core.Op
+import org.jetbrains.exposed.v1.core.ResultRow
+import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.greater
+import org.jetbrains.exposed.v1.core.greaterEq
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.isNull
+import org.jetbrains.exposed.v1.core.less
+import org.jetbrains.exposed.v1.core.lowerCase
+import org.jetbrains.exposed.v1.core.max
+import org.jetbrains.exposed.v1.core.min
+import org.jetbrains.exposed.v1.core.or
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.update
 import java.time.Instant
 
 data class StoredEvent(
@@ -32,85 +51,97 @@ data class AuditEntry(val token: String, val method: String, val path: String, v
 /** The queries behind the history endpoints. */
 class History(private val store: Store) {
     fun record(type: String, at: Instant, playerUuid: String?, playerName: String?, world: String?, data: JsonObject) = store.write {
-        prepareStatement("INSERT INTO events (type, at, player_uuid, player_name, world, data) VALUES (?, ?, ?, ?, ?, ?)")
-            .use { it.bind(type, at.toEpochMilli(), playerUuid, playerName, world, ApiJson.encodeToString(JsonObject.serializer(), data)).executeUpdate() }
+        Events.insert {
+            it[Events.type] = type
+            it[Events.at] = at.toEpochMilli()
+            it[Events.playerUuid] = playerUuid
+            it[Events.playerName] = playerName
+            it[Events.world] = world
+            it[Events.data] = ApiJson.encodeToString(JsonObject.serializer(), data)
+        }
     }
 
     suspend fun events(query: EventQuery): List<StoredEvent> = store.read {
-        val where = mutableListOf<String>()
-        val args = mutableListOf<Any?>()
-        if (query.types.isNotEmpty()) {
-            where += "type IN (${query.types.joinToString(",") { "?" }})"
-            args.addAll(query.types)
+        val where = buildList {
+            if (query.types.isNotEmpty()) add(Events.type inList query.types)
+            query.player?.let { add((Events.playerUuid eq it) or (Events.playerName.lowerCase() eq it.lowercase())) }
+            query.from?.let { add(Events.at greaterEq it) }
+            query.to?.let { add(Events.at less it) }
+            query.before?.let { add(if (query.oldestFirst) Events.id greater it else Events.id less it) }
         }
-        query.player?.let { where += "(player_uuid = ? OR lower(player_name) = lower(?))"; args += it; args += it }
-        query.from?.let { where += "at >= ?"; args += it }
-        query.to?.let { where += "at < ?"; args += it }
-        query.before?.let { where += if (query.oldestFirst) "id > ?" else "id < ?"; args += it }
-        val sql = buildString {
-            append("SELECT * FROM events")
-            if (where.isNotEmpty()) append(" WHERE ").append(where.joinToString(" AND "))
-            append(if (query.oldestFirst) " ORDER BY id ASC" else " ORDER BY id DESC")
-            append(" LIMIT ?")
-        }
-        args += query.limit
-        prepareStatement(sql).use { statement ->
-            statement.bind(*args.toTypedArray()).executeQuery().rows {
-                StoredEvent(
-                    getLong("id"), getString("type"), getLong("at"), getString("player_uuid"), getString("player_name"),
-                    getString("world"), ApiJson.decodeFromString(JsonObject.serializer(), getString("data")),
-                )
-            }
-        }
+        Events.selectAll()
+            .apply { if (where.isNotEmpty()) where(where.reduce(Op<Boolean>::and)) }
+            .orderBy(Events.id, if (query.oldestFirst) SortOrder.ASC else SortOrder.DESC)
+            .limit(query.limit)
+            .map { it.toEvent() }
     }
 
     suspend fun firstEventAt(type: String): Long? = store.read {
-        prepareStatement("SELECT min(at) AS at FROM events WHERE type = ?").use { it.bind(type).executeQuery().rows { longOrNull("at") }.firstOrNull() }
+        val first = Events.at.min()
+        Events.select(first).where { Events.type eq type }.firstOrNull()?.get(first)
     }
 
     fun openSession(uuid: String, name: String, at: Instant) = store.write {
-        prepareStatement("INSERT INTO sessions (player_uuid, player_name, joined_at) VALUES (?, ?, ?)")
-            .use { it.bind(uuid, name, at.toEpochMilli()).executeUpdate() }
+        Sessions.insert {
+            it[playerUuid] = uuid
+            it[playerName] = name
+            it[joinedAt] = at.toEpochMilli()
+        }
     }
 
     fun closeSession(uuid: String, at: Instant) = store.write {
-        prepareStatement("UPDATE sessions SET left_at = ? WHERE player_uuid = ? AND left_at IS NULL")
-            .use { it.bind(at.toEpochMilli(), uuid).executeUpdate() }
+        Sessions.update({ (Sessions.playerUuid eq uuid) and Sessions.leftAt.isNull() }) { it[leftAt] = at.toEpochMilli() }
     }
 
     /** Sessions left open by a crash end at the last moment the store knew the server was up. */
     fun closeStaleSessions(at: Instant) = store.blocking {
-        prepareStatement("UPDATE sessions SET left_at = ?, closed_by_restart = 1 WHERE left_at IS NULL")
-            .use { it.bind(at.toEpochMilli()).executeUpdate() }
-    }
-
-    suspend fun sessions(uuid: String, before: Long?, limit: Int): List<Session> = store.read {
-        val sql = "SELECT * FROM sessions WHERE player_uuid = ?" + (if (before != null) " AND id < ?" else "") + " ORDER BY id DESC LIMIT ?"
-        val args = listOfNotNull<Any>(uuid, before, limit)
-        prepareStatement(sql).use { statement ->
-            statement.bind(*args.toTypedArray()).executeQuery().rows {
-                Session(getLong("id"), getString("player_uuid"), getString("player_name"), getLong("joined_at"), longOrNull("left_at"), getInt("closed_by_restart") == 1)
-            }
+        Sessions.update({ Sessions.leftAt.isNull() }) {
+            it[leftAt] = at.toEpochMilli()
+            it[closedByRestart] = true
         }
     }
 
+    suspend fun sessions(uuid: String, before: Long?, limit: Int): List<Session> = store.read {
+        Sessions.selectAll()
+            .where { if (before != null) (Sessions.playerUuid eq uuid) and (Sessions.id less before) else Sessions.playerUuid eq uuid }
+            .orderBy(Sessions.id, SortOrder.DESC)
+            .limit(limit)
+            .map { Session(it[Sessions.id], it[Sessions.playerUuid], it[Sessions.playerName], it[Sessions.joinedAt], it[Sessions.leftAt], it[Sessions.closedByRestart]) }
+    }
+
     fun audit(entry: AuditEntry) = store.write {
-        prepareStatement("INSERT INTO audit (at, token, method, path, target, status, detail) VALUES (?, ?, ?, ?, ?, ?, ?)")
-            .use { it.bind(System.currentTimeMillis(), entry.token, entry.method, entry.path, entry.target, entry.status, entry.detail).executeUpdate() }
+        Audit.insert {
+            it[at] = System.currentTimeMillis()
+            it[token] = entry.token
+            it[method] = entry.method
+            it[path] = entry.path
+            it[target] = entry.target
+            it[status] = entry.status
+            it[detail] = entry.detail
+        }
     }
 
     /** The last time anything was written, to close sessions a crash left open. */
     fun lastActivity(): Long? = store.blocking {
-        prepareStatement("SELECT max(at) AS at FROM (SELECT max(at) AS at FROM events UNION ALL SELECT max(joined_at) FROM sessions)")
-            .use { it.executeQuery().rows { longOrNull("at") }.firstOrNull() }
+        val lastEvent = Events.at.max()
+        val lastJoin = Sessions.joinedAt.max()
+        listOfNotNull(
+            Events.select(lastEvent).firstOrNull()?.get(lastEvent),
+            Sessions.select(lastJoin).firstOrNull()?.get(lastJoin),
+        ).maxOrNull()
     }
 
     fun prune(retentionDays: Int) {
         if (retentionDays <= 0) return
         val cutoff = System.currentTimeMillis() - retentionDays * 86_400_000L
         store.write {
-            prepareStatement("DELETE FROM events WHERE at < ?").use { it.bind(cutoff).executeUpdate() }
-            prepareStatement("DELETE FROM audit WHERE at < ?").use { it.bind(cutoff).executeUpdate() }
+            Events.deleteWhere { at less cutoff }
+            Audit.deleteWhere { at less cutoff }
         }
     }
+
+    private fun ResultRow.toEvent() = StoredEvent(
+        this[Events.id], this[Events.type], this[Events.at], this[Events.playerUuid], this[Events.playerName], this[Events.world],
+        ApiJson.decodeFromString(JsonObject.serializer(), this[Events.data]),
+    )
 }

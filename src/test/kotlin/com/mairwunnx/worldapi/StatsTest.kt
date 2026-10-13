@@ -6,7 +6,6 @@ import com.mairwunnx.worldapi.routes.statsRoutes
 import com.mairwunnx.worldapi.stats.Board
 import com.mairwunnx.worldapi.stats.Experience
 import com.mairwunnx.worldapi.stats.PlayerData
-import com.mairwunnx.worldapi.store.Store
 import com.mairwunnx.worldapi.ws.WebSocketHub
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
@@ -190,7 +189,7 @@ class StatsTest {
         playerData(folder, steve, 300)
         playerData(folder, alex, 0)
         val names = mapOf(steve to "Steve", alex to "Alex")
-        Store(db).use { store ->
+        sqliteStore(db).use { store ->
             val experience = Experience(store)
             assertEquals(2, experience.seedFromFiles(folder, names))
             experience.add(steve, "Steve", 25)
@@ -198,7 +197,7 @@ class StatsTest {
             assertEquals(mapOf("Steve" to 325L), experience.points())
         }
         playerData(folder, steve, 325)
-        Store(db).use { store ->
+        sqliteStore(db).use { store ->
             val experience = Experience(store)
             assertTrue(experience.hasBaseline(steve) && experience.hasBaseline(alex))
             assertEquals(0, experience.seedFromFiles(folder, names))
@@ -213,13 +212,10 @@ class StatsTest {
         val steve = UUID.randomUUID()
         val alex = UUID.randomUUID()
         // 1.1.0 counted pickups with no baseline: Steve gathered 50 since, Alex 500 and then died.
-        Store(db).use { store ->
-            store.blocking {
-                prepareStatement("INSERT INTO experience (player_uuid, player_name, gained) VALUES (?, 'Steve', 50), (?, 'Alex', 500)")
-                    .use { it.setString(1, steve.toString()); it.setString(2, alex.toString()); it.executeUpdate() }
-            }
+        sqliteStore(db).use { store ->
+            store.blocking { exec("INSERT INTO experience (player_uuid, player_name, gained) VALUES ('$steve', 'Steve', 50), ('$alex', 'Alex', 500)") }
         }
-        Store(db).use { store ->
+        sqliteStore(db).use { store ->
             val experience = Experience(store)
             assertFalse(experience.hasBaseline(steve))
             experience.seed(steve, "Steve", 300)

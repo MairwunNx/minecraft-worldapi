@@ -1,117 +1,149 @@
 package com.mairwunnx.worldapi.store
 
+import com.mairwunnx.worldapi.config.DatabaseSettings
+import com.mairwunnx.worldapi.config.DatabaseType
+import com.zaxxer.hikari.HikariConfig
+import com.zaxxer.hikari.HikariDataSource
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.future.await
 import kotlinx.coroutines.withContext
+import org.jetbrains.exposed.v1.core.DatabaseConfig
+import org.jetbrains.exposed.v1.core.vendors.MariaDBDialect
+import org.jetbrains.exposed.v1.core.vendors.MysqlDialect
+import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.JdbcTransaction
+import org.jetbrains.exposed.v1.jdbc.SchemaUtils
+import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.vendors.currentDialectMetadata
 import java.nio.file.Path
-import java.sql.Connection
-import java.sql.DriverManager
-import java.sql.PreparedStatement
-import java.sql.ResultSet
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.TimeUnit
 
 /**
- * SQLite for event history, play sessions, the audit log, and experience gained. One connection, one thread:
- * writes queue up off the server thread, and reads take turns with them.
+ * The database for event history, play sessions, the audit log, and experience gained: SQLite,
+ * PostgreSQL, or MySQL. Writes queue up on one thread off the server thread and keep their order;
+ * reads run on a few threads of their own, after the writes queued before them.
  */
-class Store(file: Path) : AutoCloseable {
-    private val executor: ExecutorService = Executors.newSingleThreadExecutor { Thread(it, "WorldAPI store").apply { isDaemon = true } }
-    private val dispatcher: CoroutineDispatcher = executor.asCoroutineDispatcher()
-    private val connection: Connection
+class Store(private val settings: DatabaseSettings, folder: Path) : AutoCloseable {
+    // The pool comes first: it fails fast on a database it can't reach, before any thread starts.
+    private val pool = HikariDataSource(hikari(settings, folder))
+    private val writer: ExecutorService = Executors.newSingleThreadExecutor { Thread(it, "WorldAPI store").apply { isDaemon = true } }
+    private val readers: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(settings.poolSize)
+    private val database: Database
+
+    /** The last queued write; a read waits for it, so it sees what its caller wrote before. */
+    @Volatile
+    private var lastWrite: CompletableFuture<Unit> = CompletableFuture.completedFuture(Unit)
 
     init {
-        // Paper ships the driver, but its class loader doesn't register it with DriverManager for plugins.
-        Class.forName("org.sqlite.JDBC")
-        connection = DriverManager.getConnection("jdbc:sqlite:${file.toAbsolutePath()}")
-        connection.createStatement().use { statement ->
-            statement.execute("PRAGMA journal_mode=WAL")
-            statement.execute("PRAGMA synchronous=NORMAL")
-            SCHEMA.forEach(statement::execute)
+        try {
+            database = Database.connect(pool, databaseConfig = DatabaseConfig { explicitDialect = mysqlDialect() })
+            blocking { createSchema() }
+        } catch (error: Exception) {
+            writer.shutdownNow()
+            pool.close()
+            throw error
         }
     }
 
-    /** Queues a write; the caller never waits for the disk. */
-    fun write(block: Connection.() -> Unit) {
-        if (executor.isShutdown) return
-        executor.execute {
-            runCatching { connection.block() }.onFailure { System.err.println("[WorldAPI] store write failed: $it") }
+    /** Where the data lives, for the log; never the password. */
+    val description: String
+        get() = when (settings.type) {
+            DatabaseType.SQLITE -> "SQLite (${settings.file})"
+            DatabaseType.POSTGRESQL -> "PostgreSQL at ${settings.host}:${port(settings)}/${settings.name}"
+            DatabaseType.MYSQL -> "MySQL at ${settings.host}:${port(settings)}/${settings.name}"
+        }
+
+    /** Queues a write; the caller never waits for the database. */
+    fun write(block: JdbcTransaction.() -> Unit) {
+        synchronized(this) {
+            if (writer.isShutdown) return
+            lastWrite = try {
+                CompletableFuture.supplyAsync({
+                    runCatching { transaction(database) { block() } }.onFailure { System.err.println("[WorldAPI] store write failed: $it") }
+                    Unit
+                }, writer)
+            } catch (_: RejectedExecutionException) {
+                return
+            }
         }
     }
 
-    suspend fun <T> read(block: Connection.() -> T): T = withContext(dispatcher) { connection.block() }
+    suspend fun <T> read(block: JdbcTransaction.() -> T): T {
+        lastWrite.await()
+        return withContext(readers) { transaction(database) { block() } }
+    }
 
-    /** Runs a block on the store thread and waits; for startup and shutdown only. */
-    fun <T> blocking(block: Connection.() -> T): T = executor.submit<T> { connection.block() }.get()
+    /** Runs a block on the write thread and waits; for startup and shutdown only. */
+    fun <T> blocking(block: JdbcTransaction.() -> T): T = writer.submit<T> { transaction(database) { block() } }.get()
 
     override fun close() {
-        executor.shutdown()
-        executor.awaitTermination(10, TimeUnit.SECONDS)
-        connection.close()
+        writer.shutdown()
+        writer.awaitTermination(10, TimeUnit.SECONDS)
+        TransactionManager.closeAndUnregister(database)
+        pool.close()
+    }
+
+    /** Creates the tables a new database lacks, and the indexes an existing table lacks. */
+    private fun JdbcTransaction.createSchema() {
+        SchemaUtils.create(*TABLES)
+        currentDialectMetadata.resetCaches()
+        val existing = currentDialectMetadata.existingIndices(*TABLES)
+        TABLES.forEach { table ->
+            val names = existing[table].orEmpty().map { it.indexName.lowercase() }
+            table.indices.filter { it.indexName.lowercase() !in names }.forEach { index -> SchemaUtils.createIndex(index).forEach(::exec) }
+        }
+    }
+
+    /**
+     * The MariaDB driver serves MySQL too, and Exposed would take any server it reaches for
+     * MariaDB, so the server says which it is.
+     */
+    private fun mysqlDialect() = if (settings.type != DatabaseType.MYSQL) {
+        null
+    } else {
+        val product = pool.connection.use { it.metaData.databaseProductName + " " + it.metaData.databaseProductVersion }
+        if ("mariadb" in product.lowercase()) MariaDBDialect() else MysqlDialect()
     }
 
     private companion object {
-        val SCHEMA = listOf(
-            """CREATE TABLE IF NOT EXISTS events (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                type TEXT NOT NULL,
-                at INTEGER NOT NULL,
-                player_uuid TEXT,
-                player_name TEXT,
-                world TEXT,
-                data TEXT NOT NULL
-            )""",
-            "CREATE INDEX IF NOT EXISTS events_type_at ON events(type, at)",
-            "CREATE INDEX IF NOT EXISTS events_player ON events(player_uuid, id)",
-            """CREATE TABLE IF NOT EXISTS sessions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                player_uuid TEXT NOT NULL,
-                player_name TEXT NOT NULL,
-                joined_at INTEGER NOT NULL,
-                left_at INTEGER,
-                closed_by_restart INTEGER NOT NULL DEFAULT 0
-            )""",
-            "CREATE INDEX IF NOT EXISTS sessions_player ON sessions(player_uuid, id)",
-            """CREATE TABLE IF NOT EXISTS audit (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                at INTEGER NOT NULL,
-                token TEXT NOT NULL,
-                method TEXT NOT NULL,
-                path TEXT NOT NULL,
-                target TEXT,
-                status INTEGER NOT NULL,
-                detail TEXT
-            )""",
-            """CREATE TABLE IF NOT EXISTS experience (
-                player_uuid TEXT PRIMARY KEY,
-                player_name TEXT NOT NULL,
-                gained INTEGER NOT NULL
-            )""",
-            // One row per player whose experience total started from their XpTotal, so a restart never adds it again.
-            """CREATE TABLE IF NOT EXISTS experience_baseline (
-                player_uuid TEXT PRIMARY KEY,
-                xp_total INTEGER NOT NULL,
-                taken_at INTEGER NOT NULL
-            )""",
-        )
-    }
-}
+        fun port(settings: DatabaseSettings) = settings.port ?: if (settings.type == DatabaseType.POSTGRESQL) 5432 else 3306
 
-fun PreparedStatement.bind(vararg values: Any?): PreparedStatement {
-    values.forEachIndexed { index, value ->
-        when (value) {
-            null -> setObject(index + 1, null)
-            is String -> setString(index + 1, value)
-            is Long -> setLong(index + 1, value)
-            is Int -> setInt(index + 1, value)
-            is Boolean -> setInt(index + 1, if (value) 1 else 0)
-            else -> error("Can't bind ${value::class}")
+        fun hikari(settings: DatabaseSettings, folder: Path) = HikariConfig().apply {
+            poolName = "WorldAPI"
+            // The readers, plus one for the writer.
+            maximumPoolSize = settings.poolSize + 1
+            isAutoCommit = false
+            // The class names come from class references, so they follow the drivers when the jar relocates them.
+            when (settings.type) {
+                DatabaseType.SQLITE -> {
+                    // Paper ships this driver; it isn't in our jar.
+                    driverClassName = org.sqlite.JDBC::class.java.name
+                    jdbcUrl = "jdbc:sqlite:${folder.resolve(settings.file).toAbsolutePath()}"
+                    addDataSourceProperty("journal_mode", "WAL")
+                    addDataSourceProperty("synchronous", "NORMAL")
+                    // Readers and the writer hold separate connections; one waits for the other instead of failing.
+                    addDataSourceProperty("busy_timeout", "10000")
+                }
+                DatabaseType.POSTGRESQL -> {
+                    driverClassName = org.postgresql.Driver::class.java.name
+                    jdbcUrl = "jdbc:postgresql://${settings.host}:${port(settings)}/${settings.name}"
+                }
+                DatabaseType.MYSQL -> {
+                    driverClassName = org.mariadb.jdbc.Driver::class.java.name
+                    jdbcUrl = "jdbc:mariadb://${settings.host}:${port(settings)}/${settings.name}"
+                }
+            }
+            if (settings.type != DatabaseType.SQLITE) {
+                username = settings.user
+                password = settings.password
+            }
+            settings.properties.forEach { (key, value) -> addDataSourceProperty(key, value) }
         }
     }
-    return this
 }
-
-fun <T> ResultSet.rows(map: ResultSet.() -> T): List<T> = use { buildList { while (next()) add(map()) } }
-
-fun ResultSet.longOrNull(column: String): Long? = getLong(column).takeUnless { wasNull() }

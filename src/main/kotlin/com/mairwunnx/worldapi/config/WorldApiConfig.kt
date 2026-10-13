@@ -1,6 +1,7 @@
 package com.mairwunnx.worldapi.config
 
 import com.mairwunnx.worldapi.api.Scope
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /** Mirrors config.yml. Every field has a default, so a partial file still loads. */
@@ -15,6 +16,7 @@ data class WorldApiConfig(
     val events: Events = Events(),
     val limits: Limits = Limits(),
     val scripts: Scripts = Scripts(),
+    val database: DatabaseSettings = DatabaseSettings(),
 )
 
 @Serializable
@@ -186,3 +188,28 @@ data class Scripts(
         "java/nio/channels/FileChannel",
     ),
 )
+
+/** Where history, sessions, the audit log, and experience totals live. Read once at startup; a change takes a restart. */
+@Serializable
+data class DatabaseSettings(
+    val type: DatabaseType = DatabaseType.SQLITE,
+    /** SQLite only: the file, relative to the plugin folder. */
+    val file: String = "worldapi.db",
+    val host: String = "localhost",
+    /** Null means the usual port: 5432 for PostgreSQL, 3306 for MySQL. */
+    val port: Int? = null,
+    val name: String = "worldapi",
+    val user: String = "worldapi",
+    val password: String = "",
+    val poolSize: Int = 4,
+    /** Extra JDBC driver properties, such as sslmode for PostgreSQL. */
+    val properties: Map<String, String> = emptyMap(),
+)
+
+@Serializable
+enum class DatabaseType {
+    @SerialName("sqlite") SQLITE,
+    @SerialName("postgresql") POSTGRESQL,
+    /** MySQL and MariaDB, both through the MariaDB driver. */
+    @SerialName("mysql") MYSQL,
+}

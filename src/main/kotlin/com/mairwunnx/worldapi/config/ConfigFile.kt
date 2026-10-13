@@ -56,6 +56,9 @@ object ConfigFile {
             if (config.http.maxBodyBytes < 1024) add("http.maxBodyBytes must be at least 1024")
             config.http.trustedProxies.filter { Cidr.parse(it) == null }.forEach { add("http.trustedProxies: \"$it\" isn't an address or range") }
             if (config.limits.maxPageSize <= 0) add("limits.maxPageSize must be positive")
+            if (config.database.poolSize <= 0) add("database.poolSize must be positive")
+            config.database.port?.let { if (it !in 1..65_535) add("database.port must be between 1 and 65535") }
+            if (config.database.type == DatabaseType.SQLITE && config.database.file.isBlank()) add("database.file must not be empty")
         }
         require(problems.isEmpty()) { problems.joinToString("; ") }
         return config

@@ -14,6 +14,7 @@ repositories {
 }
 
 val ktorVersion = "3.6.0"
+val exposedVersion = "1.5.1"
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:26.3.build.169-beta")
@@ -28,6 +29,12 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
     implementation("com.charleskorn.kaml:kaml:0.104.0")
+    implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
+    implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
+    implementation("com.zaxxer:HikariCP:7.1.0")
+    implementation("org.postgresql:postgresql:42.7.14")
+    // MariaDB's driver also talks to MySQL; MySQL's own is GPL.
+    implementation("org.mariadb.jdbc:mariadb-java-client:3.5.10")
     // Compiles scripts on servers that run a JRE without javac.
     implementation("org.eclipse.jdt:ecj:3.46.100")
 
@@ -61,8 +68,15 @@ tasks.shadowJar {
     archiveClassifier = ""
     mergeServiceFiles()
     // Paper already provides SLF4J and routes it into the server log.
-    dependencies { exclude(dependency("org.slf4j:.*")) }
-    listOf("kotlin", "kotlinx", "io.ktor", "com.charleskorn.kaml", "it.krzeminski.snakeyaml", "okio", "net.thauvin", "com.typesafe.config")
+    dependencies {
+        exclude(dependency("org.slf4j:.*"))
+        // Checker Framework annotations come with the PostgreSQL driver and do nothing at runtime.
+        exclude(dependency("org.checkerframework:.*"))
+    }
+    listOf(
+        "kotlin", "kotlinx", "io.ktor", "com.charleskorn.kaml", "it.krzeminski.snakeyaml", "okio", "net.thauvin", "com.typesafe.config",
+        "org.jetbrains.exposed", "com.zaxxer.hikari", "org.postgresql", "org.mariadb.jdbc",
+    )
         .forEach { relocate(it, "com.mairwunnx.worldapi.libs.$it") }
     // ECJ stays where it is: it finds its message bundles by package name, and nothing else ships it.
     exclude("META-INF/*.kotlin_module", "META-INF/versions/*/module-info.class", "module-info.class")

@@ -31,7 +31,7 @@ fun fakePlugin(): org.bukkit.plugin.Plugin =
 /** A WorldApi on fakes, with a real SQLite store in a temp folder. */
 class TestApi(config: com.mairwunnx.worldapi.config.WorldApiConfig) : AutoCloseable {
     val ref = java.util.concurrent.atomic.AtomicReference(config)
-    val store = com.mairwunnx.worldapi.store.Store(java.nio.file.Files.createTempFile("worldapi", ".db"))
+    val store = sqliteStore(java.nio.file.Files.createTempFile("worldapi", ".db"))
     val history = com.mairwunnx.worldapi.store.History(store)
     val bus = com.mairwunnx.worldapi.events.EventBus(history) { ref.get().events.chat }
     val tokens = com.mairwunnx.worldapi.tokens.TokenStore(java.nio.file.Files.createTempDirectory("worldapi").resolve("tokens.yml"))
@@ -45,3 +45,7 @@ class TestApi(config: com.mairwunnx.worldapi.config.WorldApiConfig) : AutoClosea
 
     override fun close() = store.close()
 }
+
+/** A store on a SQLite file anywhere. */
+fun sqliteStore(file: java.nio.file.Path) =
+    com.mairwunnx.worldapi.store.Store(com.mairwunnx.worldapi.config.DatabaseSettings(file = file.toAbsolutePath().toString()), file.parent)

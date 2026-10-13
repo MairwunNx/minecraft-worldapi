@@ -1,8 +1,18 @@
 package com.mairwunnx.worldapi.stats
 
+import com.mairwunnx.worldapi.store.ExperienceBaseline
+import com.mairwunnx.worldapi.store.ExperienceGained
 import com.mairwunnx.worldapi.store.Store
-import com.mairwunnx.worldapi.store.bind
-import com.mairwunnx.worldapi.store.rows
+import org.jetbrains.exposed.v1.core.Expression
+import org.jetbrains.exposed.v1.core.ExpressionWithColumnType
+import org.jetbrains.exposed.v1.core.case
+import org.jetbrains.exposed.v1.core.greater
+import org.jetbrains.exposed.v1.core.plus
+import org.jetbrains.exposed.v1.jdbc.JdbcTransaction
+import org.jetbrains.exposed.v1.jdbc.insertIgnore
+import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.upsert
 import java.io.File
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -22,9 +32,7 @@ class Experience(private val store: Store) {
 
     /** Players whose baseline is taken or queued; the table behind it survives restarts. */
     private val baselined: MutableSet<UUID> = ConcurrentHashMap.newKeySet<UUID>().apply {
-        addAll(store.blocking {
-            prepareStatement("SELECT player_uuid FROM experience_baseline").use { it.executeQuery().rows { UUID.fromString(getString("player_uuid")) } }
-        })
+        addAll(store.blocking { ExperienceBaseline.select(ExperienceBaseline.playerUuid).map { UUID.fromString(it[ExperienceBaseline.playerUuid]) } })
     }
 
     fun hasBaseline(uuid: UUID): Boolean = uuid in baselined
@@ -42,23 +50,19 @@ class Experience(private val store: Store) {
     fun seed(uuid: UUID, name: String, xpTotal: Int) {
         if (!baselined.add(uuid)) return
         store.write {
-            autoCommit = false
             try {
-                val fresh = prepareStatement("INSERT OR IGNORE INTO experience_baseline (player_uuid, xp_total, taken_at) VALUES (?, ?, ?)")
-                    .use { it.bind(uuid.toString(), xpTotal.toLong(), System.currentTimeMillis()).executeUpdate() } == 1
+                val fresh = ExperienceBaseline.insertIgnore {
+                    it[playerUuid] = uuid.toString()
+                    it[ExperienceBaseline.xpTotal] = xpTotal.toLong()
+                    it[takenAt] = System.currentTimeMillis()
+                }.insertedCount == 1
                 if (fresh && xpTotal > 0) {
-                    prepareStatement(
-                        """INSERT INTO experience (player_uuid, player_name, gained) VALUES (?, ?, ?)
-                           ON CONFLICT(player_uuid) DO UPDATE SET player_name = excluded.player_name, gained = max(gained, excluded.gained)""",
-                    ).use { it.bind(uuid.toString(), name, xpTotal.toLong()).executeUpdate() }
+                    // The larger of the two, as CASE, since SQLite has no GREATEST and the others no two-argument max.
+                    upsert(uuid, name, xpTotal.toLong()) { stored, incoming -> case().When(stored greater incoming, stored).Else(incoming) }
                 }
-                commit()
             } catch (error: Exception) {
-                rollback()
                 baselined.remove(uuid)
                 throw error
-            } finally {
-                autoCommit = true
             }
         }
     }
@@ -90,23 +94,35 @@ class Experience(private val store: Store) {
         val batch = pending.keys.mapNotNull { uuid -> pending.remove(uuid)?.let { uuid to it } }
         if (batch.isEmpty()) return
         store.write {
-            prepareStatement(
-                """INSERT INTO experience (player_uuid, player_name, gained) VALUES (?, ?, ?)
-                   ON CONFLICT(player_uuid) DO UPDATE SET player_name = excluded.player_name, gained = gained + excluded.gained""",
-            ).use { statement -> batch.forEach { (uuid, it) -> statement.bind(uuid.toString(), it.name, it.points).executeUpdate() } }
+            batch.forEach { (uuid, it) -> upsert(uuid, it.name, it.points) { stored, incoming -> stored + incoming } }
         }
     }
 
     /** Everyone's total, including pickups that haven't reached the store yet. */
     suspend fun totals(): List<Gained> {
         val stored = store.read {
-            prepareStatement("SELECT player_uuid, player_name, gained FROM experience").use {
-                it.executeQuery().rows { Gained(UUID.fromString(getString("player_uuid")), getString("player_name"), getLong("gained")) }
-            }
+            ExperienceGained.selectAll().map { Gained(UUID.fromString(it[ExperienceGained.playerUuid]), it[ExperienceGained.playerName], it[ExperienceGained.gained]) }
         }.associateBy { it.uuid }.toMutableMap()
         pending.forEach { (uuid, it) ->
             stored.merge(uuid, Gained(uuid, it.name, it.points)) { old, new -> Gained(uuid, new.name, old.points + new.points) }
         }
         return stored.values.toList()
+    }
+
+    /** Inserts a player's row, or renames it and sets its total to [merge] of the stored and the new points. */
+    private fun JdbcTransaction.upsert(
+        uuid: UUID,
+        name: String,
+        points: Long,
+        merge: (stored: ExpressionWithColumnType<Long>, incoming: ExpressionWithColumnType<Long>) -> Expression<Long>,
+    ) {
+        ExperienceGained.upsert(onUpdate = {
+            it[ExperienceGained.playerName] = insertValue(ExperienceGained.playerName)
+            it[ExperienceGained.gained] = merge(ExperienceGained.gained, insertValue(ExperienceGained.gained))
+        }) {
+            it[playerUuid] = uuid.toString()
+            it[playerName] = name
+            it[gained] = points
+        }
     }
 }
