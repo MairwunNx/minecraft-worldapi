@@ -4019,7 +4019,7 @@
         "/server": {
             "get": {
                 "operationId": "getServer",
-                "summary": "Server version, players, and settings",
+                "summary": "Server version, players, settings, and current load",
                 "description": "Scope: `read`.",
                 "tags": [
                     "Server"
@@ -10934,6 +10934,34 @@
                     },
                     "frozen": {
                         "type": "boolean"
+                    },
+                    "tps": {
+                        "type": "number"
+                    },
+                    "tps5m": {
+                        "type": "number"
+                    },
+                    "tps15m": {
+                        "type": "number"
+                    },
+                    "mspt": {
+                        "type": "number"
+                    },
+                    "memoryUsedMb": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "memoryMaxMb": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "loadedChunks": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "entities": {
+                        "type": "integer",
+                        "format": "int32"
                     }
                 },
                 "required": [
@@ -10957,7 +10985,15 @@
                     "worlds",
                     "currentTick",
                     "tickRate",
-                    "frozen"
+                    "frozen",
+                    "tps",
+                    "tps5m",
+                    "tps15m",
+                    "mspt",
+                    "memoryUsedMb",
+                    "memoryMaxMb",
+                    "loadedChunks",
+                    "entities"
                 ],
                 "additionalProperties": false
             },

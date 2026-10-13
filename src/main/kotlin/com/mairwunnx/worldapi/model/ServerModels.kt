@@ -28,6 +28,18 @@ data class ServerInfo(
     val currentTick: Int,
     val tickRate: Float,
     val frozen: Boolean,
+    /** Ticks per second over the last minute, at most 20. `/server/performance` has more detail. */
+    val tps: Double,
+    val tps5m: Double,
+    val tps15m: Double,
+    /** Milliseconds per tick over the last 100 ticks. */
+    val mspt: Double,
+    /** Java heap in use, in MiB. */
+    val memoryUsedMb: Long,
+    val memoryMaxMb: Long,
+    /** Across every world. */
+    val loadedChunks: Int,
+    val entities: Int,
 )
 
 @Serializable

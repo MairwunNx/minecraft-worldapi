@@ -129,6 +129,7 @@ Conventions:
   { "error": { "code": "player_offline", "message": "Steve isn't online" } }
   ```
 
+- `GET /server` carries the current load next to the version and settings, so a status page needs one request: `tps`, `tps5m`, and `tps15m` (capped at 20), `mspt`, `memoryUsedMb` and `memoryMaxMb` for the Java heap, and `loadedChunks` and `entities` across every world. `GET /server/performance` breaks the same numbers down by world and adds tick percentiles and CPU.
 - Changing a player’s state, inventory, or effects needs them online; for offline players the answer is `409 player_offline`. Their statistics and advancements still read from the saved files.
 
 ### Leaderboards

@@ -30,7 +30,7 @@ import java.time.Instant
 import kotlin.math.round
 
 val serverRoutes = endpoints("Server") {
-    get("/server", "Server version, players, and settings") {
+    get("/server", "Server version, players, settings, and current load") {
         main { serverInfo(api.server, api.version) }
     }
 
@@ -110,6 +110,8 @@ private fun serverInfo(server: Server, version: String): ServerInfo {
     val build = ServerBuildInfo.buildInfo()
     val started = ManagementFactory.getRuntimeMXBean().startTime
     val main = server.worlds.first()
+    val tps = server.tps.map { minOf(it, 20.0).short() }
+    val runtime = Runtime.getRuntime()
     return ServerInfo(
         name = server.name,
         brand = build.brandName(),
@@ -134,8 +136,18 @@ private fun serverInfo(server: Server, version: String): ServerInfo {
         currentTick = server.currentTick,
         tickRate = server.serverTickManager.tickRate,
         frozen = server.serverTickManager.isFrozen,
+        tps = tps[0],
+        tps5m = tps[1],
+        tps15m = tps[2],
+        mspt = server.averageTickTime.short(),
+        memoryUsedMb = (runtime.totalMemory() - runtime.freeMemory()) / MIB,
+        memoryMaxMb = runtime.maxMemory() / MIB,
+        loadedChunks = server.worlds.sumOf { it.chunkCount },
+        entities = server.worlds.sumOf { it.entityCount },
     )
 }
+
+private const val MIB = 1024L * 1024
 
 private fun Double.short() = round(this * 100) / 100
 
