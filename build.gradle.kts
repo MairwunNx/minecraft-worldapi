@@ -54,6 +54,8 @@ kotlin {
 
 tasks.test {
     useJUnitPlatform()
+    // Servers for StoreTest to run on besides SQLite, as postgresql://user:password@host:port/name or mysql://...
+    inputs.property("testDatabases", providers.environmentVariable("WORLDAPI_TEST_DATABASES").orElse(""))
 }
 
 tasks.processResources {
