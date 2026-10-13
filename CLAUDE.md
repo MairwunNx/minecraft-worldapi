@@ -43,11 +43,20 @@ A Paper 26.3 plugin that serves the server's state over REST and a WebSocket: wo
 - There is no MockBukkit for Paper 26.3; tests use the small fakes in `src/test`. Anything that needs a real server goes to a local Paper in Docker (the compose snippet in README.md).
 - Dependencies are shaded and relocated under `com.mairwunnx.worldapi.libs`. The SQLite driver comes from Paper; the PostgreSQL and MariaDB drivers are relocated too, so the store passes Hikari their class names from class references. `WORLDAPI_TEST_DATABASES=postgresql://u:p@host:port/db,mysql://...` runs `StoreTest` against real servers.
 
+## Docs
+
+- README.md and README.RU.md are for server owners and people who build on WorldAPI: who it's for, install, tokens, config, safety. Change both together, and MODRINTH.md when what the plugin does changes. MODRINTH.md is also the Hangar page: no build, stack, AI, or related projects, and no Moonlands banner.
+- `docs/reference.md` holds the API reference: endpoint groups, conventions, leaderboards, the WebSocket and its topics, Java scripts. A new endpoint or topic goes there, not in the README.
+- Internals stay out of the READMEs; this file keeps them.
+
 ## Releasing and Moonlands
 
-1. Bump the default version in `build.gradle.kts` and commit “Release X.Y.Z”.
-2. Push the tag `vX.Y.Z`; CI builds the jar and attaches it to a GitHub release.
-3. To put it on Moonlands, follow “Shipping a plugin or backend update” in `~/c/personal/minecraft/CLAUDE.md` (MairwunNx/minecraft): the jar goes to that repo's private `plugins` release and `minecraft/extras/jars.txt`. The server restarts only with the owner's go-ahead.
+1. Add a “## X.Y.Z” section to CHANGELOG.md, written for server owners.
+2. Run the “Release” workflow: `gh workflow run release.yml -R MairwunNx/minecraft-worldapi -f version=X.Y.Z -f modrinth=true -f hangar=true`. Its `changelog` field overrides the CHANGELOG.md section. It builds with `-PreleaseVersion`, tags `vX.Y.Z`, and attaches `worldapi-X.Y.Z.jar` to a GitHub release. Nothing in the repo holds the version; local and CI builds are `dev`.
+3. Modrinth: project `worldapi`, created on the first release (see the Mo’Joins CLAUDE.md for the API call); `./gradlew modrinth` uploads the jar and syncs MODRINTH.md. Hangar: project `MairwunNx/WorldAPI`; `./gradlew publishPluginPublicationToHangar` uploads to the Release channel for Paper 26.3, and the page doesn't sync, so edit it on the site. Both use secrets (`MODRINTH_TOKEN`, `HANGAR_TOKEN`) that also sit in `~/.secrets/cloud.env`; never put them in the repo. The Hangar key can upload versions but can't change project settings or the icon.
+4. To put it on Moonlands, follow “Shipping a plugin or backend update” in `~/c/personal/minecraft/CLAUDE.md` (MairwunNx/minecraft). The server restarts only with the owner's go-ahead.
+
+Why the build looks the way it does: `paper-plugin.yml` because WorldAPI is Paper-only and gets an isolated class loader and Brigadier commands; dependencies shaded so the jar works offline and can't clash with FAWE, BlueMap, Plan, or TAB; ECJ unrelocated because it finds its message bundles by package name; the SQLite driver left to Paper; JDBC drivers named through class references so the relocation holds.
 
 ## Commits
 
