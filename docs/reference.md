@@ -1,0 +1,156 @@
+# WorldAPI reference
+
+Everything a client can call, for people who build sites, bots, and tools on top of WorldAPI. Installing and configuring the plugin lives in the [README](https://github.com/MairwunNx/minecraft-worldapi#readme). The same endpoints, with every field, are at `/api/v1/docs` on your server.
+
+## REST API
+
+The full reference lives at `/api/v1/docs`, and the same document is in [`openapi.json`](openapi.json). WorldAPI builds the document from its own endpoint list and data classes, and a test fails when the committed copy falls behind, so the two can’t drift apart.
+
+| Group | Endpoints |
+|---|---|
+| Server | `GET /server`, `GET /server/performance`, `GET /server/plugins`, `GET /server/logs`, `POST /server/broadcast`, `POST /server/commands`, `POST /server/save`, `POST`/`DELETE /server/restart` |
+| Access | `GET`/`PATCH` `/server/whitelist`, `/server/ops`, `/server/bans` |
+| Worlds | `GET /worlds`, `GET`/`PATCH /worlds/{world}`, `GET`/`PATCH` `/gamerules`, `/border`, `GET /stats`, `GET /structures/nearest`, `GET /search` |
+| Blocks | `GET`/`PUT /worlds/{world}/blocks/{x}/{y}/{z}`, `POST /blocks/fill`, `GET /biomes/{x}/{y}/{z}`, `GET /highest/{x}/{z}`, `GET /chunks`, `GET`/`PATCH /chunks/{chunkX}/{chunkZ}` |
+| Entities | `GET`/`POST`/`DELETE /worlds/{world}/entities`, `GET`/`PATCH`/`DELETE /entities/{uuid}` |
+| World effects | `POST /worlds/{world}/explosions`, `/lightning`, `/sounds`, `/particles` |
+| Players | `GET /players`, `GET /players/online`, `GET`/`PATCH /players/{player}`, `POST /teleport`, `/message`, `/kick` |
+| Inventories | `GET /players/{player}/inventory` and `/enderchest`; for each, `PATCH`/`DELETE /slots/{slot}`, `DELETE` the whole thing, `POST /give` |
+| Player data | `/effects`, `/statistics`, `/advancements` (grant and revoke by key), `/permissions`, `/sessions` |
+| Leaderboards | `GET /leaderboards`, `GET /leaderboards/{statistic}`, `GET /aggregates` |
+| Recipes | `GET /recipes` |
+| Events | `GET /events` |
+| Scripts | `POST /scripts/run`, `GET`/`POST /scripts`, `GET`/`DELETE /scripts/{id}`, `GET /scripts/{id}/logs` |
+
+Conventions:
+
+- JSON in camelCase. Times are ISO-8601; where ticks matter, they come along (`dayTime`, `fullTime`, `durationTicks`).
+- Players go by UUID or name; worlds by folder name (`world_nether`) or key (`minecraft:the_nether`).
+- Lists page with `limit` and `cursor`: pass the `nextCursor` of one page to get the next.
+- GET reads, POST creates or runs an action, PATCH changes properties, PUT sets a block, DELETE removes.
+- Write bodies are strict: an unknown field is a `400`, not a silent no-op. Only the fields you send change.
+- Errors look the same everywhere, with the matching HTTP status:
+
+  ```json
+  { "error": { "code": "player_offline", "message": "Steve isn't online" } }
+  ```
+
+- `GET /server` carries the current load next to the version and settings, so a status page needs one request: `tps`, `tps5m`, and `tps15m` (capped at 20), `mspt`, `memoryUsedMb` and `memoryMaxMb` for the Java heap, and `loadedChunks` and `entities` across every world. `GET /server/performance` breaks the same numbers down by world and adds tick percentiles and CPU.
+- Changing a player’s state, inventory, or effects needs them online; for offline players the answer is `409 player_offline`. Their statistics and advancements still read from the saved files.
+- `GET /players/{player}/advancements` lists every advancement on the server, started or not, with its title and parent, so `done=false` reads as what’s left to do.
+- `GET /worlds/{world}/chunks?sort=entities` puts the busiest chunks first, and `GET /server/performance` names each world’s most common entity types: together they find what lags.
+- `GET /worlds/{world}/search` finds the nearest blocks of some types (`blocks=minecraft:diamond_ore,#minecraft:logs`) or the nearest biome. Block search reads copies of chunks that are already loaded, off the server thread, and never loads more. It needs a token whatever `auth.anonymous` says, because it would show ores through walls. Biome search asks the world generator, so it reaches unexplored land; anonymous clients get it only when they may see coordinates.
+- `DELETE /worlds/{world}/entities?type=minecraft:item` clears entities in bulk, around a point if you give one. It never touches players, skips named mobs and tamed pets unless `includeNamed=true`, and `dryRun=true` only counts.
+- `GET /server/logs` returns recent console lines for admin tokens, filtered by `level` and `grep`. WorldAPI keeps them from its own start, up to `limits.consoleLines`, and blanks out its tokens.
+- `POST /server/restart` counts down in chat, saves every world and player, and stops the server; `DELETE` calls it off. Something must start the server again: Docker’s restart policy, or a start script that loops.
+
+### Leaderboards
+
+`GET /leaderboards/{statistic}` ranks everyone who has played. Tied players share a place, and the next place skips ahead: 1, 1, 3. Presets match the hall of fame on minecraft.mairwunnx.com:
+
+| Preset | Counts | Unit |
+|---|---|---|
+| `playtime` | `custom:play_time` | hours |
+| `diamonds` | `mined:diamond_ore` + `mined:deepslate_diamond_ore` | ores |
+| `advancements` | Finished advancements, without recipes and tab roots | advancements |
+| `mobs` | `custom:mob_kills` | mobs |
+| `travel` | Every `custom:*_one_cm` way of moving | km |
+| `deaths` | `custom:deaths` | deaths |
+| `blocks` | `mined:*` | blocks |
+| `fish` | `custom:fish_caught` | fish |
+| `damage` | `custom:damage_dealt` | hearts |
+| `netherite` | `mined:ancient_debris` | debris |
+| `experience` | Experience points gained in total: the game’s `XpTotal` when WorldAPI first saw the player, plus every pickup since | xp |
+
+Vanilla doesn’t keep lifetime experience, so WorldAPI counts it itself. Each player starts once from the `XpTotal` in their playerdata: everyone with a playerdata file when 1.1.1 first starts, anyone else when they join. From then on, every orb a player picks up, after other plugins had their say, adds to the total in `worldapi.db`, and `/xp` commands don’t count. `XpTotal` holds only what the player gathered since their last death, so the starting point is a lower bound of their real lifetime experience. If 1.1.0 already counted pickups, the player starts from whichever is larger, the count or `XpTotal`, since `XpTotal` already includes what 1.1.0 counted.
+
+Any vanilla statistic works too: `custom:jump`, `killed:zombie`, `crafted:*`. `GET /aggregates` adds everyone up: hours, blocks and the block mined most, mobs and the mob killed most, deaths, advancements, the world’s day, and the date of the first join.
+
+## WebSocket
+
+Connect to `/api/v1/ws`. Send the token in the `Authorization` header, or as the first message if your client can’t set headers. Never put it in the URL.
+
+```json
+{ "op": "auth", "token": "…" }
+{ "op": "subscribe", "topics": ["player.join", "player.death", "world.time"], "filter": { "player": "Steve" } }
+{ "op": "unsubscribe", "topics": ["world.time"] }
+{ "op": "ping" }
+```
+
+The server answers with `hello` (heartbeat interval, scopes, the topics you may use), `authenticated`, `subscribed`, then a `snapshot` of the current state for topics that have one, then `event` messages as things happen. `heartbeat` arrives every 20 seconds.
+
+```json
+{ "op": "event", "topic": "player.death", "event": {
+    "type": "player.death", "at": "2026-10-11T15:46:27Z", "atMillis": 1791733587000,
+    "player": { "uuid": "…", "name": "Steve" }, "world": "world",
+    "data": { "message": "Steve was slain by Zombie", "cause": "minecraft:mob_attack", "level": 12 } } }
+```
+
+| Topic | When |
+|---|---|
+| `player.join`, `player.leave`, `player.kick` | Someone joins, leaves, or gets kicked. Snapshot: who’s online |
+| `player.death`, `player.respawn` | Deaths with the message, cause, and killer; respawns with the bed or anchor |
+| `player.advancement` | An advancement with its title and frame (`task`, `goal`, `challenge`) |
+| `player.chat` | Chat messages, only when `events.chat` is on |
+| `player.command` | Commands players run; admin tokens only |
+| `player.move` | Positions, at most once a second per player, only when they moved. Hidden from anonymous clients by default |
+| `player.health`, `player.damage` | Health with its maximum, food, absorption, active effects, and whether the player is frozen, when any of them change; damage with its cause, at most four a second |
+| `player.inventory` | The full inventory when it changes |
+| `player.gamemode`, `player.level_up`, `player.sleep`, `player.world_change`, `player.portal` | What the names say |
+| `player.kill`, `player.fish`, `player.enchant`, `player.trade`, `player.craft` | Mob kills, catches, enchanting, villager trades, and crafting (added up over a few seconds) |
+| `world.time` | The clock once a second, with ticks until night, whether beds work, and `jumped: true` after a skipped night or a `/time` command |
+| `world.weather`, `world.lightning`, `world.night_skipped` | Weather changes, strikes, and nights everyone slept through |
+| `world.load`, `world.unload` | Worlds coming and going |
+| `entity.boss_killed` | The dragon, the wither, elder guardians, and wardens, with who was there |
+| `entity.death`, `entity.explode` | Mob deaths per type over a few seconds; explosions with their size |
+| `raid.start`, `raid.finish` | Raids, with the winners |
+| `block.break`, `block.place` | Blocks per player and type, added up over a few seconds |
+| `server.performance` | TPS, tick times, memory, and CPU every five seconds |
+| `server.status`, `server.plugin` | Start, stop, saves; plugins enabled and disabled |
+| `script.log` | Lines Java scripts log; `code` tokens only |
+
+Joins, leaves, kicks, deaths, advancements, chat, skipped nights, boss kills, raids, and server status also go to the history behind `GET /events`.
+
+Each client has its own queue. State topics (time, weather, positions, health, inventories, performance) keep only the newest value per player or world, so a slow client catches up instead of lagging behind. Other events queue up to `websocket.queueSize`; past that, the oldest are dropped and the client gets `{ "op": "dropped", "count": n }`. A slow client never holds up the server or anyone else.
+
+## Java scripts
+
+With `scripts.enabled: true`, a token with the `code` scope can send Java to the server. WorldAPI compiles it with the Eclipse compiler bundled in the jar, so a JRE is enough, and loads it in its own class loader.
+
+Run something once and get the result back:
+
+```sh
+curl -H "Authorization: Bearer $CODE_TOKEN" -H 'Content-Type: application/json' \
+     -X POST http://localhost:8110/api/v1/scripts/run \
+     -d '{"source": "return server.getWorlds().stream().map(w -> w.getName() + \": \" + w.getEntityCount()).toList();"}'
+```
+
+A snippet is the body of a method with `ctx` and `server` in scope and the common Bukkit imports. A whole class works too. Keep a script loaded to react to events:
+
+```java
+import com.mairwunnx.worldapi.script.api.*;
+import org.bukkit.event.player.PlayerJoinEvent;
+
+public class Welcome implements WorldApiScript {
+    @Override
+    public void enable(ScriptContext ctx) {
+        ctx.on(PlayerJoinEvent.class, event -> event.getPlayer().sendMessage("Welcome back!"));
+        ctx.every(20 * 60, 20 * 60 * 10, () -> ctx.log("still here"));
+    }
+}
+```
+
+Send it to `POST /scripts` with an `id`, and `persistent: true` to load it again after restarts. `DELETE /scripts/{id}` calls `disable()`, removes every listener and task the script registered through `ctx`, closes its class loader, and deletes its classes. `GET /scripts/{id}/logs` and the `script.log` topic show what it logged.
+
+Scripts see only Java and the Paper API (Bukkit, Paper, Adventure, and what their signatures expose). Before a script loads, WorldAPI checks its bytecode against `scripts.blockedApis`: processes, reflection, class loaders, native access, `System.exit`, environment variables, and the file system are blocked by default.
+
+That is a guard rail, not a sandbox. Java has no way to fully contain code that runs in the same process: a script can still freeze the tick with an endless loop on the server thread, or do anything the Bukkit API allows, such as running console commands. Give `code` only to tokens you’d trust with SSH. Every script, run or loaded, goes to the audit log in full.
+
+## What the Paper API can’t do
+
+WorldAPI uses no NMS, so a few things stay out of reach:
+
+- **Offline players’ inventories, ender chests, health, and effects.** Paper only exposes them for online players. WorldAPI answers `409 player_offline`. Statistics, advancements, and the `XpTotal` of offline players are read from the vanilla files.
+- **Raw NBT of block entities.** WorldAPI shows what Paper models: container contents, sign text, spawner type, skull owner, jukebox record. Items come with their full component string, such as `minecraft:diamond_sword[enchantments={sharpness:5}]`.
+- **Particles with extra data** (dust colors, block particles) aren’t supported yet; plain particles are.
+- **History from before WorldAPI.** It records events from the moment it’s installed; older joins and deaths stay in the server logs.
