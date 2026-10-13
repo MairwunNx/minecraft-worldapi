@@ -6,7 +6,7 @@ plugins {
 
 group = "com.mairwunnx"
 // CI passes the tag as releaseVersion; local builds use the version below.
-version = (findProperty("releaseVersion") as String?)?.takeIf { it.isNotBlank() } ?: "1.0.2"
+version = (findProperty("releaseVersion") as String?)?.takeIf { it.isNotBlank() } ?: "1.1.0"
 
 repositories {
     mavenCentral()
