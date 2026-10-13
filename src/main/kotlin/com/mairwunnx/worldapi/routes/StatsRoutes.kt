@@ -27,19 +27,22 @@ val statsRoutes = endpoints("Leaderboards") {
 
     get(
         "/leaderboards/{statistic}", "Players ranked by a statistic, ties sharing a place",
-        description = "Online players count live. Use a preset or any statistic as `category:key`, such as `custom:jump`, `mined:diamond_ore`, or `killed:*`.",
+        description = "Online players count live. Use a preset or any statistic as `category:key`, such as `custom:jump`, `mined:diamond_ore`, or `killed:*`. The `experience` preset counts experience from the moment WorldAPI 1.1.0 was installed, since vanilla keeps no such statistic.",
         query = listOf(integer("limit", "How many places to return; the server caps it")),
     ) {
         val id = path("statistic")
         val board = Board.of(id) ?: notFound("unknown_statistic", "No leaderboard or statistic \"$id\"")
         val limit = limit
-        val everyone = api.statistics.everyone(board.refs.takeIf { !board.advancements }, withAdvancements = board.advancements)
-        val ranked = rank(everyone.map { it to board.score(it.stats, it.advancements) }) { it.name }
-        Leaderboard(
-            board.id, board.title, board.unit, ranked.size,
-            ranked.take(limit).map { LeaderboardEntry(it.place, PlayerRef(it.item.uuid.toString(), it.item.name), it.value, it.item.online) },
-            Instant.now().toString(),
-        )
+        val entries = if (board.experience) {
+            val online = main { api.server.onlinePlayers.map { it.uniqueId }.toSet() }
+            val ranked = rank(api.experience.totals().map { it to it.points.toDouble() }) { it.name }
+            ranked.map { LeaderboardEntry(it.place, PlayerRef(it.item.uuid.toString(), it.item.name), it.value, it.item.uuid in online) }
+        } else {
+            val everyone = api.statistics.everyone(board.refs.takeIf { !board.advancements }, withAdvancements = board.advancements)
+            val ranked = rank(everyone.map { it to board.score(it.stats, it.advancements) }) { it.name }
+            ranked.map { LeaderboardEntry(it.place, PlayerRef(it.item.uuid.toString(), it.item.name), it.value, it.item.online) }
+        }
+        Leaderboard(board.id, board.title, board.unit, entries.size, entries.take(limit), Instant.now().toString())
     }
 
     get("/aggregates", "Everyone's statistics added up") {

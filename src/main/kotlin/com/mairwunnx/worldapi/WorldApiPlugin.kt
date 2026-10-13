@@ -15,6 +15,7 @@ import com.mairwunnx.worldapi.events.Snapshots
 import com.mairwunnx.worldapi.events.Topic
 import com.mairwunnx.worldapi.events.Windows
 import com.mairwunnx.worldapi.script.ScriptManager
+import com.mairwunnx.worldapi.stats.Experience
 import com.mairwunnx.worldapi.stats.Statistics
 import com.mairwunnx.worldapi.store.History
 import com.mairwunnx.worldapi.store.Store
@@ -66,7 +67,7 @@ class WorldApiPlugin : JavaPlugin() {
         } catch (error: Exception) {
             logger.severe("tokens.yml is invalid, so in-game tokens don't work until it's fixed: ${error.message}")
         }
-        api = WorldApi(server, main, history, bus, Statistics(server, main), scripts, tokens, config, pluginMeta.version)
+        api = WorldApi(server, main, history, bus, Statistics(server, main), Experience(store), scripts, tokens, config, pluginMeta.version)
         val menu = TokenMenu(this, tokens, { config.get().scripts.enabled }, logger)
         server.pluginManager.registerEvents(menu, this)
 
@@ -75,13 +76,14 @@ class WorldApiPlugin : JavaPlugin() {
         bus.interest = hub::wants
 
         val windows = Windows(bus) { config.get().websocket.blockWindowSeconds }
-        val listeners = Listeners(this, bus, history, windows) { config.get().events.chat }
+        val listeners = Listeners(this, bus, history, api.experience, windows) { config.get().events.chat }
         server.pluginManager.registerEvents(listeners, this)
         val sampler = Sampler(server, bus, config::get)
         server.scheduler.runTaskTimer(this, Runnable {
             sampler.tick()
             windows.flushIfDue()
         }, 20, 5)
+        server.scheduler.runTaskTimerAsynchronously(this, Runnable { api.experience.flush() }, 20 * 5, 20 * 5)
         // Once a day is plenty for pruning; it runs off the server thread anyway.
         server.scheduler.runTaskTimerAsynchronously(this, Runnable { history.prune(config.get().events.retentionDays) }, 20 * 60, 20 * 60 * 60 * 24)
 
@@ -109,6 +111,7 @@ class WorldApiPlugin : JavaPlugin() {
         http?.stop()
         http = null
         scope.cancel()
+        api.experience.flush()
         store.close()
     }
 

@@ -14,7 +14,7 @@ fun fakeServer(): Server = Proxy.newProxyInstance(Server::class.java.classLoader
         String::class.java -> ""
         List::class.java, Collection::class.java -> emptyList<Any>()
         Set::class.java -> emptySet<Any>()
-        else -> null
+        else -> if (method.returnType.isArray) java.lang.reflect.Array.newInstance(method.returnType.componentType, 0) else null
     }
 } as Server
 
@@ -38,6 +38,7 @@ class TestApi(config: com.mairwunnx.worldapi.config.WorldApiConfig) : AutoClosea
     val api = com.mairwunnx.worldapi.core.WorldApi(
         fakeServer(), com.mairwunnx.worldapi.core.MainThread.Immediate, history, bus,
         com.mairwunnx.worldapi.stats.Statistics(fakeServer(), com.mairwunnx.worldapi.core.MainThread.Immediate),
+        com.mairwunnx.worldapi.stats.Experience(store),
         com.mairwunnx.worldapi.script.ScriptManager(fakePlugin(), bus, ref::get, java.util.logging.Logger.getAnonymousLogger()),
         tokens, ref, "test",
     )

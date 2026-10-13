@@ -147,6 +147,10 @@ Conventions:
 | `blocks` | `mined:*` | blocks |
 | `fish` | `custom:fish_caught` | fish |
 | `damage` | `custom:damage_dealt` | hearts |
+| `netherite` | `mined:ancient_debris` | debris |
+| `experience` | Experience points gained in total, counted by WorldAPI since 1.1.0 | xp |
+
+Vanilla doesn’t keep lifetime experience, so WorldAPI counts it itself: every orb a player picks up, after other plugins had their say, adds to a total in `worldapi.db`. The board starts from zero on the day you install 1.1.0, and `/xp` commands don’t count.
 
 Any vanilla statistic works too: `custom:jump`, `killed:zombie`, `crafted:*`. `GET /aggregates` adds everyone up: hours, blocks and the block mined most, mobs and the mob killed most, deaths, advancements, the world’s day, and the date of the first join.
 
@@ -267,7 +271,7 @@ WorldAPI uses no NMS, so a few things stay out of reach:
 - **Ktor with the CIO engine** serves REST and the WebSocket on its own threads, started and stopped with the plugin.
 - **kotlinx.serialization everywhere**: JSON for the API, YAML through kaml for the config. Bukkit’s `FileConfiguration` isn’t used.
 - **One endpoint list** drives both the router and the OpenAPI document. Request and response schemas come from the serialization descriptors of the data classes.
-- **SQLite** in `plugins/WorldAPI/worldapi.db` keeps what the game doesn’t: the event history, play sessions, and the audit log. One connection, one thread; writes never wait on the server thread.
+- **SQLite** in `plugins/WorldAPI/worldapi.db` keeps what the game doesn’t: the event history, play sessions, the audit log, and experience gained. One connection, one thread; writes never wait on the server thread.
 
 ## Development
 

@@ -12,6 +12,8 @@ class Board(
     val divisor: Double = 1.0,
     val decimals: Int = 0,
     val advancements: Boolean = false,
+    /** Ranks the experience WorldAPI counts itself, not a vanilla statistic. */
+    val experience: Boolean = false,
 ) {
     fun score(stats: StatMap, advancementsDone: Int): Double {
         val raw = if (advancements) advancementsDone.toDouble() else refs.sumOf { it.read(stats) }.toDouble()
@@ -39,6 +41,8 @@ class Board(
             Board("fish", "Fish caught", "fish", listOf(custom("fish_caught"))),
             // Damage is counted in tenths of a point, and a heart is two points.
             Board("damage", "Damage dealt", "hearts", listOf(custom("damage_dealt")), divisor = 20.0),
+            Board("netherite", "Netherite mined", "debris", listOf(StatRef("minecraft:mined", "minecraft:ancient_debris"))),
+            Board("experience", "Experience gained", "xp", emptyList(), experience = true),
         ).associateBy { it.id }
 
         /** A preset by name, or any single statistic such as `custom:jump` or `killed:*`. */

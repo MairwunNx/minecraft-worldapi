@@ -345,7 +345,7 @@
             "get": {
                 "operationId": "getLeaderboardsStatistic",
                 "summary": "Players ranked by a statistic, ties sharing a place",
-                "description": "Online players count live. Use a preset or any statistic as `category:key`, such as `custom:jump`, `mined:diamond_ore`, or `killed:*`.\n\nScope: `read`.",
+                "description": "Online players count live. Use a preset or any statistic as `category:key`, such as `custom:jump`, `mined:diamond_ore`, or `killed:*`. The `experience` preset counts experience from the moment WorldAPI 1.1.0 was installed, since vanilla keeps no such statistic.\n\nScope: `read`.",
                 "tags": [
                     "Leaderboards"
                 ],

@@ -13,7 +13,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 /**
- * SQLite for event history, play sessions, and the audit log. One connection, one thread:
+ * SQLite for event history, play sessions, the audit log, and experience gained. One connection, one thread:
  * writes queue up off the server thread, and reads take turns with them.
  */
 class Store(file: Path) : AutoCloseable {
@@ -82,6 +82,11 @@ class Store(file: Path) : AutoCloseable {
                 target TEXT,
                 status INTEGER NOT NULL,
                 detail TEXT
+            )""",
+            """CREATE TABLE IF NOT EXISTS experience (
+                player_uuid TEXT PRIMARY KEY,
+                player_name TEXT NOT NULL,
+                gained INTEGER NOT NULL
             )""",
         )
     }

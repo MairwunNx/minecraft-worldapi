@@ -4,6 +4,7 @@ import com.mairwunnx.worldapi.bukkit.plain
 import com.mairwunnx.worldapi.bukkit.ref
 import com.mairwunnx.worldapi.routes.weather
 import com.mairwunnx.worldapi.routes.worldTime
+import com.mairwunnx.worldapi.stats.Experience
 import com.mairwunnx.worldapi.store.History
 import io.papermc.paper.event.player.AsyncChatEvent
 import io.papermc.paper.event.player.PlayerTradeEvent
@@ -33,6 +34,7 @@ import org.bukkit.event.player.PlayerBedEnterEvent
 import org.bukkit.event.player.PlayerBedLeaveEvent
 import org.bukkit.event.player.PlayerChangedWorldEvent
 import org.bukkit.event.player.PlayerCommandPreprocessEvent
+import org.bukkit.event.player.PlayerExpChangeEvent
 import org.bukkit.event.player.PlayerFishEvent
 import org.bukkit.event.player.PlayerGameModeChangeEvent
 import org.bukkit.event.player.PlayerJoinEvent
@@ -63,6 +65,7 @@ class Listeners(
     private val plugin: Plugin,
     private val bus: EventBus,
     private val history: History,
+    private val experience: Experience,
     private val windows: Windows,
     private val chatEnabled: () -> Boolean,
 ) : Listener {
@@ -230,6 +233,10 @@ class Listeners(
             put("to", event.newGameMode.name.lowercase())
         }))
     }
+
+    /** Orbs and other rewards, after other plugins changed the amount; `/xp` doesn't fire this. */
+    @EventHandler(priority = EventPriority.MONITOR)
+    fun onExperience(event: PlayerExpChangeEvent) = experience.add(event.player.uniqueId, event.player.name, event.amount)
 
     @EventHandler(priority = EventPriority.MONITOR)
     fun onLevel(event: PlayerLevelChangeEvent) {
