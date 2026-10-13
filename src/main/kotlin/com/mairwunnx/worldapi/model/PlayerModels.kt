@@ -170,6 +170,8 @@ data class AdvancementView(
     val doneAt: String? = null,
     val criteriaDone: Int,
     val criteriaTotal: Int,
+    /** The advancement before this one in the tree, such as `minecraft:story/root`; absent for a tab's root. */
+    val parent: String? = null,
 )
 
 @Serializable

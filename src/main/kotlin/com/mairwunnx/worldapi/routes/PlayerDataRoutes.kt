@@ -72,6 +72,7 @@ val playerDataRoutes = endpoints("Player data") {
 
     get(
         "/players/{player}/advancements", "Advancements, done and in progress, with dates",
+        description = "Lists every advancement the server has, started or not, with its title, description, and parent, so `done=false` shows what's left to do.",
         query = listOf(
             boolean("recipes", "Include recipe unlocks; off by default"),
             boolean("done", "Only finished (true) or unfinished (false) ones"),
@@ -164,7 +165,7 @@ private fun advancementView(advancement: Advancement, player: Player): Advanceme
     return view(advancement, progress.isDone, dates.maxOrNull()?.toInstant(), progress.awardedCriteria.size, advancement.criteria.size)
 }
 
-private fun view(advancement: Advancement, done: Boolean, at: Instant?, criteriaDone: Int, criteriaTotal: Int): AdvancementView {
+internal fun view(advancement: Advancement, done: Boolean, at: Instant?, criteriaDone: Int, criteriaTotal: Int): AdvancementView {
     val display = advancement.display
     return AdvancementView(
         key = advancement.key.asString(),
@@ -175,6 +176,7 @@ private fun view(advancement: Advancement, done: Boolean, at: Instant?, criteria
         doneAt = if (done) at?.toString() else null,
         criteriaDone = criteriaDone,
         criteriaTotal = criteriaTotal,
+        parent = advancement.parent?.key?.asString(),
     )
 }
 
