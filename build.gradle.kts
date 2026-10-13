@@ -1,12 +1,16 @@
+import io.papermc.hangarpublishplugin.model.Platforms
+
 plugins {
     kotlin("jvm") version "2.4.21"
     kotlin("plugin.serialization") version "2.4.21"
     id("com.gradleup.shadow") version "9.6.1"
+    id("com.modrinth.minotaur") version "2.10.0"
+    id("io.papermc.hangar-publish-plugin") version "0.1.4"
 }
 
 group = "com.mairwunnx"
-// CI passes the tag as releaseVersion; local builds use the version below.
-version = (findProperty("releaseVersion") as String?)?.takeIf { it.isNotBlank() } ?: "1.1.1"
+// The release workflow passes the version; every other build is a dev build.
+version = (findProperty("releaseVersion") as String?)?.takeIf { it.isNotBlank() } ?: "dev"
 
 repositories {
     mavenCentral()
@@ -90,3 +94,42 @@ tasks.shadowJar {
 
 tasks.jar { enabled = false }
 tasks.assemble { dependsOn(tasks.shadowJar) }
+
+// The release workflow writes the notes to a file; a local upload falls back to the GitHub release.
+val releaseNotes = (findProperty("changelogFile") as String?)?.let { file(it).readText() }
+    ?: "https://github.com/MairwunNx/minecraft-worldapi/releases/tag/v${project.version}"
+
+// `./gradlew modrinth` with MODRINTH_TOKEN set; the release workflow runs it when asked to.
+modrinth {
+    token = providers.environmentVariable("MODRINTH_TOKEN")
+    projectId = "worldapi"
+    versionNumber = project.version.toString()
+    versionName = "WorldAPI ${project.version}"
+    versionType = "release"
+    uploadFile.set(tasks.shadowJar)
+    gameVersions.addAll("26.3")
+    loaders.addAll("paper", "purpur")
+    changelog = releaseNotes
+    syncBodyFrom = file("MODRINTH.md").readText()
+}
+
+tasks.modrinth {
+    dependsOn(tasks.modrinthSyncBody)
+}
+
+// `./gradlew publishPluginPublicationToHangar` with HANGAR_TOKEN set; the release workflow runs it when asked to.
+hangarPublish {
+    publications.register("plugin") {
+        version = project.version.toString()
+        id = "WorldAPI"
+        channel = "Release"
+        apiKey = providers.environmentVariable("HANGAR_TOKEN")
+        changelog = releaseNotes
+        platforms {
+            register(Platforms.PAPER) {
+                jar = tasks.shadowJar.flatMap { it.archiveFile }
+                platformVersions = listOf("26.3")
+            }
+        }
+    }
+}
