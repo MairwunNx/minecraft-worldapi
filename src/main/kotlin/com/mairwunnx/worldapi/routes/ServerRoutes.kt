@@ -34,8 +34,8 @@ val serverRoutes = endpoints("Server") {
         main { serverInfo(api.server, api.version) }
     }
 
-    get("/server/performance", "TPS, tick times, memory, CPU, and load per world") {
-        main { performance(api.server) }
+    get("/server/performance", "TPS, tick times, memory, CPU, and load per world, with the most common entity types") {
+        main { performance(api.server, entityTypes = true) }
     }
 
     get("/server/plugins", "Installed plugins") {
@@ -149,9 +149,17 @@ private fun serverInfo(server: Server, version: String): ServerInfo {
 
 private const val MIB = 1024L * 1024
 
+/** Counts keys and keeps the [top] most common, most first; ties go alphabetically. */
+internal fun topTypes(keys: List<String>, top: Int = 10): Map<String, Int> =
+    keys.groupingBy { it }.eachCount().entries
+        .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
+        .take(top)
+        .associateTo(LinkedHashMap()) { it.key to it.value }
+
 private fun Double.short() = round(this * 100) / 100
 
-internal fun performance(server: Server): Performance {
+/** With [entityTypes], each world also counts its entities by type, which walks every entity once. */
+internal fun performance(server: Server, entityTypes: Boolean = false): Performance {
     val tps = server.tps.map { minOf(it, 20.0).short() }
     val ticks = server.tickTimes.map { it / 1_000_000.0 }.sorted()
     fun percentile(p: Double) = if (ticks.isEmpty()) 0.0 else ticks[((ticks.size - 1) * p).toInt()].short()
@@ -163,7 +171,9 @@ internal fun performance(server: Server): Performance {
         mspt = Mspt(server.averageTickTime.short(), percentile(0.5), percentile(0.95), percentile(0.99), ticks.lastOrNull()?.short() ?: 0.0),
         memory = Memory(runtime.totalMemory() - runtime.freeMemory(), runtime.totalMemory(), runtime.maxMemory()),
         cpu = Cpu(sun?.processCpuLoad?.takeIf { it >= 0 }?.short(), sun?.cpuLoad?.takeIf { it >= 0 }?.short(), os.availableProcessors),
-        worlds = server.worlds.map { WorldLoad(it.name, it.chunkCount, it.entityCount, it.tileEntityCount, it.playerCount) },
+        worlds = server.worlds.map {
+            WorldLoad(it.name, it.chunkCount, it.entityCount, it.tileEntityCount, it.playerCount, if (entityTypes) topTypes(it.entities.map { e -> e.type.key.asString() }) else null)
+        },
         at = Instant.now().toString(),
     )
 }

@@ -118,16 +118,17 @@ val blockRoutes = endpoints("Blocks") {
         }
     }
 
-    get("/worlds/{world}/chunks", "Loaded chunks with entity counts", query = pageParams) {
+    get(
+        "/worlds/{world}/chunks", "Loaded chunks with entity counts",
+        description = "`sort=entities` or `sort=tileEntities` puts the busiest chunks first, which is where lag usually comes from.",
+        query = pageParams + string("sort", "Order: by coordinates (the default), or most entities or block entities first", values = ChunkSort.ids),
+    ) {
         val limit = limit
         val cursor = cursor
+        val sort = query("sort")?.let { id -> ChunkSort.entries.firstOrNull { it.id == id } ?: badRequest("sort must be one of ${ChunkSort.ids.joinToString()}") } ?: ChunkSort.COORDS
         main {
-            val chunks = world().loadedChunks.sortedWith(compareBy({ it.x }, { it.z }))
-            val page = chunks.page(limit, cursor)
-            com.mairwunnx.worldapi.api.Page(
-                page.items.map { ChunkSummary(it.x, it.z, it.entities.size, it.tileEntities.size, it.isForceLoaded) },
-                page.nextCursor, page.total,
-            )
+            val chunks = world().loadedChunks.map { ChunkSummary(it.x, it.z, it.entities.size, it.tileEntities.size, it.isForceLoaded) }
+            chunks.sortedWith(sort.order).page(limit, cursor)
         }
     }
 
@@ -157,6 +158,17 @@ val blockRoutes = endpoints("Blocks") {
             world.setChunkForceLoaded(cx, cz, patch.forceLoaded)
             ChunkView(cx, cz, loaded = world.isChunkLoaded(cx, cz), generated = world.isChunkGenerated(cx, cz), forceLoaded = world.isChunkForceLoaded(cx, cz))
         }
+    }
+}
+
+internal enum class ChunkSort(val id: String, val order: Comparator<ChunkSummary>) {
+    COORDS("coords", compareBy({ it.x }, { it.z })),
+    ENTITIES("entities", compareByDescending<ChunkSummary> { it.entities }.thenBy { it.x }.thenBy { it.z }),
+    TILE_ENTITIES("tileEntities", compareByDescending<ChunkSummary> { it.tileEntities }.thenBy { it.x }.thenBy { it.z }),
+    ;
+
+    companion object {
+        val ids = entries.map { it.id }
     }
 }
 

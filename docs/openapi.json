@@ -4585,7 +4585,7 @@
         "/server/performance": {
             "get": {
                 "operationId": "getServerPerformance",
-                "summary": "TPS, tick times, memory, CPU, and load per world",
+                "summary": "TPS, tick times, memory, CPU, and load per world, with the most common entity types",
                 "description": "Scope: `read`.",
                 "tags": [
                     "Server"
@@ -5973,7 +5973,7 @@
             "get": {
                 "operationId": "getWorldsWorldChunks",
                 "summary": "Loaded chunks with entity counts",
-                "description": "Scope: `read`.",
+                "description": "`sort=entities` or `sort=tileEntities` puts the busiest chunks first, which is where lag usually comes from.\n\nScope: `read`.",
                 "tags": [
                     "Blocks"
                 ],
@@ -6011,6 +6011,20 @@
                         "description": "The `nextCursor` from the previous page",
                         "schema": {
                             "type": "string"
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "description": "Order: by coordinates (the default), or most entities or block entities first",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "coords",
+                                "entities",
+                                "tileEntities"
+                            ]
                         }
                     }
                 ],
@@ -11437,6 +11451,16 @@
                     "players": {
                         "type": "integer",
                         "format": "int32"
+                    },
+                    "entityTypes": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "additionalProperties": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
                     }
                 },
                 "required": [

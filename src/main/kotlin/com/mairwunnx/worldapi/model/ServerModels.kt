@@ -71,7 +71,15 @@ data class Cpu(
 )
 
 @Serializable
-data class WorldLoad(val world: String, val loadedChunks: Int, val entities: Int, val tileEntities: Int, val players: Int)
+data class WorldLoad(
+    val world: String,
+    val loadedChunks: Int,
+    val entities: Int,
+    val tileEntities: Int,
+    val players: Int,
+    /** The most common entity types and how many are loaded, most first. Only `GET /server/performance` sends it, not the stream. */
+    val entityTypes: Map<String, Int>? = null,
+)
 
 @Serializable
 data class PluginInfo(
