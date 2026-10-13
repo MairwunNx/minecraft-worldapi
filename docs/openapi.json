@@ -11611,6 +11611,16 @@
                     },
                     "fixedTime": {
                         "type": "boolean"
+                    },
+                    "ticksUntilNight": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "format": "int64"
+                    },
+                    "canSleep": {
+                        "type": "boolean"
                     }
                 },
                 "required": [

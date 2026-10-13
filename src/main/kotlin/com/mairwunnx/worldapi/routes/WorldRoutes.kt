@@ -89,16 +89,32 @@ val worldRoutes = endpoints("Worlds") {
 
 private val moonPhases = listOf("full_moon", "waning_gibbous", "third_quarter", "waning_crescent", "new_moon", "waxing_crescent", "first_quarter", "waxing_gibbous")
 
-fun worldTime(world: World): WorldTime = WorldTime(
-    dayTime = world.time,
-    fullTime = world.fullTime,
-    gameTime = world.gameTime,
-    day = world.fullTime / 24_000 + 1,
+fun worldTime(world: World): WorldTime {
+    val time = world.time % 24_000
     // Bukkit refreshes isDayTime on the next tick, so right after a time change it would be stale.
-    isDay = world.time % 24_000 !in 13_000 until 23_000,
-    moonPhase = moonPhases.getOrElse(world.moonPhase.ordinal) { world.moonPhase.name.lowercase() },
-    fixedTime = world.isFixedTime,
-)
+    val isDay = time !in 13_000 until 23_000
+    return WorldTime(
+        dayTime = world.time,
+        fullTime = world.fullTime,
+        gameTime = world.gameTime,
+        day = world.fullTime / 24_000 + 1,
+        isDay = isDay,
+        moonPhase = moonPhases.getOrElse(world.moonPhase.ordinal) { world.moonPhase.name.lowercase() },
+        fixedTime = world.isFixedTime,
+        ticksUntilNight = if (world.isFixedTime) null else ticksUntilNight(time),
+        canSleep = world.isBedWorks && canSleep(time, world.hasStorm(), world.hasStorm() && world.isThundering),
+    )
+}
+
+/** Ticks from a time of day until 13000, when night falls; 0 while it's night. */
+internal fun ticksUntilNight(time: Long): Long = if (time in 13_000 until 23_000) 0 else Math.floorMod(13_000 - time, 24_000L)
+
+/** When beds work on the vanilla clock: the sky is dark enough from 12542 in clear weather, from 12010 in rain. */
+internal fun canSleep(time: Long, raining: Boolean, thundering: Boolean): Boolean = when {
+    thundering -> true
+    raining -> time in 12_010..23_991
+    else -> time in 12_542..23_459
+}
 
 fun weather(world: World): Weather = Weather(
     state = when {

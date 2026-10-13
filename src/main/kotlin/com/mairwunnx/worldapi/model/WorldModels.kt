@@ -54,6 +54,10 @@ data class WorldTime(
     /** Such as `full_moon` or `waxing_crescent`. */
     val moonPhase: String,
     val fixedTime: Boolean,
+    /** Ticks until night falls at dayTime 13000; 0 while it's night, absent when the clock stands still. */
+    val ticksUntilNight: Long? = null,
+    /** Whether a bed works right now: at night by the vanilla clock, earlier in rain, any time in a thunderstorm. */
+    val canSleep: Boolean = false,
 )
 
 @Serializable
