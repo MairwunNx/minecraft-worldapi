@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.1.0
+
+- **Items tell what they are.** Wherever WorldAPI shows an item, it now adds the enchantments stored in an enchanted book, the item’s attributes (a sword’s attack damage and speed, armor points and toughness, custom modifiers), the effects of potions, tipped arrows, and suspicious stew, armor trims, dye colors, the anvil repair cost, a written book’s title and author, firework flight and explosions, and what’s inside shulker boxes and bundles. Fields an item doesn’t have are left out, so payloads stay small.
+- A player’s worn and held items in `GET /worlds/{world}/entities/{uuid}` now follow `privacy.anonymous.inventories`, like the rest of their inventory.
+
+No field was renamed or removed.
+
 ## 2.0.0
 
 WorldAPI goes public: MIT-licensed, on Modrinth and Hangar, with releases made by hand from GitHub Actions.
