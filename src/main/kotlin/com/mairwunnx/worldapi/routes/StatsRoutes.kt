@@ -27,7 +27,7 @@ val statsRoutes = endpoints("Leaderboards") {
 
     get(
         "/leaderboards/{statistic}", "Players ranked by a statistic, ties sharing a place",
-        description = "Online players count live. Use a preset or any statistic as `category:key`, such as `custom:jump`, `mined:diamond_ore`, or `killed:*`. The `experience` preset counts experience from the moment WorldAPI 1.1.0 was installed, since vanilla keeps no such statistic.",
+        description = "Online players count live. Use a preset or any statistic as `category:key`, such as `custom:jump`, `mined:diamond_ore`, or `killed:*`. The `experience` preset starts each player from the game's `XpTotal` (experience since their last death, so a lower bound) and adds every pickup after that, since vanilla keeps no lifetime statistic.",
         query = listOf(integer("limit", "How many places to return; the server caps it")),
     ) {
         val id = path("statistic")

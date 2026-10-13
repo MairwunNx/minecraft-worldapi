@@ -148,9 +148,9 @@ Conventions:
 | `fish` | `custom:fish_caught` | fish |
 | `damage` | `custom:damage_dealt` | hearts |
 | `netherite` | `mined:ancient_debris` | debris |
-| `experience` | Experience points gained in total, counted by WorldAPI since 1.1.0 | xp |
+| `experience` | Experience points gained in total: the game’s `XpTotal` when WorldAPI first saw the player, plus every pickup since | xp |
 
-Vanilla doesn’t keep lifetime experience, so WorldAPI counts it itself: every orb a player picks up, after other plugins had their say, adds to a total in `worldapi.db`. The board starts from zero on the day you install 1.1.0, and `/xp` commands don’t count.
+Vanilla doesn’t keep lifetime experience, so WorldAPI counts it itself. Each player starts once from the `XpTotal` in their playerdata: everyone with a playerdata file when 1.1.1 first starts, anyone else when they join. From then on, every orb a player picks up, after other plugins had their say, adds to the total in `worldapi.db`, and `/xp` commands don’t count. `XpTotal` holds only what the player gathered since their last death, so the starting point is a lower bound of their real lifetime experience. If 1.1.0 already counted pickups, the player starts from whichever is larger, the count or `XpTotal`, since `XpTotal` already includes what 1.1.0 counted.
 
 Any vanilla statistic works too: `custom:jump`, `killed:zombie`, `crafted:*`. `GET /aggregates` adds everyone up: hours, blocks and the block mined most, mobs and the mob killed most, deaths, advancements, the world’s day, and the date of the first join.
 
@@ -259,7 +259,7 @@ What’s up to you:
 
 WorldAPI uses no NMS, so a few things stay out of reach:
 
-- **Offline players’ inventories, ender chests, health, and effects.** Paper only exposes them for online players. WorldAPI answers `409 player_offline`. Statistics and advancements of offline players are read from the vanilla files.
+- **Offline players’ inventories, ender chests, health, and effects.** Paper only exposes them for online players. WorldAPI answers `409 player_offline`. Statistics, advancements, and the `XpTotal` of offline players are read from the vanilla files.
 - **Raw NBT of block entities.** WorldAPI shows what Paper models: container contents, sign text, spawner type, skull owner, jukebox record. Items come with their full component string, such as `minecraft:diamond_sword[enchantments={sharpness:5}]`.
 - **Particles with extra data** (dust colors, block particles) aren’t supported yet; plain particles are.
 - **History from before WorldAPI.** It records events from the moment it’s installed; older joins and deaths stay in the server logs.

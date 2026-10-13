@@ -88,6 +88,12 @@ class Store(file: Path) : AutoCloseable {
                 player_name TEXT NOT NULL,
                 gained INTEGER NOT NULL
             )""",
+            // One row per player whose experience total started from their XpTotal, so a restart never adds it again.
+            """CREATE TABLE IF NOT EXISTS experience_baseline (
+                player_uuid TEXT PRIMARY KEY,
+                xp_total INTEGER NOT NULL,
+                taken_at INTEGER NOT NULL
+            )""",
         )
     }
 }

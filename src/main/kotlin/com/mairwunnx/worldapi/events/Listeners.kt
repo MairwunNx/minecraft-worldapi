@@ -83,6 +83,8 @@ class Listeners(
         val player = event.player
         joinedAt[player.uniqueId] = System.currentTimeMillis()
         history.openSession(player.uniqueId.toString(), player.name, Instant.now())
+        // Someone who never joined since WorldAPI started counting gets their baseline now.
+        experience.seed(player.uniqueId, player.name, player.totalExperience)
         publish(player.event(Topic.PLAYER_JOIN, buildJsonObject {
             put("firstJoin", !player.hasPlayedBefore())
             put("online", server.onlinePlayers.size)

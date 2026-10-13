@@ -4,6 +4,9 @@ import com.mairwunnx.worldapi.api.HttpServer
 import com.mairwunnx.worldapi.config.WorldApiConfig
 import com.mairwunnx.worldapi.routes.statsRoutes
 import com.mairwunnx.worldapi.stats.Board
+import com.mairwunnx.worldapi.stats.Experience
+import com.mairwunnx.worldapi.stats.PlayerData
+import com.mairwunnx.worldapi.store.Store
 import com.mairwunnx.worldapi.ws.WebSocketHub
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
@@ -14,7 +17,11 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import java.io.DataOutputStream
+import java.io.File
+import java.nio.file.Files
 import java.util.UUID
+import java.util.zip.GZIPOutputStream
 import java.util.logging.Logger
 import com.mairwunnx.worldapi.stats.StatRef
 import com.mairwunnx.worldapi.stats.Statistics
@@ -22,6 +29,7 @@ import com.mairwunnx.worldapi.stats.vanillaKey
 import com.mairwunnx.worldapi.stats.rank
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -127,5 +135,113 @@ class StatsTest {
             assertEquals("Steve", first["player"]!!.jsonObject["name"]!!.jsonPrimitive.content)
             assertEquals(120.0, first["value"]!!.jsonPrimitive.content.toDouble())
         }
+    }
+
+    private fun Experience.points() = runBlocking { totals() }.associate { it.name to it.points }
+
+    /** A gzipped playerdata file with some tags of every kind around `XpTotal`, as vanilla writes it. */
+    private fun playerData(folder: File, uuid: UUID, xpTotal: Int?) = File(folder, "$uuid.dat").also { file ->
+        DataOutputStream(GZIPOutputStream(file.outputStream())).use { out ->
+            fun tag(type: Int, name: String) = out.writeByte(type).also { out.writeUTF(name) }
+            tag(10, "")
+            tag(9, "Pos"); out.writeByte(6); out.writeInt(3); repeat(3) { out.writeDouble(1.5) }
+            tag(10, "abilities"); tag(1, "flying"); out.writeByte(0); tag(5, "walkSpeed"); out.writeFloat(0.1f); out.writeByte(0)
+            tag(11, "UUID"); out.writeInt(4); repeat(4) { out.writeInt(7) }
+            tag(8, "Dimension"); out.writeUTF("minecraft:overworld")
+            tag(9, "Inventory"); out.writeByte(10); out.writeInt(1); tag(8, "id"); out.writeUTF("minecraft:stone"); tag(3, "count"); out.writeInt(1); out.writeByte(0)
+            tag(12, "seeds"); out.writeInt(1); out.writeLong(42)
+            tag(7, "bytes"); out.writeInt(2); out.write(byteArrayOf(1, 2))
+            tag(3, "XpLevel"); out.writeInt(30)
+            if (xpTotal != null) { tag(3, "XpTotal"); out.writeInt(xpTotal) }
+            tag(2, "Air"); out.writeShort(300)
+            out.writeByte(0)
+        }
+    }
+
+    @Test
+    fun `playerdata gives XpTotal and skips broken files`() {
+        val folder = Files.createTempDirectory("playerdata").toFile()
+        assertEquals(1395, PlayerData.xpTotal(playerData(folder, UUID.randomUUID(), 1395)))
+        assertNull(PlayerData.xpTotal(playerData(folder, UUID.randomUUID(), null)))
+        assertNull(PlayerData.xpTotal(File(folder, "missing.dat")))
+        val broken = File(folder, "${UUID.randomUUID()}.dat").apply { writeBytes(byteArrayOf(0x1f, 0x8b.toByte(), 1, 2, 3)) }
+        assertNull(PlayerData.xpTotal(broken))
+        val level = File(folder.parentFile, "level-${UUID.randomUUID()}").apply { File(this, "players/data").mkdirs() }
+        assertEquals(File(level, "players/data"), PlayerData.folder(level))
+    }
+
+    @Test
+    fun `the baseline is taken once and pickups add on top`() = TestApi(WorldApiConfig()).use { fake ->
+        val steve = UUID.randomUUID()
+        val experience = fake.api.experience
+        experience.seed(steve, "Steve", 300)
+        experience.seed(steve, "Steve", 900)
+        experience.add(steve, "Steve", 10)
+        experience.flush()
+        assertEquals(mapOf("Steve" to 310L), experience.points())
+    }
+
+    @Test
+    fun `a restart neither adds the baseline again nor rereads the files`() {
+        val db = Files.createTempFile("worldapi", ".db")
+        val folder = Files.createTempDirectory("playerdata").toFile()
+        val steve = UUID.randomUUID()
+        val alex = UUID.randomUUID()
+        playerData(folder, steve, 300)
+        playerData(folder, alex, 0)
+        val names = mapOf(steve to "Steve", alex to "Alex")
+        Store(db).use { store ->
+            val experience = Experience(store)
+            assertEquals(2, experience.seedFromFiles(folder, names))
+            experience.add(steve, "Steve", 25)
+            experience.flush()
+            assertEquals(mapOf("Steve" to 325L), experience.points())
+        }
+        playerData(folder, steve, 325)
+        Store(db).use { store ->
+            val experience = Experience(store)
+            assertTrue(experience.hasBaseline(steve) && experience.hasBaseline(alex))
+            assertEquals(0, experience.seedFromFiles(folder, names))
+            experience.seed(steve, "Steve", 325)
+            assertEquals(mapOf("Steve" to 325L), experience.points())
+        }
+    }
+
+    @Test
+    fun `after 1_1_0 counted on its own the total becomes the larger of the two, not their sum`() {
+        val db = Files.createTempFile("worldapi", ".db")
+        val steve = UUID.randomUUID()
+        val alex = UUID.randomUUID()
+        // 1.1.0 counted pickups with no baseline: Steve gathered 50 since, Alex 500 and then died.
+        Store(db).use { store ->
+            store.blocking {
+                prepareStatement("INSERT INTO experience (player_uuid, player_name, gained) VALUES (?, 'Steve', 50), (?, 'Alex', 500)")
+                    .use { it.setString(1, steve.toString()); it.setString(2, alex.toString()); it.executeUpdate() }
+            }
+        }
+        Store(db).use { store ->
+            val experience = Experience(store)
+            assertFalse(experience.hasBaseline(steve))
+            experience.seed(steve, "Steve", 300)
+            experience.seed(alex, "Alex", 120)
+            assertEquals(mapOf("Steve" to 300L, "Alex" to 500L), experience.points())
+        }
+    }
+
+    @Test
+    fun `a player who joins later gets a baseline then`() = TestApi(WorldApiConfig()).use { fake ->
+        val folder = Files.createTempDirectory("playerdata").toFile()
+        val steve = UUID.randomUUID()
+        val newcomer = UUID.randomUUID()
+        playerData(folder, steve, 300)
+        File(folder, "$newcomer.dat").writeText("not nbt")
+        val experience = fake.api.experience
+        // The newcomer's file is broken, so the seeding at startup skips them.
+        assertEquals(1, experience.seedFromFiles(folder, mapOf(steve to "Steve", newcomer to "Newcomer")))
+        assertFalse(experience.hasBaseline(newcomer))
+        experience.seed(newcomer, "Newcomer", 80)
+        experience.add(newcomer, "Newcomer", 5)
+        experience.flush()
+        assertEquals(mapOf("Steve" to 300L, "Newcomer" to 85L), experience.points())
     }
 }

@@ -16,6 +16,7 @@ import com.mairwunnx.worldapi.events.Topic
 import com.mairwunnx.worldapi.events.Windows
 import com.mairwunnx.worldapi.script.ScriptManager
 import com.mairwunnx.worldapi.stats.Experience
+import com.mairwunnx.worldapi.stats.PlayerData
 import com.mairwunnx.worldapi.stats.Statistics
 import com.mairwunnx.worldapi.store.History
 import com.mairwunnx.worldapi.store.Store
@@ -84,6 +85,7 @@ class WorldApiPlugin : JavaPlugin() {
             windows.flushIfDue()
         }, 20, 5)
         server.scheduler.runTaskTimerAsynchronously(this, Runnable { api.experience.flush() }, 20 * 5, 20 * 5)
+        seedExperience()
         // Once a day is plenty for pruning; it runs off the server thread anyway.
         server.scheduler.runTaskTimerAsynchronously(this, Runnable { history.prune(config.get().events.retentionDays) }, 20 * 60, 20 * 60 * 60 * 24)
 
@@ -113,6 +115,20 @@ class WorldApiPlugin : JavaPlugin() {
         scope.cancel()
         api.experience.flush()
         store.close()
+    }
+
+    /**
+     * Gives every player without an experience baseline one: online players from the live value,
+     * everyone else from their playerdata file, read off the server thread.
+     */
+    private fun seedExperience() {
+        server.onlinePlayers.forEach { api.experience.seed(it.uniqueId, it.name, it.totalExperience) }
+        val folder = server.worlds.firstOrNull()?.worldFolder?.let(PlayerData::folder) ?: return
+        server.scheduler.runTaskAsynchronously(this, Runnable {
+            val names = server.offlinePlayers.associate { it.uniqueId to it.name }
+            val seeded = api.experience.seedFromFiles(folder, names)
+            if (seeded > 0) logger.info("Started the experience totals of $seeded players from their playerdata")
+        })
     }
 
     private fun startHttp() {
