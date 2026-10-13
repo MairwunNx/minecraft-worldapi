@@ -79,7 +79,8 @@ val entityRoutes = endpoints("Entities") {
 
     get("/worlds/{world}/entities/{uuid}", "One entity in detail") {
         val coordinates = seesCoordinates
-        main { entityView(entity(), coordinates) }
+        val inventories = seesInventories
+        main { entityView(entity(), coordinates, inventories) }
     }
 
     patch<EntityPatch, EntityView>("/worlds/{world}/entities/{uuid}", "Change an entity: name, flags, health, position", Scope.WRITE_WORLD) { patch ->
@@ -108,7 +109,7 @@ val entityRoutes = endpoints("Entities") {
             entity to location
         }.let { (entity, location) ->
             location?.let { main { entity.teleportAsync(it) }.await() }
-            main { entityView(entity, true) }
+            main { entityView(entity, coordinates = true, inventories = true) }
         }
     }
 
@@ -223,9 +224,10 @@ private fun summary(entity: Entity, coordinates: Boolean) = EntitySummary(
     health = (entity as? LivingEntity)?.health,
 )
 
-fun entityView(entity: Entity, coordinates: Boolean): EntityView {
+/** A player's equipment is part of their inventory, so it shows only with [inventories]. */
+fun entityView(entity: Entity, coordinates: Boolean, inventories: Boolean): EntityView {
     val living = entity as? LivingEntity
-    val equipment = living?.equipment?.let { gear ->
+    val equipment = living?.takeIf { inventories || it !is Player }?.equipment?.let { gear ->
         EquipmentSlot.entries.mapNotNull { slot ->
             runCatching { gear.getItem(slot) }.getOrNull()?.view()?.let { slot.name.lowercase() to it }
         }.toMap()

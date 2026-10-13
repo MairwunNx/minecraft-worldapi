@@ -40,6 +40,7 @@ data class EntityView(
     val adult: Boolean? = null,
     val tamed: Boolean? = null,
     val owner: PlayerRef? = null,
+    /** Worn and held items by slot; a player's are hidden from anonymous clients unless privacy allows inventories. */
     val equipment: Map<String, ItemView>? = null,
     val effects: List<EffectView>? = null,
 )
