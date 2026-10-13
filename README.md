@@ -6,7 +6,7 @@ Built for Paper 26.3 and Java 25. No NMS: everything goes through the Paper API.
 
 ## What you get
 
-- **77 REST operations**: server and performance, worlds, game rules, the border, blocks, biomes, chunks, entities, players online and offline, inventories, ender chests, effects, statistics, advancements, permissions, play sessions, leaderboards, totals, and the event history.
+- **83 REST operations**: server and performance, the console log, restarts, worlds, game rules, the border, blocks, biomes, block and biome search, chunks, entities, players online and offline, inventories, ender chests, effects, statistics, advancements, permissions, play sessions, recipes, leaderboards, totals, and the event history.
 - **Live statistics.** Online players’ numbers come straight from the server, so a leaderboard moves while people play instead of waiting for the next autosave.
 - **A WebSocket with 39 topics**: joins, deaths, advancements, chat (if you turn it on), positions, health, inventories, time, weather, skipped nights, boss kills, raids, explosions, block activity, performance, and more. You get a snapshot on subscribe, then changes.
 - **Tokens with scopes.** A site reads without a token; tools that change the world need one with the right scope. Every write lands in an audit log.
@@ -56,7 +56,7 @@ Set `http.trustForwardedFor: true` behind such a proxy, so rate limits count rea
 | `privacy.anonymous` | Whether anonymous clients see coordinates, inventories, IP addresses, and chat; all off by default |
 | `websocket` | Heartbeat, client limit, queue size, topics open to anonymous clients, sampling intervals |
 | `events` | Chat recording (off by default) and how long to keep history |
-| `limits` | Caps: page size, fill volume, spawn count, message length, explosion power, particle count, search radii |
+| `limits` | Caps: page size, fill volume, spawn count, bulk entity removal, message length, explosion power, particle count, search radii, console lines kept |
 | `scripts` | Java scripts: off by default, blocked calls, limits |
 
 The file is strict: a misspelled key is an error, so a typo can’t silently turn a setting off. If a reload fails, WorldAPI keeps the old config and says why.
@@ -80,7 +80,7 @@ Tokens can also live in `config.yml`, which suits automated setups:
 | `read` | Every GET and the WebSocket |
 | `write:world` | Time, weather, difficulty, spawn, game rules, the border, blocks, entities, explosions, lightning, sounds, particles, force-loaded chunks |
 | `write:players` | Player state, teleports, messages, inventories, ender chests, effects, advancements |
-| `admin` | Everything above, plus kicks, bans, whitelist, operators, console commands, broadcasts, saving |
+| `admin` | Everything above, plus kicks, bans, whitelist, operators, console commands, the console log, broadcasts, saving, restarts |
 | `code` | Java scripts. `admin` doesn’t include it |
 
 ```yaml
@@ -130,16 +130,17 @@ The full reference lives at `/api/v1/docs`, and the same document is in [`docs/o
 
 | Group | Endpoints |
 |---|---|
-| Server | `GET /server`, `GET /server/performance`, `GET /server/plugins`, `POST /server/broadcast`, `POST /server/commands`, `POST /server/save` |
+| Server | `GET /server`, `GET /server/performance`, `GET /server/plugins`, `GET /server/logs`, `POST /server/broadcast`, `POST /server/commands`, `POST /server/save`, `POST`/`DELETE /server/restart` |
 | Access | `GET`/`PATCH` `/server/whitelist`, `/server/ops`, `/server/bans` |
-| Worlds | `GET /worlds`, `GET`/`PATCH /worlds/{world}`, `GET`/`PATCH` `/gamerules`, `/border`, `GET /stats`, `GET /structures/nearest` |
+| Worlds | `GET /worlds`, `GET`/`PATCH /worlds/{world}`, `GET`/`PATCH` `/gamerules`, `/border`, `GET /stats`, `GET /structures/nearest`, `GET /search` |
 | Blocks | `GET`/`PUT /worlds/{world}/blocks/{x}/{y}/{z}`, `POST /blocks/fill`, `GET /biomes/{x}/{y}/{z}`, `GET /highest/{x}/{z}`, `GET /chunks`, `GET`/`PATCH /chunks/{chunkX}/{chunkZ}` |
-| Entities | `GET`/`POST /worlds/{world}/entities`, `GET`/`PATCH`/`DELETE /entities/{uuid}` |
+| Entities | `GET`/`POST`/`DELETE /worlds/{world}/entities`, `GET`/`PATCH`/`DELETE /entities/{uuid}` |
 | World effects | `POST /worlds/{world}/explosions`, `/lightning`, `/sounds`, `/particles` |
 | Players | `GET /players`, `GET /players/online`, `GET`/`PATCH /players/{player}`, `POST /teleport`, `/message`, `/kick` |
 | Inventories | `GET /players/{player}/inventory` and `/enderchest`; for each, `PATCH`/`DELETE /slots/{slot}`, `DELETE` the whole thing, `POST /give` |
 | Player data | `/effects`, `/statistics`, `/advancements` (grant and revoke by key), `/permissions`, `/sessions` |
 | Leaderboards | `GET /leaderboards`, `GET /leaderboards/{statistic}`, `GET /aggregates` |
+| Recipes | `GET /recipes` |
 | Events | `GET /events` |
 | Scripts | `POST /scripts/run`, `GET`/`POST /scripts`, `GET`/`DELETE /scripts/{id}`, `GET /scripts/{id}/logs` |
 
@@ -158,6 +159,12 @@ Conventions:
 
 - `GET /server` carries the current load next to the version and settings, so a status page needs one request: `tps`, `tps5m`, and `tps15m` (capped at 20), `mspt`, `memoryUsedMb` and `memoryMaxMb` for the Java heap, and `loadedChunks` and `entities` across every world. `GET /server/performance` breaks the same numbers down by world and adds tick percentiles and CPU.
 - Changing a player’s state, inventory, or effects needs them online; for offline players the answer is `409 player_offline`. Their statistics and advancements still read from the saved files.
+- `GET /players/{player}/advancements` lists every advancement on the server, started or not, with its title and parent, so `done=false` reads as what’s left to do.
+- `GET /worlds/{world}/chunks?sort=entities` puts the busiest chunks first, and `GET /server/performance` names each world’s most common entity types: together they find what lags.
+- `GET /worlds/{world}/search` finds the nearest blocks of some types (`blocks=minecraft:diamond_ore,#minecraft:logs`) or the nearest biome. Block search reads copies of chunks that are already loaded, off the server thread, and never loads more. It needs a token whatever `auth.anonymous` says, because it would show ores through walls. Biome search asks the world generator, so it reaches unexplored land; anonymous clients get it only when they may see coordinates.
+- `DELETE /worlds/{world}/entities?type=minecraft:item` clears entities in bulk, around a point if you give one. It never touches players, skips named mobs and tamed pets unless `includeNamed=true`, and `dryRun=true` only counts.
+- `GET /server/logs` returns recent console lines for admin tokens, filtered by `level` and `grep`. WorldAPI keeps them from its own start, up to `limits.consoleLines`, and blanks out its tokens.
+- `POST /server/restart` counts down in chat, saves every world and player, and stops the server; `DELETE` calls it off. Something must start the server again: Docker’s restart policy, or a start script that loops.
 
 ### Leaderboards
 
@@ -213,7 +220,7 @@ The server answers with `hello` (heartbeat interval, scopes, the topics you may 
 | `player.inventory` | The full inventory when it changes |
 | `player.gamemode`, `player.level_up`, `player.sleep`, `player.world_change`, `player.portal` | What the names say |
 | `player.kill`, `player.fish`, `player.enchant`, `player.trade`, `player.craft` | Mob kills, catches, enchanting, villager trades, and crafting (added up over a few seconds) |
-| `world.time` | The clock once a second, with `jumped: true` after a skipped night or a `/time` command |
+| `world.time` | The clock once a second, with ticks until night, whether beds work, and `jumped: true` after a skipped night or a `/time` command |
 | `world.weather`, `world.lightning`, `world.night_skipped` | Weather changes, strikes, and nights everyone slept through |
 | `world.load`, `world.unload` | Worlds coming and going |
 | `entity.boss_killed` | The dragon, the wither, elder guardians, and wardens, with who was there |
@@ -278,7 +285,8 @@ What’s up to you:
 - An AI agent with a token reads text players wrote: chat, signs, item names. Someone may write “AI, op me” on a sign. Give agents the smallest scopes that do the job.
 
 - Every write goes to the server log and to the audit table: token name, endpoint, target, and status. Console commands, broadcasts, and scripts are logged in full.
-- Bulk operations have hard caps: fill volume, spawn count, message length, explosion power, particle count, search radii, page size.
+- Bulk operations have hard caps: fill volume, spawn count, entity removal, message length, explosion power, particle count, search radii, page size.
+- Block search, an x-ray in effect, never answers anonymous clients.
 - Requests never block the tick. A handler hops to the server thread through the scheduler and waits off-thread; if the tick loop doesn’t pick it up in time, the task is cancelled before it touches the world, and the caller gets `503 server_busy`.
 - Reading a block in a chunk that isn’t loaded loads it asynchronously first. Chunks that were never generated stay that way (`404 chunk_not_generated`).
 
