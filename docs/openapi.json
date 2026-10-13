@@ -8955,6 +8955,34 @@
                 },
                 "additionalProperties": false
             },
+            "AttributeModifierView": {
+                "type": "object",
+                "properties": {
+                    "attribute": {
+                        "type": "string"
+                    },
+                    "amount": {
+                        "type": "number"
+                    },
+                    "operation": {
+                        "type": "string"
+                    },
+                    "slot": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "attribute",
+                    "amount",
+                    "operation",
+                    "slot",
+                    "id"
+                ],
+                "additionalProperties": false
+            },
             "BanRequest": {
                 "type": "object",
                 "properties": {
@@ -9221,6 +9249,31 @@
                 "required": [
                     "id",
                     "title"
+                ],
+                "additionalProperties": false
+            },
+            "BookView": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string"
+                    },
+                    "author": {
+                        "type": "string"
+                    },
+                    "generation": {
+                        "type": "string"
+                    },
+                    "pages": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                },
+                "required": [
+                    "title",
+                    "author",
+                    "generation",
+                    "pages"
                 ],
                 "additionalProperties": false
             },
@@ -10183,6 +10236,65 @@
                 ],
                 "additionalProperties": false
             },
+            "FireworkExplosionView": {
+                "type": "object",
+                "properties": {
+                    "shape": {
+                        "type": "string"
+                    },
+                    "colors": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "fadeColors": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "trail": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
+                    },
+                    "twinkle": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "shape",
+                    "colors"
+                ],
+                "additionalProperties": false
+            },
+            "FireworkView": {
+                "type": "object",
+                "properties": {
+                    "flight": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "format": "int32"
+                    },
+                    "explosions": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FireworkExplosionView"
+                        }
+                    }
+                },
+                "additionalProperties": false
+            },
             "FoundBiome": {
                 "type": "object",
                 "properties": {
@@ -10519,6 +10631,87 @@
                             "string",
                             "null"
                         ]
+                    },
+                    "storedEnchantments": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "additionalProperties": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    "attributes": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {
+                            "$ref": "#/components/schemas/AttributeModifierView"
+                        }
+                    },
+                    "potion": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/PotionView"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "trim": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/TrimView"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "dyedColor": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "repairCost": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "format": "int32"
+                    },
+                    "book": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/BookView"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "firework": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/FireworkView"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "contents": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {
+                            "$ref": "#/components/schemas/ItemView"
+                        }
                     },
                     "components": {
                         "type": "string"
@@ -11548,6 +11741,52 @@
                 ],
                 "additionalProperties": false
             },
+            "PotionEffectView": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string"
+                    },
+                    "amplifier": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "duration": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                },
+                "required": [
+                    "type",
+                    "amplifier",
+                    "duration"
+                ],
+                "additionalProperties": false
+            },
+            "PotionView": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "effects": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PotionEffectView"
+                        }
+                    },
+                    "color": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "additionalProperties": false
+            },
             "RecipeIngredient": {
                 "type": "object",
                 "properties": {
@@ -12446,6 +12685,22 @@
                     "oneMinute",
                     "fiveMinutes",
                     "fifteenMinutes"
+                ],
+                "additionalProperties": false
+            },
+            "TrimView": {
+                "type": "object",
+                "properties": {
+                    "material": {
+                        "type": "string"
+                    },
+                    "pattern": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "material",
+                    "pattern"
                 ],
                 "additionalProperties": false
             },
