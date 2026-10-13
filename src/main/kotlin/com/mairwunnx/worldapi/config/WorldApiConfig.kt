@@ -142,6 +142,10 @@ data class Limits(
     val maxParticleCount: Int = 1_000,
     val maxEntityRadius: Double = 256.0,
     val maxStructureRadius: Int = 100,
+    /** Blocks; block search reads every loaded chunk in range, off the server thread. */
+    val maxBlockSearchRadius: Int = 64,
+    /** Blocks; biome search runs on the server thread. */
+    val maxBiomeSearchRadius: Int = 2_048,
 )
 
 @Serializable

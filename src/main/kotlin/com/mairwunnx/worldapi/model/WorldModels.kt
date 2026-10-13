@@ -147,3 +147,42 @@ data class StructureResult(
     val location: BlockPosition,
     val distance: Double,
 )
+
+@Serializable
+data class SearchResult(
+    val world: String,
+    /** The center searched from. */
+    val x: Int,
+    val y: Int? = null,
+    val z: Int,
+    /** Blocks found, nearest first; absent when no blocks were asked for. */
+    val blocks: List<FoundBlock>? = null,
+    /** How many blocks matched in all, of which `blocks` holds the nearest. */
+    val matchedBlocks: Int? = null,
+    /** Loaded chunks searched, and chunks in range that weren't loaded and so weren't searched. */
+    val scannedChunks: Int? = null,
+    val unloadedChunks: Int? = null,
+    /** The nearest biome asked for; absent when none lies within biomeRadius. */
+    val biome: FoundBiome? = null,
+)
+
+@Serializable
+data class FoundBlock(
+    /** Block key, such as `minecraft:diamond_ore`. */
+    val type: String,
+    val x: Int,
+    val y: Int,
+    val z: Int,
+    /** Straight-line distance from the center, in blocks. */
+    val distance: Double,
+)
+
+@Serializable
+data class FoundBiome(
+    val biome: String,
+    val x: Int,
+    val y: Int,
+    val z: Int,
+    /** Horizontal distance from the center, in blocks. */
+    val distance: Double,
+)
