@@ -197,9 +197,9 @@ Jar появится в `build/libs/`. Релизы собирает воркф�
 
 [minecraft-mcp](https://github.com/MairwunNx/minecraft-mcp) — 🤖 MCP-сервер, через который ИИ-агенты читают Minecraft-сервер и управляют им с помощью WorldAPI.
 
-[MCBuddy Server](https://github.com/mcbuddy-ai/mcbuddy-server) — 🛠️⚡ бэкенд MCBuddy, ИИ-помощника для Minecraft на OpenRouter.
+[Allay Server](https://github.com/allay-ai/server) — 🛠️⚡ бэкенд Allay, ИИ-помощника для Minecraft, на OpenRouter.
 
-[MCBuddy Spigot](https://github.com/mcbuddy-ai/mcbuddy-spigot) — 💬 приводит MCBuddy в игру: спросите ИИ о чём угодно через `/ask` прямо в чате. 🎮
+[Allay](https://github.com/allay-ai/minecraft) — 🪽 приводит Allay в игру: спрашивайте ИИ о чём угодно командой `/ask` прямо в чате. 🎮
 
 ## От того же автора
 
