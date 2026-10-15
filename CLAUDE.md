@@ -43,6 +43,24 @@ A Paper 26.3 plugin that serves the server's state over REST and a WebSocket: wo
 - There is no MockBukkit for Paper 26.3; tests use the small fakes in `src/test`. Anything that needs a real server goes to a local Paper in Docker (the compose snippet in README.md).
 - Dependencies are shaded and relocated under `com.mairwunnx.worldapi.libs`. The SQLite driver comes from Paper; the PostgreSQL and MariaDB drivers are relocated too, so the store passes Hikari their class names from class references. `WORLDAPI_TEST_DATABASES=postgresql://u:p@host:port/db,mysql://...` runs `StoreTest` against real servers.
 
+## Checking a change
+
+1. `./gradlew build`: the tests and the jar.
+2. A real Paper with the jar, started and stopped by the script, which fails on any error about the plugin:
+   ```sh
+   python3 -I .claude/scripts/paper_smoke.py --game 26.3 --plugin build/libs/worldapi-dev.jar --expect "Listening on .* endpoints"
+   ```
+   Pass `--game` the version the project targets, and `--build` to pin a Paper build. The script downloads Paper and Modrinth plugins into `~/.cache/paper-smoke` and keeps the server folder when something fails.
+3. Endpoints and the WebSocket need a running server to call: the Docker compose snippet in README.md, then `curl` with the admin token from its `config.yml`. After a release reaches Moonlands, `curl -s https://minecraft.mairwunnx.com/worldapi/api/v1/server` shows its `worldApiVersion`, and the site and `scripts/live-check.mjs` in minecraft-mcp read it.
+
+## Versions
+
+Where the versions live, for `/update-deps` and `/update-minecraft` (both in `.claude/skills/`, the same files in every project of the family):
+
+- The game: `io.papermc.paper:paper-api` (twice: `compileOnly` and `testImplementation`), `gameVersions` (Modrinth) and `platformVersions` (Hangar) in `build.gradle.kts`, and `api-version` in `src/main/resources/paper-plugin.yml`.
+- Java: `jvmToolchain` in `build.gradle.kts`; CI's `setup-java` in `.github/workflows/`.
+- Gradle in `gradle/wrapper/gradle-wrapper.properties`; Kotlin and the Gradle plugins in the `plugins` block; libraries, the JDBC drivers and ECJ among them, in `dependencies`.
+
 ## Docs
 
 - README.md and README.RU.md are for server owners and people who build on WorldAPI: who it's for, install, tokens, config, safety. Change both together, and MODRINTH.md when what the plugin does changes. MODRINTH.md is also the Hangar page: no build, stack, AI, or related projects, and no Moonlands banner.
@@ -51,7 +69,7 @@ A Paper 26.3 plugin that serves the server's state over REST and a WebSocket: wo
 
 ## Releasing and Moonlands
 
-1. Add a “## X.Y.Z” section to CHANGELOG.md, written for server owners.
+1. Add a “## X.Y.Z” section to CHANGELOG.md, written for server owners. After a change that reaches what the project ships, add it to CHANGELOG.md in the same push: under the topmost “## X.Y.Z” section while that version isn't released (`gh release view vX.Y.Z` fails), or under a new section with the next version: patch for fixes, minor for features, major for breaking changes. A release then needs only the workflow, and the workflow runs only when the owner asks.
 2. Run the “Release” workflow: `gh workflow run release.yml -R MairwunNx/minecraft-worldapi -f version=X.Y.Z -f modrinth=true -f hangar=true`. Its `changelog` field overrides the CHANGELOG.md section. It builds with `-PreleaseVersion`, tags `vX.Y.Z`, and attaches `worldapi-X.Y.Z.jar` to a GitHub release. Nothing in the repo holds the version; local and CI builds are `dev`.
 3. Modrinth: project `worldapi` (id `Q5IDSOEP`), submitted for review on 2026-10-13; `./gradlew modrinth` uploads the jar and syncs MODRINTH.md. Hangar: project `MairwunNx/WorldAPI`; `./gradlew publishPluginPublicationToHangar` adds a version to the Release channel for Paper 26.3 that links to the GitHub release jar, since the jar is over Hangar's 15 MB limit; the page doesn't sync, so edit it on the site. Both use secrets (`MODRINTH_TOKEN`, `HANGAR_TOKEN`) that also sit in `~/.secrets/cloud.env`; never put them in the repo. The Hangar key (made 2026-10-13 with `create_version`) uploads versions; project settings, the page, and the icon are edited on the site.
 4. To put it on Moonlands, follow “Shipping a plugin or backend update” in `~/c/personal/minecraft/CLAUDE.md` (MairwunNx/minecraft). That file also says when a restart may happen without asking.
