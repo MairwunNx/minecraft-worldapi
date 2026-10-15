@@ -12,6 +12,10 @@ class Visibility(private val principal: Principal, private val config: WorldApiC
 
     fun allows(topic: Topic): Boolean {
         if (!principal.has(topic.scope)) return false
+        topic.extension?.let { extension ->
+            if (!config.extensions.enabled) return false
+            return !principal.anonymous || (extension.public && !hidden(extension.namespace, topic.id))
+        }
         if (topic == Topic.PLAYER_CHAT && !config.events.chat) return false
         if (!principal.anonymous) return true
         if (topic.id !in config.websocket.anonymousTopics) return false
@@ -22,6 +26,9 @@ class Visibility(private val principal: Principal, private val config: WorldApiC
             Topic.Privacy.INVENTORIES -> privacy.inventories
         }
     }
+
+    /** Whether the server's config keeps a plugin's resource or topic from anonymous clients. */
+    fun hidden(namespace: String, id: String) = config.extensions.private.any { it == namespace || it == id }
 
     /** Events about a vanished player reach admin clients only. */
     fun shows(event: ApiEvent) = !event.hidden || principal.has(Scope.ADMIN)

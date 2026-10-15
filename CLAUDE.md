@@ -21,6 +21,7 @@ A Paper 26.3 plugin that serves the server's state over REST and a WebSocket: wo
 | `store/` | Event history, sessions, audit log, experience: Exposed DSL over HikariCP on SQLite, PostgreSQL, or MySQL/MariaDB. Writes queue on one thread; reads wait for the writes queued before them. Table and column names stay as 1.x made them in SQLite |
 | `plan/` | The section on Plan's pages. Plan is optional: its classes load only when it's enabled, and it calls the extension from its own threads, so it reads only thread-safe state |
 | `bukkit/Vanish.kt` | `Player.isVanished` (the `vanished` metadata vanish plugins set, server thread only) and `Vanished`, the thread-safe set the server thread refreshes every 5 ticks for code off it |
+| `extensions/` | Other plugins' data: `Bridge` (the `Function` in Bukkit's ServicesManager that plugins call with maps), `Extensions` (their namespaces and resources), `JsonValues` (their plain values as JSON); `routes/ExtensionRoutes.kt` serves them, and their topics are `Topic.extension` |
 | `tokens/`, `command/` | Issued tokens (stored as SHA-256), the in-game token menu, `/worldapi` |
 | `script/`, `src/main/java/.../script/api` | Java scripts: compiled by the bundled ECJ, loaded by a filtered class loader, checked against blocked calls |
 
@@ -31,6 +32,7 @@ A Paper 26.3 plugin that serves the server's state over REST and a WebSocket: wo
 - `admin` doesn't include `code`. Scripts run arbitrary Java on the server; they stay off by default.
 - Never log or print a token. The token menu shows a new one once, to the player who made it.
 - Vanished players look offline to every client without `admin`. A new endpoint or field that names or counts online players checks `ApiCall.hides` (or `seesVanished`) on the server thread; an event about a player goes through `EventBus`, which marks it `hidden` from `Vanished`, and the hub and history serve hidden events to admin clients only. Counts inside events leave vanished players out for everyone.
+- The extension bridge is a contract other plugins compile against without our classes: plain Java types in, maps out, and `v` on every request. Add ops and fields; never change what an existing one means, or bump `Bridge.CONTRACT` and keep the old behavior for the old version. WorldAPI stores none of a plugin's data, only its `recorded` events.
 - Statistics use vanilla ids, as in the stats files. Bukkit names some differently (PLAY_ONE_MINUTE is `minecraft:play_time`); map them in `vanillaKey`, or online players drop out of boards.
 - A changed field the Moonlands site reads (`site/data.js` in MairwunNx/minecraft) can break the site. Add fields; don't rename or remove them.
 

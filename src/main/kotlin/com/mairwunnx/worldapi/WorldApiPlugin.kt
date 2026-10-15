@@ -16,6 +16,8 @@ import com.mairwunnx.worldapi.events.Sampler
 import com.mairwunnx.worldapi.events.Snapshots
 import com.mairwunnx.worldapi.events.Topic
 import com.mairwunnx.worldapi.events.Windows
+import com.mairwunnx.worldapi.extensions.Bridge
+import com.mairwunnx.worldapi.extensions.Extensions
 import com.mairwunnx.worldapi.plan.Plan
 import com.mairwunnx.worldapi.script.ScriptManager
 import com.mairwunnx.worldapi.stats.Experience
@@ -27,6 +29,10 @@ import com.mairwunnx.worldapi.tokens.TokenMenu
 import com.mairwunnx.worldapi.tokens.TokenStore
 import com.mairwunnx.worldapi.ws.WebSocketHub
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents
+import java.time.Instant
+import java.util.concurrent.atomic.AtomicReference
+import java.util.function.Function
+import java.util.logging.Level
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -34,10 +40,11 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import org.bukkit.event.EventHandler
+import org.bukkit.event.Listener
+import org.bukkit.event.server.PluginDisableEvent
+import org.bukkit.plugin.ServicePriority
 import org.bukkit.plugin.java.JavaPlugin
-import java.time.Instant
-import java.util.concurrent.atomic.AtomicReference
-import java.util.logging.Level
 
 class WorldApiPlugin : JavaPlugin() {
     private val config = AtomicReference<WorldApiConfig>()
@@ -81,7 +88,7 @@ class WorldApiPlugin : JavaPlugin() {
         } catch (error: Exception) {
             logger.severe("tokens.yml is invalid, so in-game tokens don't work until it's fixed: ${error.message}")
         }
-        api = WorldApi(server, main, history, bus, Statistics(server, main), Experience(store), scripts, tokens, config, pluginMeta.version, vanished)
+        api = WorldApi(server, main, history, bus, Statistics(server, main), Experience(store), scripts, tokens, config, pluginMeta.version, vanished, Extensions(bus, logger))
         stopConsole = try {
             ConsoleAppender.install(api.console)
         } catch (error: Throwable) {
@@ -98,6 +105,13 @@ class WorldApiPlugin : JavaPlugin() {
         val windows = Windows(bus) { config.get().websocket.blockWindowSeconds }
         val listeners = Listeners(this, bus, history, api.experience, windows, vanished) { config.get().events.chat }
         server.pluginManager.registerEvents(listeners, this)
+        // Other plugins find the bridge by its type and its plugin, WorldAPI, with nothing of ours on their classpath.
+        @Suppress("UNCHECKED_CAST")
+        server.servicesManager.register(Function::class.java as Class<Function<Map<String, Any?>, Any?>>, Bridge(api.extensions, pluginMeta.version), this, ServicePriority.Normal)
+        server.pluginManager.registerEvents(object : Listener {
+            @EventHandler
+            fun onDisable(event: PluginDisableEvent) = api.extensions.unregisterAll(event.plugin)
+        }, this)
         val sampler = Sampler(server, bus, config::get)
         server.scheduler.runTaskTimer(this, Runnable {
             vanished.refresh(server.onlinePlayers)
@@ -132,6 +146,7 @@ class WorldApiPlugin : JavaPlugin() {
         api.bus.publish(ApiEvent(Topic.SERVER_STATUS, buildJsonObject { put("status", if (server.isStopping) "stopping" else "plugin_disabled") }))
         server.onlinePlayers.forEach { api.history.closeSession(it.uniqueId.toString(), Instant.now()) }
         api.scripts.unloadAll()
+        server.servicesManager.unregisterAll(this)
         api.restart.close()
         hub.closeAll(if (server.isStopping) "Server stopping" else "WorldAPI disabled")
         stopConsole?.invoke()

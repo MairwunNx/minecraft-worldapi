@@ -43,14 +43,15 @@ val eventRoutes = endpoints("Events") {
                 includeHidden = seesVanished,
             ),
         )
-        val items = rows.take(limit).map { row ->
-            val topic = Topic.of(row.type)!!
+        // A plugin that stopped takes its topics with it; its rows wait in the history until it's back.
+        val items = rows.take(limit).mapNotNull { row ->
+            val topic = Topic.of(row.type) ?: return@mapNotNull null
             visibility.redact(
                 EventView(row.id, row.type, Instant.ofEpochMilli(row.at).toString(), row.at, row.playerUuid?.let { PlayerRef(it, row.playerName) }, row.world, row.data),
                 topic,
             )
         }
-        Page(items, nextCursor = if (rows.size > limit) items.last().id.toString() else null)
+        Page(items, nextCursor = if (rows.size > limit) rows[limit - 1].id.toString() else null)
     }
 }
 

@@ -3,6 +3,7 @@ package com.mairwunnx.worldapi.core
 import com.mairwunnx.worldapi.bukkit.Vanished
 import com.mairwunnx.worldapi.config.WorldApiConfig
 import com.mairwunnx.worldapi.events.EventBus
+import com.mairwunnx.worldapi.extensions.Extensions
 import com.mairwunnx.worldapi.script.ScriptManager
 import com.mairwunnx.worldapi.stats.Experience
 import com.mairwunnx.worldapi.stats.Statistics
@@ -28,6 +29,8 @@ class WorldApi(
     val version: String,
     /** Vanished players, for code off the server thread; on it, `Player.isVanished` reads the plugins' mark directly. */
     val vanished: Vanished = Vanished(),
+    /** Other plugins' namespaces, from the extension bridge. */
+    val extensions: Extensions = Extensions(bus, java.util.logging.Logger.getLogger("WorldAPI")),
 ) {
     val config: WorldApiConfig get() = configRef.get()
 

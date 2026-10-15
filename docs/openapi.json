@@ -49,6 +49,9 @@
         },
         {
             "name": "Scripts"
+        },
+        {
+            "name": "Extensions"
         }
     ],
     "paths": {
@@ -240,6 +243,187 @@
                     },
                     "403": {
                         "description": "The token lacks the scope",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit hit; see Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "The server thread didn't answer in time",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/extensions": {
+            "get": {
+                "operationId": "getExtensions",
+                "summary": "Other plugins’ data: their namespaces, resources, and event topics",
+                "description": "Plugins register these through the extension bridge (see the reference). Anonymous clients see only what the plugin marks public.\n\nScope: `read`.",
+                "tags": [
+                    "Extensions"
+                ],
+                "x-scope": "read",
+                "security": [
+                    {
+                        "bearer": [
+                            "read"
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ExtensionInfo"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or unknown token",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The token lacks the scope",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit hit; see Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "The server thread didn't answer in time",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/extensions/{namespace}/{path}": {
+            "get": {
+                "operationId": "getExtensionsNamespacePath",
+                "summary": "One resource of a plugin, read from the plugin as it is now",
+                "description": "Query parameters pass through to the plugin; each resource documents its own.\n\nScope: `read`.",
+                "tags": [
+                    "Extensions"
+                ],
+                "x-scope": "read",
+                "security": [
+                    {
+                        "bearer": [
+                            "read"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "namespace",
+                        "in": "path",
+                        "required": true,
+                        "description": "namespace",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "path",
+                        "in": "path",
+                        "required": true,
+                        "description": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or unknown token",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The token lacks the scope",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -10183,6 +10367,88 @@
                 },
                 "required": [
                     "location"
+                ],
+                "additionalProperties": false
+            },
+            "ExtensionInfo": {
+                "type": "object",
+                "properties": {
+                    "namespace": {
+                        "type": "string"
+                    },
+                    "plugin": {
+                        "type": "string"
+                    },
+                    "version": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "resources": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ExtensionResourceInfo"
+                        }
+                    },
+                    "topics": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ExtensionTopicInfo"
+                        }
+                    }
+                },
+                "required": [
+                    "namespace",
+                    "plugin",
+                    "version",
+                    "description",
+                    "resources",
+                    "topics"
+                ],
+                "additionalProperties": false
+            },
+            "ExtensionResourceInfo": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "public": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "path",
+                    "description",
+                    "public"
+                ],
+                "additionalProperties": false
+            },
+            "ExtensionTopicInfo": {
+                "type": "object",
+                "properties": {
+                    "topic": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "public": {
+                        "type": "boolean"
+                    },
+                    "recorded": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "topic",
+                    "description",
+                    "public",
+                    "recorded"
                 ],
                 "additionalProperties": false
             },

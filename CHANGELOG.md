@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.3.0
+
+- 🔌 **Other plugins share their data through WorldAPI.** A plugin registers a namespace through a bridge in Bukkit’s services, with nothing of WorldAPI’s on its classpath: resources WorldAPI reads from it on request, at `GET /extensions/{namespace}/{path}`, and events it publishes, as `ext.<namespace>.<event>` topics on the WebSocket and, when it asks, in the event history. The plugin keeps its data; WorldAPI stores none of it. Anonymous clients see only what the plugin marks public, and the new `extensions.private` setting closes any of it. `GET /extensions` lists what a client may read. The reference describes the contract for plugin authors.
+- The default `auth.anonymous.endpoints` adds `/extensions` and `/extensions/**`; add them to your own `config.yml` to let visitors read public plugin data.
+
+No field was renamed or removed.
+
 ## 2.2.0
 
 - 📊 **A section in Plan.** With [Plan](https://modrinth.com/plugin/plan) installed, its server page shows WorldAPI's version, endpoints, WebSocket clients connected now, active tokens, and events in history. Each player's page lists the tokens they made in game, with scopes and expiry, and the players table counts them. Token values never reach Plan. Plan is optional; WorldAPI runs the same without it.

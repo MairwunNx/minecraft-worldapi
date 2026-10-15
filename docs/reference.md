@@ -118,6 +118,58 @@ Joins, leaves, kicks, deaths, advancements, chat, skipped nights, boss kills, ra
 
 Each client has its own queue. State topics (time, weather, positions, health, inventories, performance) keep only the newest value per player or world, so a slow client catches up instead of lagging behind. Other events queue up to `websocket.queueSize`; past that, the oldest are dropped and the client gets `{ "op": "dropped", "count": n }`. A slow client never holds up the server or anyone else.
 
+## Extensions
+
+Other plugins share their data through WorldAPI without depending on it: no library to add, nothing of WorldAPI’s on their classpath. A plugin stays the source of truth. WorldAPI reads its resources when a client asks and keeps none of them; it records only the events the plugin marks `recorded`, in the event history like its own.
+
+### The bridge
+
+WorldAPI registers a `java.util.function.Function<Map<String, Any?>, Any?>` in Bukkit’s `ServicesManager`. Find the one whose plugin is WorldAPI, and send it requests as maps of plain Java values. Every request carries `v`, the contract version (1 now); WorldAPI refuses a version newer than it knows, so check the answer’s `contract` if you rely on something new. Answers are maps: `ok`, `contract`, `version`. A bad request throws `IllegalArgumentException`.
+
+Declare WorldAPI as an optional dependency that loads before your plugin (`load: BEFORE`, `required: false` in `paper-plugin.yml`), and register in `onEnable`. If WorldAPI starts later, listen for `ServiceRegisterEvent` and register then.
+
+```kotlin
+@Suppress("UNCHECKED_CAST")
+val bridge = Bukkit.getServicesManager().getRegistrations(java.util.function.Function::class.java)
+    .firstOrNull { it.plugin.name == "WorldAPI" }?.provider as? java.util.function.Function<Map<String, Any?>, Any?>
+
+bridge?.apply(mapOf(
+    "v" to 1, "op" to "register", "plugin" to this, "namespace" to "mobosses", "description" to "Bosses and their hunters",
+    "resources" to listOf(
+        mapOf("path" to "hunters", "description" to "The best hunters", "public" to true,
+            "get" to java.util.function.Function<Map<String, String>, Any?> { topHunters() }),
+        mapOf("path" to "players/{player}", "description" to "A player's card", "public" to true,
+            "get" to java.util.function.Function<Map<String, String>, Any?> { card(it.getValue("player")) }),
+        mapOf("path" to "bosses", "description" to "Bosses alive, with coordinates", "mainThread" to true,
+            "get" to java.util.function.Function<Map<String, String>, Any?> { liveBosses() }),
+    ),
+    "events" to listOf(
+        mapOf("name" to "boss.killed", "description" to "Players killed a boss", "public" to true, "recorded" to true),
+    ),
+))
+
+bridge?.apply(mapOf("v" to 1, "op" to "publish", "namespace" to "mobosses", "event" to "boss.killed",
+    "data" to mapOf("type" to "zombie", "level" to 40), "player" to player.uniqueId, "playerName" to player.name, "world" to world.name))
+```
+
+| Op | Fields |
+|---|---|
+| `register` | `plugin` (your plugin), `namespace` (1 to 32 of `a-z 0-9 _ -`), `description`, `resources`, `events`. Registering again replaces the namespace; another plugin can’t take it |
+| `publish` | `namespace`, `event`, `data` (a map), and optionally `player` (a UUID), `playerName`, `world`. Safe from any thread; it reaches clients from the server thread |
+| `unregister` | `namespace`. WorldAPI also drops a plugin’s namespaces when it stops |
+
+**Resources.** `path` is segments of `a-z 0-9 _ -`, or `{name}` for a parameter. `get` takes the path parameters and the query parameters, as strings, and returns plain Java values: maps, lists, arrays, strings, numbers, booleans, and null. UUIDs, enums, and times turn into strings; anything else into its `toString()`. It may return a `CompletableFuture` of those too, which WorldAPI waits up to 10 seconds for. `get` runs on a worker thread, so it must be thread-safe, unless the resource sets `mainThread: true`. Throw `IllegalArgumentException` for 400, `NoSuchElementException` for 404.
+
+**Events.** Each becomes the topic `ext.<namespace>.<name>`, on the WebSocket and, when `recorded`, in `GET /events`. Their data loses `location`, `position`, and the other coordinate keys for anonymous clients unless `privacy.anonymous.coordinates` is on, as with WorldAPI’s own topics.
+
+**Privacy.** Everything a plugin shares needs a token, unless the plugin marks it `public`. Then anonymous clients may read it too, unless the server’s `extensions.private` lists its namespace, its resource (`mobosses/bosses`), or its topic (`ext.mobosses.boss.spawned`). Anonymous clients reach these through `/extensions` and `/extensions/**` in `auth.anonymous.endpoints`, which the default config has.
+
+### Reading it
+
+- `GET /extensions` lists the namespaces, with their resources and topics, that the client may see.
+- `GET /extensions/{namespace}/{path...}` reads one resource, like `/extensions/mobosses/players/Steve`, straight from the plugin.
+- Subscribe to `ext.mobosses.boss.killed` like any topic; `GET /events?type=ext.mobosses.boss.killed` returns the recorded ones.
+
 ## Java scripts
 
 With `scripts.enabled: true`, a token with the `code` scope can send Java to the server. WorldAPI compiles it with the Eclipse compiler bundled in the jar, so a JRE is enough, and loads it in its own class loader.

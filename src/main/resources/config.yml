@@ -52,6 +52,9 @@ auth:
       - /leaderboards/*
       - /aggregates
       - /events
+      # Plugins' data: each resource is still closed unless its plugin marks it public.
+      - /extensions
+      - /extensions/**
       - /openapi.json
       - /docs
       - /ws
@@ -104,6 +107,15 @@ events:
   chat: false
   # Days to keep the event history and the audit log; 0 keeps them forever.
   retentionDays: 0
+
+# Other plugins' data, through the extension bridge: their resources under
+# /extensions and their topics as ext.<namespace>.<event> (docs/reference.md).
+# A plugin marks what anonymous clients may see; list here what they mustn't
+# anyway: a namespace (mobosses), a resource (mobosses/bosses), or a topic
+# (ext.mobosses.boss.spawned).
+extensions:
+  enabled: true
+  private: []
 
 limits:
   maxPageSize: 500

@@ -14,6 +14,7 @@ data class WorldApiConfig(
     val privacy: Privacy = Privacy(),
     val websocket: WebSocket = WebSocket(),
     val events: Events = Events(),
+    val extensions: Extensions = Extensions(),
     val limits: Limits = Limits(),
     val scripts: Scripts = Scripts(),
     val database: DatabaseSettings = DatabaseSettings(),
@@ -68,6 +69,9 @@ data class Anonymous(
         "/leaderboards/*",
         "/aggregates",
         "/events",
+        // Plugins' data: each resource is still closed unless its plugin marks it public.
+        "/extensions",
+        "/extensions/**",
         "/openapi.json",
         "/docs",
         "/ws",
@@ -122,6 +126,17 @@ data class WebSocket(
     val performanceIntervalSeconds: Int = 5,
     val moveIntervalMillis: Long = 1_000,
     val blockWindowSeconds: Int = 5,
+)
+
+/** Other plugins' data, through the extension bridge. */
+@Serializable
+data class Extensions(
+    val enabled: Boolean = true,
+    /**
+     * Kept from anonymous clients even where the plugin marks it public: a namespace (`mobosses`),
+     * one of its resources (`mobosses/bosses`), or one of its topics (`ext.mobosses.boss.spawned`).
+     */
+    val private: List<String> = emptyList(),
 )
 
 @Serializable
