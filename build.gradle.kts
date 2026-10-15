@@ -15,6 +15,7 @@ version = (findProperty("releaseVersion") as String?)?.takeIf { it.isNotBlank() 
 repositories {
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
+    maven("https://repo.playeranalytics.net/releases/")
 }
 
 val ktorVersion = "3.6.0"
@@ -26,6 +27,8 @@ dependencies {
     compileOnly("org.xerial:sqlite-jdbc:3.53.4.0")
     // Paper logs through Log4j; GET /server/logs hooks its root logger.
     compileOnly("org.apache.logging.log4j:log4j-core:2.26.1")
+    // Plan is optional: its section shows on Plan's pages when Plan runs next to WorldAPI.
+    compileOnly("com.djrapitops:plan-api:5.9-R1.3")
 
     implementation("io.ktor:ktor-server-core:$ktorVersion")
     implementation("io.ktor:ktor-server-cio:$ktorVersion")

@@ -15,6 +15,7 @@ import com.mairwunnx.worldapi.events.Sampler
 import com.mairwunnx.worldapi.events.Snapshots
 import com.mairwunnx.worldapi.events.Topic
 import com.mairwunnx.worldapi.events.Windows
+import com.mairwunnx.worldapi.plan.Plan
 import com.mairwunnx.worldapi.script.ScriptManager
 import com.mairwunnx.worldapi.stats.Experience
 import com.mairwunnx.worldapi.stats.PlayerData
@@ -45,6 +46,7 @@ class WorldApiPlugin : JavaPlugin() {
     private lateinit var hub: WebSocketHub
     private var http: HttpServer? = null
     private var stopConsole: (() -> Unit)? = null
+    private var plan: AutoCloseable? = null
 
     override fun onEnable() {
         val configPath = dataFolder.toPath().resolve("config.yml")
@@ -109,6 +111,7 @@ class WorldApiPlugin : JavaPlugin() {
         }
 
         startHttp()
+        plan = Plan.start(this, api, { hub.size }, Routes.all.size)
         // The first tick means the worlds are loaded and the server is accepting players.
         server.scheduler.runTask(this, Runnable {
             bus.publish(ApiEvent(Topic.SERVER_STATUS, buildJsonObject {
@@ -121,6 +124,8 @@ class WorldApiPlugin : JavaPlugin() {
 
     override fun onDisable() {
         if (!::api.isInitialized) return
+        plan?.close()
+        plan = null
         api.bus.publish(ApiEvent(Topic.SERVER_STATUS, buildJsonObject { put("status", if (server.isStopping) "stopping" else "plugin_disabled") }))
         server.onlinePlayers.forEach { api.history.closeSession(it.uniqueId.toString(), Instant.now()) }
         api.scripts.unloadAll()

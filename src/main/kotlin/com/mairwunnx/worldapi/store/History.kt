@@ -76,6 +76,9 @@ class History(private val store: Store) {
             .map { it.toEvent() }
     }
 
+    /** How many events the history holds, for Plan's server page. */
+    suspend fun eventCount(): Long = store.read { Events.selectAll().count() }
+
     suspend fun firstEventAt(type: String): Long? = store.read {
         val first = Events.at.min()
         Events.select(first).where { Events.type eq type }.firstOrNull()?.get(first)

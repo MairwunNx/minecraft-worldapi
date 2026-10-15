@@ -5,6 +5,12 @@ api-version: '26.3'
 description: Exposes the world, players, and events over REST and WebSocket
 author: MairwunNx
 website: https://github.com/MairwunNx/minecraft-worldapi
+dependencies:
+  server:
+    Plan:
+      load: BEFORE
+      required: false
+      join-classpath: true
 permissions:
   worldapi.admin:
     description: Use /worldapi

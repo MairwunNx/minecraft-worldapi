@@ -18,6 +18,7 @@
 - 🔑 **Tokens with scopes**, made in a chest menu in game.
 - 🗄️ **SQLite out of the box**, or your own PostgreSQL, MySQL, or MariaDB.
 - 📖 **Built-in docs** at `/api/v1/docs`, and an OpenAPI 3.1 document.
+- 📊 **A section in [Plan](https://modrinth.com/plugin/plan)**, if you run it: the API's state on the server page, each player's tokens on theirs.
 
 ## Install
 
@@ -38,6 +39,10 @@ Keep port 8110 private and put a reverse proxy with HTTPS in front of it; the [R
 | `/worldapi status` | Shows what’s running |
 
 Every command needs `worldapi.admin`, which operators have.
+
+## Plan
+
+With [Plan](https://modrinth.com/plugin/plan) installed, WorldAPI adds its own section to Plan's pages. The server page shows the version, the number of endpoints, the WebSocket clients connected now, the active tokens, and the events in history. A player's page shows the tokens they made in game, with each one's scopes and expiry; a column in the players table counts them. Token values never reach Plan.
 
 ## Safety
 

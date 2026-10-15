@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.2.0
+
+- 📊 **A section in Plan.** With [Plan](https://modrinth.com/plugin/plan) installed, its server page shows WorldAPI's version, endpoints, WebSocket clients connected now, active tokens, and events in history. Each player's page lists the tokens they made in game, with scopes and expiry, and the players table counts them. Token values never reach Plan. Plan is optional; WorldAPI runs the same without it.
+
 ## 2.1.0
 
 - **Items tell what they are.** Wherever WorldAPI shows an item, it now adds the enchantments stored in an enchanted book, the item’s attributes (a sword’s attack damage and speed, armor points and toughness, custom modifiers), the effects of potions, tipped arrows, and suspicious stew, armor trims, dye colors, the anvil repair cost, a written book’s title and author, firework flight and explosions, and what’s inside shulker boxes and bundles. Fields an item doesn’t have are left out, so payloads stay small.

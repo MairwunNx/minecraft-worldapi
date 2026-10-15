@@ -19,6 +19,7 @@ A Paper 26.3 plugin that serves the server's state over REST and a WebSocket: wo
 | `ws/` | The WebSocket hub: per-client outboxes, state topics coalesce, event topics drop the oldest |
 | `stats/` | Statistics from live players and the stats files, leaderboards, aggregates |
 | `store/` | Event history, sessions, audit log, experience: Exposed DSL over HikariCP on SQLite, PostgreSQL, or MySQL/MariaDB. Writes queue on one thread; reads wait for the writes queued before them. Table and column names stay as 1.x made them in SQLite |
+| `plan/` | The section on Plan's pages. Plan is optional: its classes load only when it's enabled, and it calls the extension from its own threads, so it reads only thread-safe state |
 | `tokens/`, `command/` | Issued tokens (stored as SHA-256), the in-game token menu, `/worldapi` |
 | `script/`, `src/main/java/.../script/api` | Java scripts: compiled by the bundled ECJ, loaded by a filtered class loader, checked against blocked calls |
 
@@ -48,9 +49,10 @@ A Paper 26.3 plugin that serves the server's state over REST and a WebSocket: wo
 1. `./gradlew build`: the tests and the jar.
 2. A real Paper with the jar, started and stopped by the script, which fails on any error about the plugin:
    ```sh
-   python3 -I .claude/scripts/paper_smoke.py --game 26.3 --plugin build/libs/worldapi-dev.jar --expect "Listening on .* endpoints"
+   python3 -I .claude/scripts/paper_smoke.py --game 26.3 --plugin build/libs/worldapi-dev.jar --modrinth plan --expect "Listening on .* endpoints" --expect "Registered extension: WorldAPI" --ignore 'Plan\] Failed to enable geolocation'
    ```
    Pass `--game` the version the project targets, and `--build` to pin a Paper build. The script downloads Paper and Modrinth plugins into `~/.cache/paper-smoke` and keeps the server folder when something fails.
+   Plan reports a failing extension method only as a warning and a file in `plugins/Plan/logs/`, which the script doesn't catch: after a change to `plan/`, add `--keep` and check that folder is empty. Player values appear only once a player joins.
 3. Endpoints and the WebSocket need a running server to call: the Docker compose snippet in README.md, then `curl` with the admin token from its `config.yml`. After a release reaches Moonlands, `curl -s https://minecraft.mairwunnx.com/worldapi/api/v1/server` shows its `worldApiVersion`, and the site and `scripts/live-check.mjs` in minecraft-mcp read it.
 
 ## Versions
@@ -60,6 +62,7 @@ Where the versions live, for `/update-deps` and `/update-minecraft` (both in `.c
 - The game: `io.papermc.paper:paper-api` (twice: `compileOnly` and `testImplementation`), `gameVersions` (Modrinth) and `platformVersions` (Hangar) in `build.gradle.kts`, and `api-version` in `src/main/resources/paper-plugin.yml`.
 - Java: `jvmToolchain` in `build.gradle.kts`; CI's `setup-java` in `.github/workflows/`.
 - Gradle in `gradle/wrapper/gradle-wrapper.properties`; Kotlin and the Gradle plugins in the `plugins` block; libraries, the JDBC drivers and ECJ among them, in `dependencies`.
+- Plan: `compileOnly("com.djrapitops:plan-api:…")` from `repo.playeranalytics.net`, never shaded. Use only what the Plan servers run offers: graphs and statistics (`DATA_EXTENSION_GRAPH_API`, `DATA_EXTENSION_STATISTICS_API`) need a Plan newer than 5.8.
 
 ## Docs
 
