@@ -192,7 +192,7 @@ class WebSocketHub(
             send(Subscribed(allowed.map { it.id }, message.filter))
             for (topic in allowed) {
                 val current = runCatching { snapshots.snapshot(topic, message.filter) }.getOrDefault(emptyList())
-                if (current.isNotEmpty()) send(Snapshot(topic.id, current.filter { matches(it, filter) }.map { visibility.redact(it.view(), topic) }))
+                if (current.isNotEmpty()) send(Snapshot(topic.id, current.filter { matches(it, filter) && visibility.shows(it) }.map { visibility.redact(it.view(), topic) }))
             }
         }
 
@@ -210,7 +210,7 @@ class WebSocketHub(
                 val visibility = visibility()
                 for (event in batch) {
                     // The principal may have changed since the event was queued.
-                    if (!visibility.allows(event.topic)) continue
+                    if (!visibility.allows(event.topic) || !visibility.shows(event)) continue
                     send(EventMessage(event.topic.id, visibility.redact(event.view(), event.topic)))
                 }
             }

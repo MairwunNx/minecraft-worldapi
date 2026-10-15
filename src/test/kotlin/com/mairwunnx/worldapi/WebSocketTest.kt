@@ -31,8 +31,12 @@ import kotlin.test.assertTrue
 
 class WebSocketTest {
     private val token = "ws-token-0123456789"
+    private val admin = "ws-admin-0123456789"
     private val config = WorldApiConfig(
-        auth = Auth(tokens = listOf(Token("site", token, listOf(Scope.READ))), anonymous = Anonymous(endpoints = listOf("/ws"))),
+        auth = Auth(
+            tokens = listOf(Token("site", token, listOf(Scope.READ)), Token("ops", admin, listOf(Scope.ADMIN))),
+            anonymous = Anonymous(endpoints = listOf("/ws")),
+        ),
     )
 
     private fun test(block: suspend DefaultClientWebSocketSession.(WebSocketHub) -> Unit) = TestApi(config).use { fake ->
@@ -99,6 +103,24 @@ class WebSocketTest {
         val event = next()
         assertEquals("Alex", event["event"]!!.jsonObject["player"]!!.jsonObject["name"]!!.jsonPrimitive.content)
         assertTrue("location" in event["event"]!!.jsonObject["data"]!!.jsonObject)
+    }
+
+    @Test
+    fun `events about vanished players reach admin clients only`() {
+        for ((login, sees) in listOf(null to false, token to false, admin to true)) test { hub ->
+            next()
+            if (login != null) {
+                say("""{"op":"auth","token":"$login"}""")
+                assertEquals("authenticated", next().op())
+            }
+            say("""{"op":"subscribe","topics":["player.death"]}""")
+            assertEquals("subscribed", next().op())
+            hub.accept(death("Ghost").copy(hidden = true))
+            hub.accept(death("Steve"))
+            val names = listOf(next()) + if (sees) listOf(next()) else emptyList()
+            val expected = if (sees) listOf("Ghost", "Steve") else listOf("Steve")
+            assertEquals(expected, names.map { it["event"]!!.jsonObject["player"]!!.jsonObject["name"]!!.jsonPrimitive.content }, "client ${login ?: "anonymous"}")
+        }
     }
 
     @Test

@@ -11,6 +11,7 @@ import com.mairwunnx.worldapi.api.orNotFound
 import com.mairwunnx.worldapi.api.page
 import com.mairwunnx.worldapi.api.pageParams
 import com.mairwunnx.worldapi.api.string
+import com.mairwunnx.worldapi.bukkit.hides
 import com.mairwunnx.worldapi.bukkit.effectViews
 import com.mairwunnx.worldapi.bukkit.loadBlockChunk
 import com.mairwunnx.worldapi.bukkit.plain
@@ -70,6 +71,7 @@ val entityRoutes = endpoints("Entities") {
             }
             found.asSequence()
                 .filter { types == null || it.type in types }
+                .filterNot { it is Player && hides(it) }
                 .sortedBy { it.uniqueId }
                 .map { summary(it, coordinates) }
                 .toList()
@@ -213,7 +215,8 @@ internal fun removable(entity: Entity, includeNamed: Boolean): Boolean = when {
 private fun ApiCall.entity(): Entity {
     val id = path("uuid")
     val uuid = uuidOrNull(id) ?: badRequest("\"$id\" isn't a UUID")
-    return world().getEntity(uuid).orNotFound("entity_not_found") { "No loaded entity $id in ${path("world")}" }
+    // A vanished player is as absent here as anywhere else.
+    return world().getEntity(uuid)?.takeUnless { it is Player && hides(it) }.orNotFound("entity_not_found") { "No loaded entity $id in ${path("world")}" }
 }
 
 private fun summary(entity: Entity, coordinates: Boolean) = EntitySummary(

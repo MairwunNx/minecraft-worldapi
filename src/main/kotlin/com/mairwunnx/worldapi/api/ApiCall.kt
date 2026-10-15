@@ -15,6 +15,8 @@ class ApiCall(val call: ApplicationCall, val endpoint: Endpoint, val api: WorldA
     val seesInventories get() = !principal.anonymous || config.privacy.anonymous.inventories
     val seesAddresses get() = principal.has(Scope.ADMIN) || (principal.anonymous && config.privacy.anonymous.addresses)
     val seesChat get() = !principal.anonymous || config.privacy.anonymous.chat
+    /** Vanished players show only to admin clients; to everyone else they look offline. */
+    val seesVanished get() = principal.has(Scope.ADMIN)
 
     // A tail parameter like {key...} arrives as several segments: rejoin them.
     fun path(name: String): String = call.parameters.getAll(name)?.joinToString("/")?.takeIf { it.isNotEmpty() } ?: badRequest("Missing path parameter $name")

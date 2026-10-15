@@ -1,5 +1,6 @@
 package com.mairwunnx.worldapi.routes
 
+import com.mairwunnx.worldapi.bukkit.hides
 import com.mairwunnx.worldapi.api.endpoints
 import com.mairwunnx.worldapi.api.integer
 import com.mairwunnx.worldapi.api.notFound
@@ -34,13 +35,14 @@ val statsRoutes = endpoints("Leaderboards") {
         val board = Board.of(id) ?: notFound("unknown_statistic", "No leaderboard or statistic \"$id\"")
         val limit = limit
         val entries = if (board.experience) {
-            val online = main { api.server.onlinePlayers.map { it.uniqueId }.toSet() }
+            val online = main { api.server.onlinePlayers.filterNot(::hides).map { it.uniqueId }.toSet() }
             val ranked = rank(api.experience.totals().map { it to it.points.toDouble() }) { it.name }
             ranked.map { LeaderboardEntry(it.place, PlayerRef(it.item.uuid.toString(), it.item.name), it.value, it.item.uuid in online) }
         } else {
             val everyone = api.statistics.everyone(board.refs.takeIf { !board.advancements }, withAdvancements = board.advancements)
             val ranked = rank(everyone.map { it to board.score(it.stats, it.advancements) }) { it.name }
-            ranked.map { LeaderboardEntry(it.place, PlayerRef(it.item.uuid.toString(), it.item.name), it.value, it.item.online) }
+            val hidden = main { api.server.onlinePlayers.filter(::hides).map { it.uniqueId }.toSet() }
+            ranked.map { LeaderboardEntry(it.place, PlayerRef(it.item.uuid.toString(), it.item.name), it.value, it.item.online && it.item.uuid !in hidden) }
         }
         Leaderboard(board.id, board.title, board.unit, entries.size, entries.take(limit), Instant.now().toString())
     }

@@ -156,6 +156,7 @@ WorldAPI hands out exactly what you allow and nothing more. Here is what makes t
 
 - 🔒 **No write without a token.** Visitors can only read, and only the paths you list. Each token can do only what its scopes say.
 - 🙈 **Private by default.** Visitors never see coordinates, inventories, IP addresses, or chat unless you turn that on. Block search, which would work as an x-ray, always needs a token.
+- 👻 **Vanished stays vanished.** A player hidden by a vanish plugin (SuperVanish, PremiumVanish, Essentials) looks offline to everyone but `admin` tokens: no place in the online list or counts, no live events, no history from while they were hidden.
 - 🔑 **Tokens stay secret.** WorldAPI compares them in constant time, stores tokens made in game only as SHA-256 digests, and never writes one to the log. The console log endpoint blanks them out too.
 - 🚦 **Limits everywhere.** Rate limits per visitor and per token, a cap on WebSocket connections per client, a 1 MiB cap on request bodies, and hard caps on fills, spawns, removals, explosions, and search radii.
 - 🧾 **An audit log.** Every change goes to the server log and the database with the token’s name, the endpoint, the target, and the result. Console commands and scripts are kept in full.

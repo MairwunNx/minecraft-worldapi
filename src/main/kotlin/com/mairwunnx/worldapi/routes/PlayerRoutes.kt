@@ -12,7 +12,9 @@ import com.mairwunnx.worldapi.bukkit.findWorld
 import com.mairwunnx.worldapi.bukkit.iso
 import com.mairwunnx.worldapi.bukkit.key
 import com.mairwunnx.worldapi.bukkit.knownPlayer
+import com.mairwunnx.worldapi.bukkit.hides
 import com.mairwunnx.worldapi.bukkit.onlinePlayer
+import com.mairwunnx.worldapi.bukkit.visibleOnline
 import com.mairwunnx.worldapi.bukkit.plain
 import com.mairwunnx.worldapi.bukkit.text
 import com.mairwunnx.worldapi.bukkit.toLocation
@@ -57,7 +59,8 @@ val playerRoutes = endpoints("Players") {
         val playtime = api.statistics.everyone(listOf(playTime), withAdvancements = false).associate { it.uuid to playTime.read(it.stats) }
         val players = main {
             api.server.offlinePlayers.filter { it.name != null }.map {
-                PlayerSummary(it.uniqueId.toString(), it.name!!, it.isOnline, iso(it.firstPlayed), iso(lastSeen(it)), (playtime[it.uniqueId] ?: 0) / 20)
+                val hidden = it.player?.let(::hides) == true
+                PlayerSummary(it.uniqueId.toString(), it.name!!, it.isOnline && !hidden, iso(it.firstPlayed), iso(lastSeen(it, hidden)), (playtime[it.uniqueId] ?: 0) / 20)
             }
         }
         players.filter { online == null || it.online == online }
@@ -74,7 +77,7 @@ val playerRoutes = endpoints("Players") {
     get("/players/online", "Who is playing right now") {
         val coordinates = seesCoordinates
         main {
-            val players = api.server.onlinePlayers.sortedBy { it.name.lowercase() }.map {
+            val players = api.server.onlinePlayers.filterNot(::hides).sortedBy { it.name.lowercase() }.map {
                 OnlinePlayer(
                     it.uniqueId.toString(), it.name, it.displayName().plain(), it.world.name, it.gameMode.name.lowercase(),
                     it.health, it.foodLevel, it.level, it.ping, it.idleDuration.toSeconds(),
@@ -88,7 +91,10 @@ val playerRoutes = endpoints("Players") {
     get("/players/{player}", "A player's profile, state, and whereabouts") {
         val coordinates = seesCoordinates
         val addresses = seesAddresses
-        main { playerView(knownPlayer(), coordinates, addresses) }
+        main {
+            val player = knownPlayer()
+            playerView(player, coordinates, addresses, hidden = player.player?.let(::hides) == true)
+        }
     }
 
     patch<PlayerPatch, PlayerView>(
@@ -109,7 +115,7 @@ val playerRoutes = endpoints("Players") {
             val player = onlinePlayer()
             val target = when {
                 request.location != null -> request.location.toLocation(api.server)
-                request.player != null -> (api.server.findOnline(request.player) ?: notFound("player_not_found", "${request.player} isn't online")).location
+                request.player != null -> (visibleOnline(request.player) ?: notFound("player_not_found", "${request.player} isn't online")).location
                 else -> (api.server.findWorld(request.worldSpawn!!) ?: notFound("world_not_found", "No world ${request.worldSpawn}")).spawnLocation
             }
             player to target
@@ -150,22 +156,27 @@ val playerRoutes = endpoints("Players") {
     }
 }
 
-/** Paper's last-seen is 0 for someone online right now; use the login time then. */
-private fun lastSeen(player: OfflinePlayer) = if (player.isOnline) System.currentTimeMillis() else player.lastSeen
+/**
+ * Paper's last-seen is 0 for someone online right now; use the login time then. A vanished player looks
+ * offline, so they get Paper's own value, which never says they're here now.
+ */
+private fun lastSeen(player: OfflinePlayer, hidden: Boolean = false) = if (player.isOnline && !hidden) System.currentTimeMillis() else player.lastSeen
 
-fun playerView(player: OfflinePlayer, coordinates: Boolean, addresses: Boolean): PlayerView {
-    val online = player as? Player ?: player.player
+/** With [hidden], an online player shows as offline: no live state, the saved position. */
+fun playerView(player: OfflinePlayer, coordinates: Boolean, addresses: Boolean, hidden: Boolean = false): PlayerView {
+    val online = (player as? Player ?: player.player)?.takeUnless { hidden }
     return PlayerView(
         uuid = player.uniqueId.toString(),
         name = player.name ?: player.uniqueId.toString(),
         online = online != null,
         firstPlayed = iso(player.firstPlayed),
-        lastSeen = iso(lastSeen(player)),
+        lastSeen = iso(lastSeen(player, hidden)),
         skinUrl = online?.playerProfile?.textures?.skin?.toString(),
         op = player.isOp,
         whitelisted = player.isWhitelisted,
         banned = player.isBanned,
-        location = if (coordinates) (online?.location ?: player.location)?.view() else null,
+        // An online player's own location is live, so a hidden one gets none.
+        location = if (coordinates) (online?.location ?: player.takeUnless { hidden }?.location)?.view() else null,
         respawnLocation = if (coordinates) runCatching { player.getRespawnLocation(false) }.getOrNull()?.view(withRotation = false) else null,
         state = online?.let { state(it, addresses) },
     )

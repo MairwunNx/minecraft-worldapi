@@ -1,6 +1,7 @@
 package com.mairwunnx.worldapi
 
 import com.mairwunnx.worldapi.api.HttpServer
+import com.mairwunnx.worldapi.bukkit.Vanished
 import com.mairwunnx.worldapi.command.TokenCommands
 import com.mairwunnx.worldapi.command.WorldApiCommand
 import com.mairwunnx.worldapi.config.ConfigFile
@@ -70,7 +71,8 @@ class WorldApiPlugin : JavaPlugin() {
         logger.info("Keeping history in ${store.description}")
         val history = History(store)
         history.lastActivity()?.let { history.closeStaleSessions(Instant.ofEpochMilli(it)) }
-        val bus = EventBus(history) { config.get().events.chat }
+        val vanished = Vanished()
+        val bus = EventBus(history, vanished) { config.get().events.chat }
         val main = BukkitMainThread(this) { config.get().http.mainThreadTimeoutMillis }
         val scripts = ScriptManager(this, bus, config::get, logger)
         val tokens = TokenStore(dataFolder.toPath().resolve("tokens.yml"))
@@ -79,7 +81,7 @@ class WorldApiPlugin : JavaPlugin() {
         } catch (error: Exception) {
             logger.severe("tokens.yml is invalid, so in-game tokens don't work until it's fixed: ${error.message}")
         }
-        api = WorldApi(server, main, history, bus, Statistics(server, main), Experience(store), scripts, tokens, config, pluginMeta.version)
+        api = WorldApi(server, main, history, bus, Statistics(server, main), Experience(store), scripts, tokens, config, pluginMeta.version, vanished)
         stopConsole = try {
             ConsoleAppender.install(api.console)
         } catch (error: Throwable) {
@@ -94,10 +96,11 @@ class WorldApiPlugin : JavaPlugin() {
         bus.interest = hub::wants
 
         val windows = Windows(bus) { config.get().websocket.blockWindowSeconds }
-        val listeners = Listeners(this, bus, history, api.experience, windows) { config.get().events.chat }
+        val listeners = Listeners(this, bus, history, api.experience, windows, vanished) { config.get().events.chat }
         server.pluginManager.registerEvents(listeners, this)
         val sampler = Sampler(server, bus, config::get)
         server.scheduler.runTaskTimer(this, Runnable {
+            vanished.refresh(server.onlinePlayers)
             sampler.tick()
             windows.flushIfDue()
         }, 20, 5)

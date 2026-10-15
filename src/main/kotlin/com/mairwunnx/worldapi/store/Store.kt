@@ -89,9 +89,15 @@ class Store(private val settings: DatabaseSettings, folder: Path) : AutoCloseabl
         pool.close()
     }
 
-    /** Creates the tables a new database lacks, and the indexes an existing table lacks. */
+    /** Creates the tables a new database lacks, and the columns and indexes an existing table lacks. */
     private fun JdbcTransaction.createSchema() {
         SchemaUtils.create(*TABLES)
+        currentDialectMetadata.resetCaches()
+        val columns = currentDialectMetadata.tableColumns(*TABLES)
+        TABLES.forEach { table ->
+            val names = columns[table].orEmpty().map { it.name.lowercase() }
+            table.columns.filter { it.name.lowercase() !in names }.forEach { column -> column.ddl.forEach(::exec) }
+        }
         currentDialectMetadata.resetCaches()
         val existing = currentDialectMetadata.existingIndices(*TABLES)
         TABLES.forEach { table ->

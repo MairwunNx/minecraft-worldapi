@@ -42,6 +42,8 @@ data class EventQuery(
     val before: Long? = null,
     val limit: Int = 100,
     val oldestFirst: Boolean = false,
+    /** Events recorded while their player was vanished; only admin clients ask for them. */
+    val includeHidden: Boolean = false,
 )
 
 data class Session(val id: Long, val playerUuid: String, val playerName: String, val joinedAt: Long, val leftAt: Long?, val closedByRestart: Boolean)
@@ -50,8 +52,9 @@ data class AuditEntry(val token: String, val method: String, val path: String, v
 
 /** The queries behind the history endpoints. */
 class History(private val store: Store) {
-    fun record(type: String, at: Instant, playerUuid: String?, playerName: String?, world: String?, data: JsonObject) = store.write {
+    fun record(type: String, at: Instant, playerUuid: String?, playerName: String?, world: String?, data: JsonObject, hidden: Boolean = false) = store.write {
         Events.insert {
+            it[Events.hidden] = hidden
             it[Events.type] = type
             it[Events.at] = at.toEpochMilli()
             it[Events.playerUuid] = playerUuid
@@ -68,6 +71,7 @@ class History(private val store: Store) {
             query.from?.let { add(Events.at greaterEq it) }
             query.to?.let { add(Events.at less it) }
             query.before?.let { add(if (query.oldestFirst) Events.id greater it else Events.id less it) }
+            if (!query.includeHidden) add(Events.hidden eq false)
         }
         Events.selectAll()
             .apply { if (where.isNotEmpty()) where(where.reduce(Op<Boolean>::and)) }
@@ -84,8 +88,9 @@ class History(private val store: Store) {
         Events.select(first).where { Events.type eq type }.firstOrNull()?.get(first)
     }
 
-    fun openSession(uuid: String, name: String, at: Instant) = store.write {
+    fun openSession(uuid: String, name: String, at: Instant, hidden: Boolean = false) = store.write {
         Sessions.insert {
+            it[Sessions.hidden] = hidden
             it[playerUuid] = uuid
             it[playerName] = name
             it[joinedAt] = at.toEpochMilli()
@@ -104,9 +109,15 @@ class History(private val store: Store) {
         }
     }
 
-    suspend fun sessions(uuid: String, before: Long?, limit: Int): List<Session> = store.read {
+    /** A player's sessions, newest first; [includeHidden] adds the ones they played vanished. */
+    suspend fun sessions(uuid: String, before: Long?, limit: Int, includeHidden: Boolean = false): List<Session> = store.read {
         Sessions.selectAll()
-            .where { if (before != null) (Sessions.playerUuid eq uuid) and (Sessions.id less before) else Sessions.playerUuid eq uuid }
+            .where {
+                var where: Op<Boolean> = Sessions.playerUuid eq uuid
+                if (before != null) where = where and (Sessions.id less before)
+                if (!includeHidden) where = where and (Sessions.hidden eq false)
+                where
+            }
             .orderBy(Sessions.id, SortOrder.DESC)
             .limit(limit)
             .map { Session(it[Sessions.id], it[Sessions.playerUuid], it[Sessions.playerName], it[Sessions.joinedAt], it[Sessions.leftAt], it[Sessions.closedByRestart]) }

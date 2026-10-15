@@ -44,6 +44,7 @@ Conventions:
 - `GET /worlds/{world}/search` finds the nearest blocks of some types (`blocks=minecraft:diamond_ore,#minecraft:logs`) or the nearest biome. Block search reads copies of chunks that are already loaded, off the server thread, and never loads more. It needs a token whatever `auth.anonymous` says, because it would show ores through walls. Biome search asks the world generator, so it reaches unexplored land; anonymous clients get it only when they may see coordinates.
 - `DELETE /worlds/{world}/entities?type=minecraft:item` clears entities in bulk, around a point if you give one. It never touches players, skips named mobs and tamed pets unless `includeNamed=true`, and `dryRun=true` only counts.
 - `GET /server/logs` returns recent console lines for admin tokens, filtered by `level` and `grep`. WorldAPI keeps them from its own start, up to `limits.consoleLines`, and blanks out its tokens.
+- Vanished players stay hidden from every client without the `admin` scope, anonymous ones included. WorldAPI calls a player vanished while a vanish plugin (SuperVanish, PremiumVanish, Essentials, and others) sets the `vanished` metadata on them. To such a client they look offline: they're missing from `GET /players/online` and the online counts in `GET /server` and `GET /server/performance`; `GET /players` and `GET /players/{player}` show them with `online: false`, no live state, and no position; leaderboards mark them offline; entity lists leave them out, and `GET /worlds/{world}/entities/{uuid}` answers `404`. Endpoints that need an online player answer `409 player_offline`, so a `write:players` token can't reach them either. `GET /events` and `GET /players/{player}/sessions` leave out what was recorded while the player was vanished, and the session of a player who vanished after joining. Admin clients see everyone.
 - `POST /server/restart` counts down in chat, saves every world and player, and stops the server; `DELETE` calls it off. Something must start the server again: Docker’s restart policy, or a start script that loops.
 
 ### Leaderboards
@@ -69,6 +70,8 @@ Vanilla doesn’t keep lifetime experience, so WorldAPI counts it itself. Each p
 Any vanilla statistic works too: `custom:jump`, `killed:zombie`, `crafted:*`. `GET /aggregates` adds everyone up: hours, blocks and the block mined most, mobs and the mob killed most, deaths, advancements, the world’s day, and the date of the first join.
 
 ## WebSocket
+
+Events about a vanished player, and their state in snapshots, reach `admin` clients only. Counts inside events (`online` in `player.join`, `player.leave`, and `server.status`; sleepers in `player.sleep` and `world.night_skipped`; players per world in `server.performance`) leave vanished players out for everyone.
 
 Connect to `/api/v1/ws`. Send the token in the `Authorization` header, or as the first message if your client can’t set headers. Never put it in the URL.
 

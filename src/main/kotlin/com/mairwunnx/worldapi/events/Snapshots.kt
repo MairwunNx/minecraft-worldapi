@@ -1,5 +1,6 @@
 package com.mairwunnx.worldapi.events
 
+import com.mairwunnx.worldapi.bukkit.isVanished
 import com.mairwunnx.worldapi.core.MainThread
 import com.mairwunnx.worldapi.model.InventoryView
 import com.mairwunnx.worldapi.model.Performance
@@ -19,13 +20,14 @@ class Snapshots(private val server: Server, private val main: MainThread) : Snap
     override suspend fun snapshot(topic: Topic, filter: Filter?): List<ApiEvent> = main.call {
         val worlds = server.worlds.filter { filter?.world == null || it.name.equals(filter.world, ignoreCase = true) }
         val players = server.onlinePlayers.toList()
+        val vanished = players.filter { it.isVanished() }.mapTo(HashSet()) { it.uniqueId.toString() }
         when (topic) {
             Topic.WORLD_TIME -> worlds.map { ApiEvent(topic, WorldTime.serializer().json(worldTime(it)), world = it.name, subject = it.name) }
             Topic.WORLD_WEATHER -> worlds.map { ApiEvent(topic, Weather.serializer().json(weather(it)), world = it.name, subject = it.name) }
             Topic.SERVER_PERFORMANCE -> listOf(ApiEvent(topic, Performance.serializer().json(performance(server)), subject = "server"))
             Topic.SERVER_STATUS -> listOf(ApiEvent(topic, buildJsonObject {
                 put("status", "running")
-                put("online", players.size)
+                put("online", players.size - vanished.size)
             }))
             // For join and leave, the snapshot is who is online right now.
             Topic.PLAYER_JOIN, Topic.PLAYER_LEAVE -> players.map { it.event(Topic.PLAYER_JOIN, buildJsonObject { put("online", true) }) }
@@ -34,6 +36,6 @@ class Snapshots(private val server: Server, private val main: MainThread) : Snap
             Topic.PLAYER_GAMEMODE -> players.map { it.event(topic, buildJsonObject { put("to", it.gameMode.name.lowercase()) }) }
             Topic.PLAYER_INVENTORY -> players.map { it.event(topic, InventoryView.serializer().json(inventoryView(it))) }
             else -> emptyList()
-        }
+        }.map { if (it.player?.uuid in vanished) it.copy(hidden = true) else it }
     }
 }

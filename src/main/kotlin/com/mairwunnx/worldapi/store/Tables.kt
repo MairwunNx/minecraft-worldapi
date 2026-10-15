@@ -14,6 +14,8 @@ object Events : Table("events") {
     val world = text("world").nullable()
     /** JSON; LONGTEXT on MySQL, whose TEXT stops at 64 KB. */
     val data = largeText("data")
+    /** Recorded while the player was vanished: only admin clients read it. Added in 2.2. */
+    val hidden = bool("hidden").default(false)
 
     override val primaryKey = PrimaryKey(id)
 
@@ -30,6 +32,8 @@ object Sessions : Table("sessions") {
     val joinedAt = long("joined_at")
     val leftAt = long("left_at").nullable()
     val closedByRestart = bool("closed_by_restart").default(false)
+    /** The player joined vanished: only admin clients read it. Added in 2.2. */
+    val hidden = bool("hidden").default(false)
 
     override val primaryKey = PrimaryKey(id)
 

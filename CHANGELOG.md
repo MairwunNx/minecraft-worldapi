@@ -3,6 +3,7 @@
 ## 2.2.0
 
 - 📊 **A section in Plan.** With [Plan](https://modrinth.com/plugin/plan) installed, its server page shows WorldAPI's version, endpoints, WebSocket clients connected now, active tokens, and events in history. Each player's page lists the tokens they made in game, with scopes and expiry, and the players table counts them. Token values never reach Plan. Plan is optional; WorldAPI runs the same without it.
+- 👻 **Vanished players stay hidden.** While a vanish plugin (SuperVanish, PremiumVanish, Essentials, and others) hides a player, every client without the `admin` scope sees them as offline: not in `GET /players/online` or the online counts, `online: false` without a position in player lists and profiles, missing from entity lists, and `409 player_offline` where a player must be online. Live events and snapshots about them reach `admin` clients only, and so do the events and play sessions recorded while they were hidden. Counts inside events leave them out for everyone. The database gets a `hidden` column in `events` and `sessions` on the first start; existing rows stay visible.
 
 ## 2.1.0
 

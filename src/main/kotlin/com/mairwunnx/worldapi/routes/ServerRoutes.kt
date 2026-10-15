@@ -29,6 +29,7 @@ import com.mairwunnx.worldapi.model.WorldLoad
 import io.papermc.paper.ServerBuildInfo
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.title.Title
+import com.mairwunnx.worldapi.bukkit.isVanished
 import org.bukkit.Server
 import java.lang.management.ManagementFactory
 import java.time.Duration
@@ -37,11 +38,13 @@ import kotlin.math.round
 
 val serverRoutes = endpoints("Server") {
     get("/server", "Server version, players, settings, and current load") {
-        main { serverInfo(api.server, api.version) }
+        val vanished = seesVanished
+        main { serverInfo(api.server, api.version, vanished) }
     }
 
     get("/server/performance", "TPS, tick times, memory, CPU, and load per world, with the most common entity types") {
-        main { performance(api.server, entityTypes = true) }
+        val vanished = seesVanished
+        main { performance(api.server, entityTypes = true, includeVanished = vanished) }
     }
 
     get("/server/plugins", "Installed plugins") {
@@ -146,7 +149,7 @@ internal fun times(fadeIn: Long?, stay: Long?, fadeOut: Long?): Title.Times = Ti
     Duration.ofMillis((fadeOut ?: 1_000).coerceIn(0, 60_000)),
 )
 
-private fun serverInfo(server: Server, version: String): ServerInfo {
+private fun serverInfo(server: Server, version: String, includeVanished: Boolean): ServerInfo {
     val build = ServerBuildInfo.buildInfo()
     val started = ManagementFactory.getRuntimeMXBean().startTime
     val main = server.worlds.first()
@@ -162,7 +165,7 @@ private fun serverInfo(server: Server, version: String): ServerInfo {
         worldApiVersion = version,
         motd = server.motd().plain(),
         maxPlayers = server.maxPlayers,
-        onlinePlayers = server.onlinePlayers.size,
+        onlinePlayers = server.onlinePlayers.count { includeVanished || !it.isVanished() },
         startedAt = Instant.ofEpochMilli(started).toString(),
         uptimeSeconds = (System.currentTimeMillis() - started) / 1000,
         defaultGameMode = server.defaultGameMode.name.lowercase(),
@@ -199,7 +202,8 @@ internal fun topTypes(keys: List<String>, top: Int = 10): Map<String, Int> =
 private fun Double.short() = round(this * 100) / 100
 
 /** With [entityTypes], each world also counts its entities by type, which walks every entity once. */
-internal fun performance(server: Server, entityTypes: Boolean = false): Performance {
+/** Player counts leave vanished players out unless [includeVanished]; the streamed topic never includes them. */
+internal fun performance(server: Server, entityTypes: Boolean = false, includeVanished: Boolean = false): Performance {
     val tps = server.tps.map { minOf(it, 20.0).short() }
     val ticks = server.tickTimes.map { it / 1_000_000.0 }.sorted()
     fun percentile(p: Double) = if (ticks.isEmpty()) 0.0 else ticks[((ticks.size - 1) * p).toInt()].short()
@@ -212,7 +216,7 @@ internal fun performance(server: Server, entityTypes: Boolean = false): Performa
         memory = Memory(runtime.totalMemory() - runtime.freeMemory(), runtime.totalMemory(), runtime.maxMemory()),
         cpu = Cpu(sun?.processCpuLoad?.takeIf { it >= 0 }?.short(), sun?.cpuLoad?.takeIf { it >= 0 }?.short(), os.availableProcessors),
         worlds = server.worlds.map {
-            WorldLoad(it.name, it.chunkCount, it.entityCount, it.tileEntityCount, it.playerCount, if (entityTypes) topTypes(it.entities.map { e -> e.type.key.asString() }) else null)
+            WorldLoad(it.name, it.chunkCount, it.entityCount, it.tileEntityCount, if (includeVanished) it.playerCount else it.players.count { p -> !p.isVanished() }, if (entityTypes) topTypes(it.entities.map { e -> e.type.key.asString() }) else null)
         },
         at = Instant.now().toString(),
     )

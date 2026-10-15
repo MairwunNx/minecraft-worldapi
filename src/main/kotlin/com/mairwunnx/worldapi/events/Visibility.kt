@@ -1,6 +1,7 @@
 package com.mairwunnx.worldapi.events
 
 import com.mairwunnx.worldapi.api.Principal
+import com.mairwunnx.worldapi.api.Scope
 import com.mairwunnx.worldapi.config.WorldApiConfig
 import com.mairwunnx.worldapi.model.EventView
 import kotlinx.serialization.json.JsonObject
@@ -21,6 +22,9 @@ class Visibility(private val principal: Principal, private val config: WorldApiC
             Topic.Privacy.INVENTORIES -> privacy.inventories
         }
     }
+
+    /** Events about a vanished player reach admin clients only. */
+    fun shows(event: ApiEvent) = !event.hidden || principal.has(Scope.ADMIN)
 
     fun redact(view: EventView, topic: Topic): EventView {
         if (!principal.anonymous || privacy.coordinates || topic.privacy != Topic.Privacy.COORDINATES) return view

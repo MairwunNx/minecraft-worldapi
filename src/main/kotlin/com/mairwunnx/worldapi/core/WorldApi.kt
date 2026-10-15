@@ -1,5 +1,6 @@
 package com.mairwunnx.worldapi.core
 
+import com.mairwunnx.worldapi.bukkit.Vanished
 import com.mairwunnx.worldapi.config.WorldApiConfig
 import com.mairwunnx.worldapi.events.EventBus
 import com.mairwunnx.worldapi.script.ScriptManager
@@ -25,6 +26,8 @@ class WorldApi(
     val tokens: TokenStore,
     private val configRef: AtomicReference<WorldApiConfig>,
     val version: String,
+    /** Vanished players, for code off the server thread; on it, `Player.isVanished` reads the plugins' mark directly. */
+    val vanished: Vanished = Vanished(),
 ) {
     val config: WorldApiConfig get() = configRef.get()
 

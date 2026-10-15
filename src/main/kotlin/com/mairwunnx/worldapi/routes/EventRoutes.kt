@@ -40,6 +40,7 @@ val eventRoutes = endpoints("Events") {
                 before = cursor?.let { it.toLongOrNull() ?: badRequest("Unknown cursor", "invalid_cursor") },
                 limit = limit + 1,
                 oldestFirst = order == "oldest",
+                includeHidden = seesVanished,
             ),
         )
         val items = rows.take(limit).map { row ->

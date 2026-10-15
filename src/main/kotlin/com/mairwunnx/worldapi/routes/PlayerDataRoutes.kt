@@ -11,6 +11,7 @@ import com.mairwunnx.worldapi.api.string
 import com.mairwunnx.worldapi.bukkit.effectViews
 import com.mairwunnx.worldapi.bukkit.key
 import com.mairwunnx.worldapi.bukkit.knownPlayer
+import com.mairwunnx.worldapi.bukkit.hides
 import com.mairwunnx.worldapi.bukkit.onlinePlayer
 import com.mairwunnx.worldapi.bukkit.plain
 import com.mairwunnx.worldapi.bukkit.ref
@@ -140,10 +141,12 @@ val playerDataRoutes = endpoints("Player data") {
     }
 
     get("/players/{player}/sessions", "Play sessions WorldAPI recorded, newest first", query = pageParams) {
-        val player = main { knownPlayer() }
+        val (player, hidden) = main { knownPlayer().let { it to (it.player?.let(::hides) == true) } }
         val before = cursor?.let { it.toLongOrNull() ?: badRequest("Unknown cursor", "invalid_cursor") }
         val limit = limit
-        val sessions = api.history.sessions(player.uniqueId.toString(), before, limit + 1)
+        // Sessions played vanished stay with admin clients, and so does the open one of a player who vanished since joining.
+        val sessions = api.history.sessions(player.uniqueId.toString(), before, limit + 1, includeHidden = seesVanished)
+            .filterNot { hidden && it.leftAt == null }
         val now = System.currentTimeMillis()
         Page(
             sessions.take(limit).map {

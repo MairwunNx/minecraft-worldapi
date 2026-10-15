@@ -1,6 +1,9 @@
 package com.mairwunnx.worldapi.events
 
+import com.mairwunnx.worldapi.bukkit.Vanished
+import com.mairwunnx.worldapi.bukkit.isVanished
 import com.mairwunnx.worldapi.bukkit.plain
+import com.mairwunnx.worldapi.bukkit.uuidOrNull
 import com.mairwunnx.worldapi.bukkit.ref
 import com.mairwunnx.worldapi.routes.weather
 import com.mairwunnx.worldapi.routes.worldTime
@@ -67,6 +70,7 @@ class Listeners(
     private val history: History,
     private val experience: Experience,
     private val windows: Windows,
+    private val vanished: Vanished,
     private val chatEnabled: () -> Boolean,
 ) : Listener {
     private val server = plugin.server
@@ -75,19 +79,25 @@ class Listeners(
     private var lastSave = 0L
 
     private fun publish(event: ApiEvent) {
-        if (bus.wanted(event.topic)) bus.publish(event)
+        if (!bus.wanted(event.topic)) return
+        // Vanish plugins share no event: look at the player now, while on the server thread. Chat arrives off it.
+        if (server.isPrimaryThread) event.player?.uuid?.let(::uuidOrNull)?.let(server::getPlayer)?.let(vanished::check)
+        bus.publish(event)
     }
+
+    /** Counts in event payloads leave vanished players out, since everyone may read them. */
+    private fun visible(players: Collection<Player>) = players.count { !it.isVanished() }
 
     @EventHandler(priority = EventPriority.MONITOR)
     fun onJoin(event: PlayerJoinEvent) {
         val player = event.player
         joinedAt[player.uniqueId] = System.currentTimeMillis()
-        history.openSession(player.uniqueId.toString(), player.name, Instant.now())
+        history.openSession(player.uniqueId.toString(), player.name, Instant.now(), hidden = player.isVanished())
         // Someone who never joined since WorldAPI started counting gets their baseline now.
         experience.seed(player.uniqueId, player.name, player.totalExperience)
         publish(player.event(Topic.PLAYER_JOIN, buildJsonObject {
             put("firstJoin", !player.hasPlayedBefore())
-            put("online", server.onlinePlayers.size)
+            put("online", visible(server.onlinePlayers))
         }))
     }
 
@@ -99,7 +109,7 @@ class Listeners(
         publish(player.event(Topic.PLAYER_LEAVE, buildJsonObject {
             put("reason", event.reason.name.lowercase())
             since?.let { put("sessionSeconds", (System.currentTimeMillis() - it) / 1000) }
-            put("online", server.onlinePlayers.size - 1)
+            put("online", visible(server.onlinePlayers.filter { it != player }))
         }))
     }
 
@@ -263,7 +273,7 @@ class Listeners(
         publish(player.event(Topic.PLAYER_SLEEP, buildJsonObject {
             put("action", if (entering) "enter" else "leave")
             put("sleeping", sleeping.coerceAtLeast(0))
-            put("players", world.players.count { !it.isSleepingIgnored })
+            put("players", world.players.count { !it.isSleepingIgnored && !it.isVanished() })
         }))
     }
 
@@ -314,7 +324,7 @@ class Listeners(
         publish(ApiEvent(Topic.WORLD_NIGHT_SKIPPED, buildJsonObject {
             put("skippedTicks", skipped)
             put("day", (world.fullTime + skipped) / 24_000 + 1)
-            put("sleepers", kotlinx.serialization.json.JsonArray(world.players.filter { it.isSleeping }.map { JsonPrimitive(it.name) }))
+            put("sleepers", kotlinx.serialization.json.JsonArray(world.players.filter { it.isSleeping && !it.isVanished() }.map { JsonPrimitive(it.name) }))
         }, world = world.name))
         // The clock jumps after this event; send the new time once it has.
         server.scheduler.runTask(plugin, Runnable { publishTime(world) })

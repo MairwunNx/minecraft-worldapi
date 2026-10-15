@@ -48,6 +48,7 @@ With [Plan](https://modrinth.com/plugin/plan) installed, WorldAPI adds its own s
 
 - 🔒 **No write without a token**, and each token can do only what its scopes say.
 - 🙈 **Private by default.** Visitors never see coordinates, inventories, IP addresses, or chat unless you turn that on.
+- 👻 **Vanished stays vanished**: a player hidden by SuperVanish, PremiumVanish, or Essentials looks offline to everyone but `admin` tokens.
 - 🔑 **Tokens stay secret**: compared in constant time, stored as digests, never logged.
 - 🚦 **Limits everywhere**: rate limits, body size, WebSocket connections, and hard caps on fills, spawns, removals, and search radii.
 - 🧾 **An audit log** of every change, with the token’s name.
