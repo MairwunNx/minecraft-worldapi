@@ -134,6 +134,11 @@ def main():
         file.write("eula=true\n")
     with open(os.path.join(folder, "server.properties"), "w") as file:
         file.write(f"online-mode=false\nserver-port={free_port()}\nlevel-type=minecraft\\:flat\ngenerate-structures=false\nspawn-protection=0\n")
+    # Plugins with a web server of their own get a free port, so runs side by side don't fight over one.
+    for plugin, config in {"Plan": f"Webserver:\n  Port: {free_port()}\n"}.items():
+        os.makedirs(os.path.join(folder, "plugins", plugin), exist_ok=True)
+        with open(os.path.join(folder, "plugins", plugin, "config.yml"), "w") as file:
+            file.write(config)
 
     log_path = os.path.join(folder, "smoke.log")
     process = subprocess.Popen([args.java, "-Xmx2G", "-jar", server_jar, "--nogui"], cwd=folder,
@@ -187,6 +192,12 @@ def main():
                 if entry.endswith(".class") and "/libs/" not in entry and entry.count("/") >= 2:
                     packages.add(".".join(entry.split("/")[:2]))
     trace_lines += [line for line in lines if line.strip().startswith("at ") and any(p in line for p in packages) and "/libs/" not in line]
+    # Plan logs a failing extension method without the plugin's name, and writes the trace to its own logs folder,
+    # which stays empty on a clean run.
+    trace_lines += [line for line in lines if "DataExtensionMethodCallException" in line]
+    plan_logs = os.path.join(folder, "plugins", "Plan", "logs")
+    if os.path.isdir(plan_logs):
+        trace_lines += [f"Plan wrote an error log: plugins/Plan/logs/{name}" for name in sorted(os.listdir(plan_logs))]
     trace_lines = [line for line in trace_lines if not any(re.search(pattern, line) for pattern in args.ignore)]
     if trace_lines:
         problems.append(f"{len(trace_lines)} error line(s) about the plugins")
