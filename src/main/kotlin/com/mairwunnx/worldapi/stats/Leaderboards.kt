@@ -14,6 +14,8 @@ class Board(
     val advancements: Boolean = false,
     /** Ranks the experience WorldAPI counts itself, not a vanilla statistic. */
     val experience: Boolean = false,
+    /** Ranks the animals WorldAPI counts as tamed itself; vanilla keeps no statistic for it. */
+    val tamed: Boolean = false,
 ) {
     fun score(stats: StatMap, advancementsDone: Int): Double {
         val raw = if (advancements) advancementsDone.toDouble() else refs.sumOf { it.read(stats) }.toDouble()
@@ -43,6 +45,7 @@ class Board(
             Board("damage", "Damage dealt", "hearts", listOf(custom("damage_dealt")), divisor = 20.0),
             Board("netherite", "Netherite mined", "debris", listOf(StatRef("minecraft:mined", "minecraft:ancient_debris"))),
             Board("experience", "Experience gained", "xp", emptyList(), experience = true),
+            Board("tamed", "Animals tamed", "animals", emptyList(), tamed = true),
         ).associateBy { it.id }
 
         /** A preset by name, or any single statistic such as `custom:jump` or `killed:*`. */

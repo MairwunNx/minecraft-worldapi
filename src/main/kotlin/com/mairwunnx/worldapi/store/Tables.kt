@@ -72,4 +72,22 @@ object ExperienceBaseline : Table("experience_baseline") {
     override val primaryKey = PrimaryKey(playerUuid)
 }
 
-val TABLES = arrayOf(Events, Sessions, Audit, ExperienceGained, ExperienceBaseline)
+/** Animals each player has tamed: the pets in the world when WorldAPI first counted, and every one tamed since. Added in 2.4. */
+object TamedAnimals : Table("tamed") {
+    val playerUuid = varchar("player_uuid", 36)
+    val playerName = text("player_name")
+    val tamed = long("tamed")
+
+    override val primaryKey = PrimaryKey(playerUuid)
+}
+
+/** One row once WorldAPI has counted the pets already in the world, so a restart never counts them again. */
+object TamedSeed : Table("tamed_seed") {
+    val id = integer("id")
+    val takenAt = long("taken_at")
+    val pets = long("pets")
+
+    override val primaryKey = PrimaryKey(id)
+}
+
+val TABLES = arrayOf(Events, Sessions, Audit, ExperienceGained, ExperienceBaseline, TamedAnimals, TamedSeed)

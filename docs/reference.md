@@ -64,8 +64,11 @@ Conventions:
 | `damage` | `custom:damage_dealt` | hearts |
 | `netherite` | `mined:ancient_debris` | debris |
 | `experience` | Experience points gained in total: the game’s `XpTotal` when WorldAPI first saw the player, plus every pickup since | xp |
+| `tamed` | Animals tamed: the pets each player owned in the world when WorldAPI first counted, plus every taming since | animals |
 
 Vanilla doesn’t keep lifetime experience, so WorldAPI counts it itself. Each player starts once from the `XpTotal` in their playerdata: everyone with a playerdata file when 1.1.1 first starts, anyone else when they join. From then on, every orb a player picks up, after other plugins had their say, adds to the total in `worldapi.db`, and `/xp` commands don’t count. `XpTotal` holds only what the player gathered since their last death, so the starting point is a lower bound of their real lifetime experience. If 1.1.0 already counted pickups, the player starts from whichever is larger, the count or `XpTotal`, since `XpTotal` already includes what 1.1.0 counted.
+
+Vanilla doesn’t count tamed animals either. On the first start of 2.4.0, WorldAPI counts the pets already in the world by their owners: wolves, cats, parrots, horses, donkeys, mules, llamas, camels, and the rest that keep an owner, from the loaded mobs and from the entity files of every world, once. Every taming after that adds one. A pet that died before that first count left no trace, so the board is a lower bound for the oldest players. The log says how many pets it found, and how many chunks it couldn’t read, such as LZ4-compressed ones.
 
 Any vanilla statistic works too: `custom:jump`, `killed:zombie`, `crafted:*`. `GET /aggregates` adds everyone up: hours, blocks and the block mined most, mobs and the mob killed most, deaths, advancements, the world’s day, and the date of the first join.
 

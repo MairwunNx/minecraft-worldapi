@@ -41,6 +41,7 @@ class TestApi(config: com.mairwunnx.worldapi.config.WorldApiConfig) : AutoClosea
         com.mairwunnx.worldapi.stats.Experience(store),
         com.mairwunnx.worldapi.script.ScriptManager(fakePlugin(), bus, ref::get, java.util.logging.Logger.getAnonymousLogger()),
         tokens, ref, "test",
+        tamed = com.mairwunnx.worldapi.stats.Tamed(store),
     )
 
     override fun close() = store.close()

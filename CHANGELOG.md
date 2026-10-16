@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.4.0
+
+- 🐺 **A leaderboard of tamed animals,** `GET /leaderboards/tamed`. The game keeps no such statistic, so WorldAPI counts the pets already in the world once, by their owners, from the loaded mobs and the entity files of every world, and adds every taming after that. A pet that died before that first count left no trace. The database gets two small tables on the first start.
+
+No field was renamed or removed.
+
 ## 2.3.0
 
 - 🔌 **Other plugins share their data through WorldAPI.** A plugin registers a namespace through a bridge in Bukkit’s services, with nothing of WorldAPI’s on its classpath: resources WorldAPI reads from it on request, at `GET /extensions/{namespace}/{path}`, and events it publishes, as `ext.<namespace>.<event>` topics on the WebSocket and, when it asks, in the event history. The plugin keeps its data; WorldAPI stores none of it. Anonymous clients see only what the plugin marks public, and the new `extensions.private` setting closes any of it. `GET /extensions` lists what a client may read. The reference describes the contract for plugin authors.

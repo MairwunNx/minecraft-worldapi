@@ -23,6 +23,8 @@ import com.mairwunnx.worldapi.script.ScriptManager
 import com.mairwunnx.worldapi.stats.Experience
 import com.mairwunnx.worldapi.stats.PlayerData
 import com.mairwunnx.worldapi.stats.Statistics
+import com.mairwunnx.worldapi.stats.Tamed
+import com.mairwunnx.worldapi.stats.Taming
 import com.mairwunnx.worldapi.store.History
 import com.mairwunnx.worldapi.store.Store
 import com.mairwunnx.worldapi.tokens.TokenMenu
@@ -88,7 +90,7 @@ class WorldApiPlugin : JavaPlugin() {
         } catch (error: Exception) {
             logger.severe("tokens.yml is invalid, so in-game tokens don't work until it's fixed: ${error.message}")
         }
-        api = WorldApi(server, main, history, bus, Statistics(server, main), Experience(store), scripts, tokens, config, pluginMeta.version, vanished, Extensions(bus, logger))
+        api = WorldApi(server, main, history, bus, Statistics(server, main), Experience(store), scripts, tokens, config, pluginMeta.version, vanished, Extensions(bus, logger), Tamed(store))
         stopConsole = try {
             ConsoleAppender.install(api.console)
         } catch (error: Throwable) {
@@ -105,6 +107,8 @@ class WorldApiPlugin : JavaPlugin() {
         val windows = Windows(bus) { config.get().websocket.blockWindowSeconds }
         val listeners = Listeners(this, bus, history, api.experience, windows, vanished) { config.get().events.chat }
         server.pluginManager.registerEvents(listeners, this)
+        val taming = Taming(this, api.tamed, logger)
+        server.pluginManager.registerEvents(taming, this)
         // Other plugins find the bridge by its type and its plugin, WorldAPI, with nothing of ours on their classpath.
         @Suppress("UNCHECKED_CAST")
         server.servicesManager.register(Function::class.java as Class<Function<Map<String, Any?>, Any?>>, Bridge(api.extensions, pluginMeta.version), this, ServicePriority.Normal)
@@ -131,6 +135,7 @@ class WorldApiPlugin : JavaPlugin() {
         plan = Plan.start(this, api, { hub.size }, Routes.all.size)
         // The first tick means the worlds are loaded and the server is accepting players.
         server.scheduler.runTask(this, Runnable {
+            taming.seed()
             bus.publish(ApiEvent(Topic.SERVER_STATUS, buildJsonObject {
                 put("status", "started")
                 put("version", server.minecraftVersion)

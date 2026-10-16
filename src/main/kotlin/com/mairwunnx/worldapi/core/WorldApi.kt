@@ -4,6 +4,7 @@ import com.mairwunnx.worldapi.bukkit.Vanished
 import com.mairwunnx.worldapi.config.WorldApiConfig
 import com.mairwunnx.worldapi.events.EventBus
 import com.mairwunnx.worldapi.extensions.Extensions
+import com.mairwunnx.worldapi.stats.Tamed
 import com.mairwunnx.worldapi.script.ScriptManager
 import com.mairwunnx.worldapi.stats.Experience
 import com.mairwunnx.worldapi.stats.Statistics
@@ -31,6 +32,8 @@ class WorldApi(
     val vanished: Vanished = Vanished(),
     /** Other plugins' namespaces, from the extension bridge. */
     val extensions: Extensions = Extensions(bus, java.util.logging.Logger.getLogger("WorldAPI")),
+    /** Animals each player has tamed, which WorldAPI counts itself. */
+    val tamed: Tamed,
 ) {
     val config: WorldApiConfig get() = configRef.get()
 

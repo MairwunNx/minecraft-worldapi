@@ -28,13 +28,17 @@ val statsRoutes = endpoints("Leaderboards") {
 
     get(
         "/leaderboards/{statistic}", "Players ranked by a statistic, ties sharing a place",
-        description = "Online players count live. Use a preset or any statistic as `category:key`, such as `custom:jump`, `mined:diamond_ore`, or `killed:*`. The `experience` preset starts each player from the game's `XpTotal` (experience since their last death, so a lower bound) and adds every pickup after that, since vanilla keeps no lifetime statistic.",
+        description = "Online players count live. Use a preset or any statistic as `category:key`, such as `custom:jump`, `mined:diamond_ore`, or `killed:*`. The `experience` preset starts each player from the game's `XpTotal` (experience since their last death, so a lower bound) and adds every pickup after that, since vanilla keeps no lifetime statistic. The `tamed` preset starts from the pets each player owns in the world, counted once, and adds every taming after that.",
         query = listOf(integer("limit", "How many places to return; the server caps it")),
     ) {
         val id = path("statistic")
         val board = Board.of(id) ?: notFound("unknown_statistic", "No leaderboard or statistic \"$id\"")
         val limit = limit
-        val entries = if (board.experience) {
+        val entries = if (board.tamed) {
+            val online = main { api.server.onlinePlayers.filterNot(::hides).map { it.uniqueId }.toSet() }
+            val ranked = rank(api.tamed.totals().map { it to it.tamed.toDouble() }) { it.name }
+            ranked.map { LeaderboardEntry(it.place, PlayerRef(it.item.uuid.toString(), it.item.name), it.value, it.item.uuid in online) }
+        } else if (board.experience) {
             val online = main { api.server.onlinePlayers.filterNot(::hides).map { it.uniqueId }.toSet() }
             val ranked = rank(api.experience.totals().map { it to it.points.toDouble() }) { it.name }
             ranked.map { LeaderboardEntry(it.place, PlayerRef(it.item.uuid.toString(), it.item.name), it.value, it.item.uuid in online) }
