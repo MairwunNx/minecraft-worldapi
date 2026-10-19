@@ -89,7 +89,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ship to Moonlands
-        # Moonlands' “Ship a plugin” workflow puts the new jar on the server, unless it's built for another game version.
+        # Moonlands' “Ship a release” workflow puts the new jar on the server, unless it's built for another game version.
         run: gh workflow run ship-plugin.yml -R MairwunNx/minecraft -f repo="$GITHUB_REPOSITORY" -f version="$VERSION"
         env:
           GH_TOKEN: ${{ secrets.FAMILY_ACTIONS_TOKEN }}
