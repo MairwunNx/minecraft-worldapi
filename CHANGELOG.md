@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.2.0
+
+- 🧊 **Blocks look like blocks.** Item icons draw block items as the game’s inventory does: an isometric cube with the top lit and the sides shaded, slabs half as tall, grass and leaves in their plains colors, and chests, ender chests, and barrels with their lids and latches. Other items stay flat, as in the game. Block icons are 64×64.
+- 🔑 **A forgotten password has a second way back.** `POST /accounts/{name}/reset` gives an admin with `tokens:manage` a code that sets a new password for someone who can’t get into the game; the panel shows it next to each account. `/worldapi admin` in game still works too.
+- 💬 **The panel writes to chat** as the server, from the Chat page.
+- In the panel, worlds in the overview link to their pages, stack counts are white with a shadow, as in the game, and icons that weren’t ready yet appear without a reload.
+
 ## 3.1.0
 
 - 🧰 **A menu in game.** `/worldapi` alone opens a chest menu: WorldAPI’s state, a code for the admin panel, tokens to see, create (type the name in chat), and revoke, panel accounts, groups, and a config reload. The subcommands stay.

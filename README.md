@@ -210,7 +210,7 @@ WorldAPI serves a panel at `/admin`, next to the API: `http://localhost:8110/adm
 
 1. In game, run `/worldapi admin`. You get a code for 30 minutes, and with `panel.publicUrl` set in `config.yml`, a link that opens the panel with the code filled in. The first account joins the `owner` group, later ones `admin`, or the group you name.
 2. Open the panel, choose “I have a code”, and enter it with a password of at least 10 characters. The account takes your player name.
-3. Sign in with that name and password from then on. A forgotten password? Run `/worldapi admin` again for a code that sets a new one.
+3. Sign in with that name and password from then on. A forgotten password? Run `/worldapi admin` again for a code that sets a new one, or ask another admin: the panel’s Accounts page makes a reset code too.
 
 An owner or admin can also invite people from the panel: the invite is a code the person enters with a name and a password. Passwords are stored as salted PBKDF2 hashes, and sessions as SHA-256 digests of the cookie.
 
