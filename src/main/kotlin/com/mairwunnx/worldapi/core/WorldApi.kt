@@ -44,6 +44,8 @@ class WorldApi(
     val tamed: Tamed,
     /** Admin panel accounts and sessions. */
     val accounts: AdminAccounts,
+    /** Item icons for the panel, from the game's own textures. */
+    val icons: com.mairwunnx.worldapi.admin.Icons? = null,
     /** The server folder, for /files. */
     val files: ServerFiles = ServerFiles(Path.of(""), Path.of("plugins", "WorldAPI"), Path.of("plugins", "WorldAPI", "backups")),
 ) {

@@ -92,6 +92,7 @@ class WorldApiPlugin : JavaPlugin() {
             logger.severe("tokens.yml is invalid, so in-game tokens don't work until it's fixed: ${error.message}")
         }
         api = WorldApi(server, main, history, bus, Statistics(server, main), Experience(store), scripts, tokens, config, pluginMeta.version, vanished, Extensions(bus, logger), Tamed(store), com.mairwunnx.worldapi.admin.AdminAccounts(store),
+            com.mairwunnx.worldapi.admin.Icons(dataFolder.toPath().resolve("cache"), { server.minecraftVersion }, logger),
             com.mairwunnx.worldapi.files.ServerFiles(java.nio.file.Path.of(""), dataFolder.toPath(), dataFolder.toPath().resolve("backups")))
         warnLegacy(loaded)
         stopConsole = try {
@@ -131,7 +132,8 @@ class WorldApiPlugin : JavaPlugin() {
         server.scheduler.runTaskTimerAsynchronously(this, Runnable { history.prune(config.get().events.retentionDays) }, 20 * 60, 20 * 60 * 60 * 24)
 
         lifecycleManager.registerEventHandler(LifecycleEvents.COMMANDS) { event ->
-            event.registrar().register(WorldApiCommand.build(::reload, ::status, tokenCommands(menu)), "Reload WorldAPI, inspect it, or manage tokens")
+            val tokens = tokenCommands(menu)
+            event.registrar().register(WorldApiCommand.build(::reload, ::status, tokens, hub(tokens)::open), "Open WorldAPI's menu, reload it, or manage tokens and panel codes")
         }
 
         startHttp()
@@ -156,6 +158,7 @@ class WorldApiPlugin : JavaPlugin() {
         api.scripts.unloadAll()
         server.servicesManager.unregisterAll(this)
         api.restart.close()
+        api.icons?.close()
         hub.closeAll(if (server.isStopping) "Server stopping" else "WorldAPI disabled")
         stopConsole?.invoke()
         stopConsole = null
@@ -208,6 +211,40 @@ class WorldApiPlugin : JavaPlugin() {
         } else {
             "WorldAPI reloaded$database"
         }
+    }
+
+    private var hubMenu: com.mairwunnx.worldapi.command.HubMenu? = null
+
+    /** The menu behind `/worldapi`, made once and registered for its clicks and chat prompts. */
+    private fun hub(tokens: TokenCommands): com.mairwunnx.worldapi.command.HubMenu = hubMenu ?: com.mairwunnx.worldapi.command.HubMenu(this, object : com.mairwunnx.worldapi.command.HubActions {
+        override fun status() = this@WorldApiPlugin.status()
+
+        override fun tokens(): List<com.mairwunnx.worldapi.command.TokenLine> {
+            val now = Instant.now()
+            return config.get().auth.tokens.map { com.mairwunnx.worldapi.command.TokenLine(it.name, it.scopes, "From config.yml", issued = false) } +
+                api.tokens.tokens.map {
+                    val expiry = when {
+                        it.expired(now) -> "Expired ${it.expiresAt!!.take(10)}"
+                        it.expiresAt != null -> "Expires ${it.expiresAt.take(10)}"
+                        else -> "Never expires"
+                    }
+                    com.mairwunnx.worldapi.command.TokenLine(it.name, it.scopes, "$expiry, made by ${it.createdBy}", issued = true)
+                }
+        }
+
+        override fun accounts() = kotlinx.coroutines.runBlocking { api.accounts.list() }.map {
+            val seen = it.lastLoginAt?.let { at -> "last sign-in " + Instant.ofEpochMilli(at).toString().take(10) } ?: "never signed in"
+            com.mairwunnx.worldapi.command.AccountLine(it.name, it.groups, "Made by ${it.createdBy}, $seen")
+        }
+
+        override fun groups() = config.get().auth.let { auth -> auth.groups.keys.associateWith { group -> auth.resolver.resolve(listOf(group)).sortedBy { it.ordinal }.map { it.id } } }
+        override fun reload() = this@WorldApiPlugin.reload()
+        override fun adminCode(player: org.bukkit.entity.Player) { tokens.adminCode(player, null)?.let { player.sendMessage(net.kyori.adventure.text.Component.text(it, net.kyori.adventure.text.format.NamedTextColor.RED)) } }
+        override fun createToken(player: org.bukkit.entity.Player, name: String) = tokens.create(player, name)
+        override fun revokeToken(name: String) = tokens.revoke(name)
+    }).also {
+        hubMenu = it
+        server.pluginManager.registerEvents(it, this)
     }
 
     private fun tokenCommands(menu: TokenMenu) = object : TokenCommands {
@@ -267,7 +304,18 @@ class WorldApiPlugin : JavaPlugin() {
                     .clickEvent(net.kyori.adventure.text.event.ClickEvent.copyToClipboard(code))
                     .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(net.kyori.adventure.text.Component.text("Copies the code"))),
             )
-            player.sendMessage(net.kyori.adventure.text.Component.text("Open WorldAPI's /admin page, choose \"I have a code\", and enter it with a password.", net.kyori.adventure.text.format.NamedTextColor.GRAY))
+            val url = config.get().panel.publicUrl.trim().trimEnd('/')
+            if (url.isNotEmpty()) {
+                player.sendMessage(
+                    net.kyori.adventure.text.Component.text("[Open the admin panel]", net.kyori.adventure.text.format.NamedTextColor.GREEN, net.kyori.adventure.text.format.TextDecoration.BOLD)
+                        .clickEvent(net.kyori.adventure.text.event.ClickEvent.openUrl("$url/admin/?code=$code"))
+                        .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(net.kyori.adventure.text.Component.text("$url/admin/, with the code filled in"))),
+                )
+                player.sendMessage(net.kyori.adventure.text.Component.text("Then pick a password of at least 10 characters.", net.kyori.adventure.text.format.NamedTextColor.GRAY))
+            } else {
+                player.sendMessage(net.kyori.adventure.text.Component.text("Open WorldAPI's /admin page, choose \"I have a code\", and enter it with a password. " +
+                    "Set panel.publicUrl in config.yml, and this message brings a link.", net.kyori.adventure.text.format.NamedTextColor.GRAY))
+            }
             return null
         }
     }

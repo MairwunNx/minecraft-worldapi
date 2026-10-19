@@ -73,18 +73,26 @@ class ServerFiles(root: Path, private val ownFolder: Path, private val backups: 
         val relative = relative(path)
         return when (access) {
             Access.READ -> name.endsWith(".log.gz") || name.substringAfterLast('.', "") in READABLE
-            Access.WRITE -> name.substringAfterLast('.', "") in WRITABLE && !relative.startsWith("logs/") && relative !in SERVER_OWNED
+            Access.WRITE -> readOnlyReason(path) == null
+        }
+    }
+
+    /** Why a file can't be written, or null when it can; folders and denied paths aside. */
+    fun readOnlyReason(path: Path): String? {
+        val relative = relative(path)
+        return when {
+            denied(path) -> "WorldAPI doesn't share it"
+            relative == "logs" || relative.startsWith("logs/") -> "Logs are read-only"
+            relative in SERVER_OWNED -> "The server keeps it up to date by itself"
+            path.name.substringAfterLast('.', "").lowercase() !in WRITABLE -> "Only config and text files can be written"
+            else -> null
         }
     }
 
     fun requireFile(path: Path, access: Access): Path {
         if (!allows(path, access)) {
             val what = if (access == Access.READ) "read" else "written"
-            val why = when {
-                access == Access.WRITE && relative(path) in SERVER_OWNED -> ": the server keeps it in memory and would overwrite the change; use its endpoint instead"
-                access == Access.WRITE && relative(path).startsWith("logs/") -> ": logs are read-only"
-                else -> "; config, text, and log files only"
-            }
+            val why = if (access == Access.WRITE) ": " + (readOnlyReason(path) ?: "").replaceFirstChar { it.lowercase() } else "; config, text, and log files only"
             forbidden("${relative(path)} can't be $what$why")
         }
         if (access == Access.READ && !path.isRegularFile()) notFound("file_not_found", "No file ${relative(path)}")
@@ -219,6 +227,11 @@ class ServerFiles(root: Path, private val ownFolder: Path, private val backups: 
         return Written(HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)), bytes.size.toLong(), backup?.let { backups.parent.relativize(it).toString().replace('\\', '/') }, created)
     }
 
+    /** Keeps the current version in the backups folder, for a file the server rewrites itself. */
+    @Synchronized
+    fun keepBackup(path: Path, keep: Int): String? =
+        if (path.isRegularFile()) backups.parent.relativize(backup(path, keep)).toString().replace('\\', '/') else null
+
     private fun backup(path: Path, keep: Int): Path {
         val folder = backups.resolve(relative(path))
         Files.createDirectories(folder)
@@ -230,7 +243,7 @@ class ServerFiles(root: Path, private val ownFolder: Path, private val backups: 
 
     // ---- Listing ----
 
-    class Entry(val name: String, val path: String, val directory: Boolean, val size: Long?, val modified: String, val readable: Boolean, val writable: Boolean)
+    class Entry(val name: String, val path: String, val directory: Boolean, val size: Long?, val modified: String, val readable: Boolean, val writable: Boolean, val readOnlyReason: String?)
 
     fun list(folder: Path, max: Int): Pair<List<Entry>, Boolean> {
         if (!folder.isDirectory()) notFound("folder_not_found", "No folder ${relative(folder)}")
@@ -247,6 +260,7 @@ class ServerFiles(root: Path, private val ownFolder: Path, private val backups: 
                 if (directory) null else runCatching { it.fileSize() }.getOrNull(),
                 runCatching { it.getLastModifiedTime().toInstant().toString() }.getOrDefault(""),
                 directory || allows(it, Access.READ), !directory && allows(it, Access.WRITE),
+                if (directory) null else readOnlyReason(it),
             )
         } to (visible.size > max)
     }
@@ -255,8 +269,8 @@ class ServerFiles(root: Path, private val ownFolder: Path, private val backups: 
         private val READABLE = setOf("yml", "yaml", "json", "json5", "properties", "toml", "conf", "cfg", "ini", "txt", "log", "lang", "mcmeta", "md", "csv", "sk")
         private val WRITABLE = READABLE - setOf("log")
 
-        /** Files the server keeps in memory and saves over any edit; their endpoints change them. */
-        private val SERVER_OWNED = setOf("ops.json", "whitelist.json", "banned-players.json", "banned-ips.json", "usercache.json", "version_history.json")
+        /** Files the server writes by itself; ops, the whitelist, and bans instead go through [ServerLists]. */
+        private val SERVER_OWNED = setOf("usercache.json", "version_history.json")
 
         private val SECRET_NAMES = setOf("tokens.yml", "credentials.json", "secrets.yml", "secrets.yaml")
         private val SECRET_EXTENSIONS = listOf(".key", ".pem", ".p12", ".jks", ".keystore", ".env", ".db", ".sqlite", ".mv.db", ".jar")

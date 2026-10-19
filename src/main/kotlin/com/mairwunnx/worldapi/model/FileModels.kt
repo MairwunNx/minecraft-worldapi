@@ -23,6 +23,8 @@ data class FileEntry(
     /** Whether /files/read may read it, and /files/write and the like change it, with the right permissions. */
     val readable: Boolean,
     val writable: Boolean,
+    /** Why it can't be written, when it can't. */
+    val readOnlyReason: String? = null,
 )
 
 @Serializable
@@ -44,6 +46,9 @@ data class FileContent(
     val modified: String,
     /** Of the file's bytes; send it back as `expectedSha256` so a write fails if the file changed meanwhile. Absent for gzip logs. */
     val sha256: String? = null,
+    /** Whether the write endpoints accept it, given the caller's permissions too. */
+    val writable: Boolean = false,
+    val readOnlyReason: String? = null,
 )
 
 @Serializable

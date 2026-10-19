@@ -18,8 +18,31 @@ class ConsoleLog(private val capacity: () -> Int, private val secrets: () -> Col
     // Whatever the listener logs would come straight back here; one line at a time per thread.
     private val inListener = ThreadLocal.withInitial { false }
 
-    fun add(at: Long, level: String, logger: String?, message: String) {
+    /** Lines logged while a console command runs; see [capture]. */
+    class Capture(val thread: String, val since: Long) {
+        val lines = java.util.concurrent.CopyOnWriteArrayList<String>()
+        @Volatile var until = Long.MAX_VALUE
+    }
+
+    private val captures = java.util.concurrent.CopyOnWriteArrayList<Capture>()
+
+    /**
+     * Collects what the server logs from now until [Capture.until] and a moment after, cleaned
+     * like every line. A command run as the console answers in the log, so this is its output;
+     * some of it, like `say`, comes from other threads. Read [Capture.lines] a moment after the
+     * command returns, then [release].
+     */
+    fun capture(): Capture = Capture(Thread.currentThread().name, System.currentTimeMillis()).also(captures::add)
+
+    fun release(capture: Capture) = captures.remove(capture)
+
+    fun add(at: Long, level: String, logger: String?, message: String, thread: String? = null) {
         val line = LogLine(Instant.ofEpochMilli(at).toString(), level.lowercase(), logger?.takeIf { it.isNotEmpty() }, clean(message))
+        // The command's own thread counts whenever; other threads (chat) by time. Log4j's clock may lag a little.
+        captures.forEach {
+            val own = thread == it.thread && it.until == Long.MAX_VALUE
+            if (own || at in (it.since - GRACE_MILLIS)..(it.until.coerceAtMost(Long.MAX_VALUE - GRACE_MILLIS) + GRACE_MILLIS)) it.lines += line.message.replace(CHAT_PREFIX, "")
+        }
         synchronized(lines) {
             lines.addLast(line)
             val size = capacity().coerceAtLeast(1)
@@ -55,6 +78,11 @@ class ConsoleLog(private val capacity: () -> Int, private val secrets: () -> Col
     }
 
     companion object {
+        private const val GRACE_MILLIS = 250L
+
+        /** What Paper puts before chat in the console, which a command's output doesn't need. */
+        private val CHAT_PREFIX = Regex("^(System chat: |\\[Not Secure] )+")
+
         /** From least to most severe. */
         val LEVELS = listOf("trace", "debug", "info", "warn", "error", "fatal")
 

@@ -161,6 +161,14 @@ limits:
   # Earlier versions kept per file that /files changed, in plugins/WorldAPI/backups.
   fileBackups: 10
 
+panel:
+  # Where people reach WorldAPI from outside, like https://mc.example.com/worldapi (no trailing
+  # slash). /worldapi admin then sends a link that opens the admin panel with the code filled in.
+  publicUrl: ""
+  # Item icons in the admin panel. WorldAPI downloads the game's client for this version from
+  # Mojang once (about 30 MB, into plugins/WorldAPI/cache) and reads the textures from it.
+  icons: true
+
 scripts:
   # Lets tokens with the "code" scope compile and run Java on this server (POST /scripts).
   # Scripts see only Java and the Paper API, and the calls below are blocked, but that is a

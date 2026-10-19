@@ -20,6 +20,8 @@ import com.mairwunnx.worldapi.model.GiveRequest
 import com.mairwunnx.worldapi.model.GiveResult
 import com.mairwunnx.worldapi.model.ItemInput
 import com.mairwunnx.worldapi.model.ItemView
+import com.mairwunnx.worldapi.model.TakeRequest
+import com.mairwunnx.worldapi.model.TakeResult
 import io.ktor.http.HttpStatusCode
 import org.bukkit.entity.Player
 import org.bukkit.inventory.Inventory
@@ -59,6 +61,19 @@ private fun EndpointGroup.containerWrites(kind: String) {
             auditTarget = "${player.name} $kind[$slot]"
             auditDetail = item.view()?.components
             item.view(slot)!!
+        }
+    }
+
+    post<TakeRequest, TakeResult>(
+        "/players/{player}/$kind/slots/{slot}/take", "Take some items from a $title slot", Scope.PLAYERS_WRITE,
+        description = "$WRITE The rest of the stack keeps its enchantments, name, and the like.",
+    ) { request ->
+        main {
+            val player = onlinePlayer()
+            val container = container(player, kind)
+            val slot = slot(container)
+            auditTarget = "${player.name} $kind[$slot]"
+            take(container, slot, request.amount)
         }
     }
 
@@ -107,4 +122,18 @@ private fun ApiCall.slot(inventory: Inventory): Int {
 
 private fun ApiCall.requireInventories() {
     if (!seesInventories) throw ApiException(HttpStatusCode.Forbidden, "private", "Inventories are hidden from anonymous clients")
+}
+
+/** Takes up to [amount] from a slot, keeping the rest of the stack as it was. Server thread only. */
+internal fun take(inventory: Inventory, slot: Int, amount: Int): TakeResult {
+    if (amount < 1) badRequest("amount must be at least 1")
+    val stack = inventory.getItem(slot)?.takeUnless { it.type.isAir } ?: return TakeResult(0)
+    val taken = minOf(amount, stack.amount)
+    if (taken == stack.amount) {
+        inventory.setItem(slot, null)
+        return TakeResult(taken)
+    }
+    stack.amount -= taken
+    inventory.setItem(slot, stack)
+    return TakeResult(taken, stack.view(slot))
 }

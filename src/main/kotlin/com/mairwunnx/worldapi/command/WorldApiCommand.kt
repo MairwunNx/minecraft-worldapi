@@ -22,11 +22,17 @@ interface TokenCommands {
     fun groupNames(): List<String>
 }
 
-/** `/worldapi reload | status | admin [group] | token create|list|revoke`, for operators with worldapi.admin. */
+/** `/worldapi [reload | status | admin [group] | token create|list|revoke]`, for operators with worldapi.admin; alone, it opens [HubMenu]. */
 object WorldApiCommand {
-    fun build(reload: () -> Result<String>, status: () -> List<String>, tokens: TokenCommands): LiteralCommandNode<CommandSourceStack> =
+    fun build(reload: () -> Result<String>, status: () -> List<String>, tokens: TokenCommands, hub: (Player) -> Unit): LiteralCommandNode<CommandSourceStack> =
         Commands.literal("worldapi")
             .requires { it.sender.hasPermission("worldapi.admin") }
+            // Alone, it opens the menu for a player and prints the status for the console.
+            .executes { context ->
+                val sender = context.source.sender
+                if (sender is Player) hub(sender) else status().forEach { sender.sendMessage(Component.text(it)) }
+                Command.SINGLE_SUCCESS
+            }
             .then(Commands.literal("reload").executes { context ->
                 val sender = context.source.sender
                 reload().fold(

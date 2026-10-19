@@ -1038,7 +1038,7 @@
             "post": {
                 "operationId": "postFilesEdit",
                 "summary": "Replace exact text in a file",
-                "description": "Each edit's oldText must appear exactly once (copy it from /files/read without the line numbers), unless replaceAll. Edits apply in order, all or none. Paths are relative to the server folder, with forward slashes. Files under logs/ need logs:read; everything else needs files:read. WorldAPI's own folder, hidden files, keys, databases, and jars are never shared. Needs files:write, which no group but owner has unless you add it. The previous version goes to plugins/WorldAPI/backups (limits.fileBackups per file). Logs, and files the server keeps in memory (ops.json, whitelist.json, banned-*.json, usercache.json), can't be written: their endpoints change them. Send the sha256 from /files/read as expectedSha256, so a write fails with 409 if the file changed meanwhile.\n\nPermission: `files:write`.",
+                "description": "Each edit's oldText must appear exactly once (copy it from /files/read without the line numbers), unless replaceAll. Edits apply in order, all or none. Paths are relative to the server folder, with forward slashes. Files under logs/ need logs:read; everything else needs files:read. WorldAPI's own folder, hidden files, keys, databases, and jars are never shared. Needs files:write, which no group but owner has unless you add it. The previous version goes to plugins/WorldAPI/backups (limits.fileBackups per file). Logs, usercache.json, and version_history.json can't be written. ops.json, whitelist.json, and banned-*.json go through the server: it adds and removes entries to match the new content and saves the file in its own format. Send the sha256 from /files/read as expectedSha256, so a write fails with 409 if the file changed meanwhile.\n\nPermission: `files:write`.",
                 "tags": [
                     "Files"
                 ],
@@ -1277,7 +1277,7 @@
             "post": {
                 "operationId": "postFilesSet",
                 "summary": "Set values in a YAML, .properties, or JSON config by dotted path",
-                "description": "`{\"chunks.auto-save-interval\": 6000}` sets one key, creating the sections on the way; null removes a key. YAML keeps its comments, though spacing and quotes may change; .properties changes only the lines it sets. Paths are relative to the server folder, with forward slashes. Files under logs/ need logs:read; everything else needs files:read. WorldAPI's own folder, hidden files, keys, databases, and jars are never shared. Needs files:write, which no group but owner has unless you add it. The previous version goes to plugins/WorldAPI/backups (limits.fileBackups per file). Logs, and files the server keeps in memory (ops.json, whitelist.json, banned-*.json, usercache.json), can't be written: their endpoints change them. Send the sha256 from /files/read as expectedSha256, so a write fails with 409 if the file changed meanwhile.\n\nPermission: `files:write`.",
+                "description": "`{\"chunks.auto-save-interval\": 6000}` sets one key, creating the sections on the way; null removes a key. YAML keeps its comments, though spacing and quotes may change; .properties changes only the lines it sets. Paths are relative to the server folder, with forward slashes. Files under logs/ need logs:read; everything else needs files:read. WorldAPI's own folder, hidden files, keys, databases, and jars are never shared. Needs files:write, which no group but owner has unless you add it. The previous version goes to plugins/WorldAPI/backups (limits.fileBackups per file). Logs, usercache.json, and version_history.json can't be written. ops.json, whitelist.json, and banned-*.json go through the server: it adds and removes entries to match the new content and saves the file in its own format. Send the sha256 from /files/read as expectedSha256, so a write fails with 409 if the file changed meanwhile.\n\nPermission: `files:write`.",
                 "tags": [
                     "Files"
                 ],
@@ -1367,7 +1367,7 @@
             "put": {
                 "operationId": "putFilesWrite",
                 "summary": "Create a file or replace it whole",
-                "description": "Paths are relative to the server folder, with forward slashes. Files under logs/ need logs:read; everything else needs files:read. WorldAPI's own folder, hidden files, keys, databases, and jars are never shared. Needs files:write, which no group but owner has unless you add it. The previous version goes to plugins/WorldAPI/backups (limits.fileBackups per file). Logs, and files the server keeps in memory (ops.json, whitelist.json, banned-*.json, usercache.json), can't be written: their endpoints change them. Send the sha256 from /files/read as expectedSha256, so a write fails with 409 if the file changed meanwhile.\n\nPermission: `files:write`.",
+                "description": "Paths are relative to the server folder, with forward slashes. Files under logs/ need logs:read; everything else needs files:read. WorldAPI's own folder, hidden files, keys, databases, and jars are never shared. Needs files:write, which no group but owner has unless you add it. The previous version goes to plugins/WorldAPI/backups (limits.fileBackups per file). Logs, usercache.json, and version_history.json can't be written. ops.json, whitelist.json, and banned-*.json go through the server: it adds and removes entries to match the new content and saves the file in its own format. Send the sha256 from /files/read as expectedSha256, so a write fails with 409 if the file changed meanwhile.\n\nPermission: `files:write`.",
                 "tags": [
                     "Files"
                 ],
@@ -3419,6 +3419,126 @@
                 }
             }
         },
+        "/players/{player}/enderchest/slots/{slot}/take": {
+            "post": {
+                "operationId": "postPlayersPlayerEnderchestSlotsSlotTake",
+                "summary": "Take some items from a ender chest slot",
+                "description": "Inventory slots: 0–8 hotbar, 9–35 main, 36 boots, 37 leggings, 38 chestplate, 39 helmet, 40 offhand. Ender chest slots: 0–26. The player must be online. The rest of the stack keeps its enchantments, name, and the like.\n\nPermission: `players:write`.",
+                "tags": [
+                    "Inventories"
+                ],
+                "x-scope": "players:write",
+                "security": [
+                    {
+                        "bearer": [
+                            "players:write"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "player",
+                        "in": "path",
+                        "required": true,
+                        "description": "Player UUID or name",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "slot",
+                        "in": "path",
+                        "required": true,
+                        "description": "Slot number; see the inventory layout in the description",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TakeRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TakeResult"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or unknown token",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The token lacks the permission",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit hit; see Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "The server thread didn't answer in time",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/players/{player}/inventory": {
             "get": {
                 "operationId": "getPlayersPlayerInventory",
@@ -3881,6 +4001,126 @@
                 "responses": {
                     "204": {
                         "description": "Done"
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or unknown token",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The token lacks the permission",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit hit; see Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "The server thread didn't answer in time",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/players/{player}/inventory/slots/{slot}/take": {
+            "post": {
+                "operationId": "postPlayersPlayerInventorySlotsSlotTake",
+                "summary": "Take some items from a inventory slot",
+                "description": "Inventory slots: 0–8 hotbar, 9–35 main, 36 boots, 37 leggings, 38 chestplate, 39 helmet, 40 offhand. Ender chest slots: 0–26. The player must be online. The rest of the stack keeps its enchantments, name, and the like.\n\nPermission: `players:write`.",
+                "tags": [
+                    "Inventories"
+                ],
+                "x-scope": "players:write",
+                "security": [
+                    {
+                        "bearer": [
+                            "players:write"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "player",
+                        "in": "path",
+                        "required": true,
+                        "description": "Player UUID or name",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "slot",
+                        "in": "path",
+                        "required": true,
+                        "description": "Slot number; see the inventory layout in the description",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TakeRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TakeResult"
+                                }
+                            }
+                        }
                     },
                     "400": {
                         "description": "Invalid request",
@@ -8588,6 +8828,153 @@
                 "responses": {
                     "204": {
                         "description": "Done"
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or unknown token",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The token lacks the permission",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit hit; see Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "The server thread didn't answer in time",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/worlds/{world}/blocks/{x}/{y}/{z}/container/slots/{slot}/take": {
+            "post": {
+                "operationId": "postWorldsWorldBlocksXYZContainerSlotsSlotTake",
+                "summary": "Take some items from a container slot",
+                "description": "Slots count from 0; a double chest has 54, the left half first. The rest of the stack keeps its enchantments, name, and the like.\n\nPermission: `world:write`.",
+                "tags": [
+                    "Containers"
+                ],
+                "x-scope": "world:write",
+                "security": [
+                    {
+                        "bearer": [
+                            "world:write"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "world",
+                        "in": "path",
+                        "required": true,
+                        "description": "World name (`world_nether`) or key (`minecraft:the_nether`)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "x",
+                        "in": "path",
+                        "required": true,
+                        "description": "Block X",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "y",
+                        "in": "path",
+                        "required": true,
+                        "description": "Block Y",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "z",
+                        "in": "path",
+                        "required": true,
+                        "description": "Block Z",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "slot",
+                        "in": "path",
+                        "required": true,
+                        "description": "Slot number; see the inventory layout in the description",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TakeRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TakeResult"
+                                }
+                            }
+                        }
                     },
                     "400": {
                         "description": "Invalid request",
@@ -13643,6 +14030,15 @@
                             "string",
                             "null"
                         ]
+                    },
+                    "writable": {
+                        "type": "boolean"
+                    },
+                    "readOnlyReason": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     }
                 },
                 "required": [
@@ -13707,6 +14103,12 @@
                     },
                     "writable": {
                         "type": "boolean"
+                    },
+                    "readOnlyReason": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     }
                 },
                 "required": [
@@ -16602,6 +17004,42 @@
                     "disk",
                     "java",
                     "at"
+                ],
+                "additionalProperties": false
+            },
+            "TakeRequest": {
+                "type": "object",
+                "properties": {
+                    "amount": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                },
+                "required": [
+                    "amount"
+                ],
+                "additionalProperties": false
+            },
+            "TakeResult": {
+                "type": "object",
+                "properties": {
+                    "taken": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "item": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/ItemView"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "taken"
                 ],
                 "additionalProperties": false
             },

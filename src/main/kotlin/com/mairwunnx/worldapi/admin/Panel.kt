@@ -152,6 +152,26 @@ object Panel {
             signIn(call, api, api.accounts.find(name)!!)
         }
 
+        get("/icons/{key}") {
+            http.guard(call, read = true, scope = Scope.SERVER_READ)
+            val icons = api.icons?.takeIf { api.config.panel.icons }
+                ?: throw ApiException(HttpStatusCode.NotFound, "icons_off", "Item icons are off: panel.icons in config.yml")
+            val key = call.parameters["key"].orEmpty()
+            val icon = withContext(Dispatchers.IO) { icons.icon(key) }
+            when {
+                icon != null -> {
+                    call.response.header(HttpHeaders.CacheControl, "public, max-age=86400")
+                    call.respondBytes(icon, ContentType.Image.PNG)
+                }
+                icons.status == Icons.State.LOADING || icons.status == Icons.State.IDLE -> {
+                    call.response.header(HttpHeaders.RetryAfter, "5")
+                    throw ApiException(HttpStatusCode.ServiceUnavailable, "icons_loading", "WorldAPI is fetching the game's textures; try again shortly")
+                }
+                icons.status == Icons.State.FAILED -> throw ApiException(HttpStatusCode.ServiceUnavailable, "icons_unavailable", "WorldAPI couldn't fetch the game's textures; the server log says why")
+                else -> throw ApiException(HttpStatusCode.NotFound, "icon_not_found", "No icon for $key")
+            }
+        }
+
         post("/auth/logout") {
             call.request.cookies[COOKIE]?.let(api.accounts::endSession)
             call.response.cookies.append(cookie(call, "", maxAge = 0))

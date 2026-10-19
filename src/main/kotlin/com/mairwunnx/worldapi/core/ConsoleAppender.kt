@@ -16,7 +16,7 @@ class ConsoleAppender private constructor(private val log: ConsoleLog) :
     override fun append(event: LogEvent) {
         val message = event.message?.formattedMessage ?: return
         val thrown = event.thrown?.let { "\n" + it.toString() } ?: ""
-        log.add(event.timeMillis, event.level.name(), event.loggerName, message + thrown)
+        log.add(event.timeMillis, event.level.name(), event.loggerName, message + thrown, event.threadName)
     }
 
     companion object {

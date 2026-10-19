@@ -19,6 +19,7 @@ data class WorldApiConfig(
     val extensions: Extensions = Extensions(),
     val limits: Limits = Limits(),
     val scripts: Scripts = Scripts(),
+    val panel: PanelSettings = PanelSettings(),
     val database: DatabaseSettings = DatabaseSettings(),
 )
 
@@ -177,6 +178,14 @@ data class Limits(
     val maxReadChars: Int = 262_144,
     /** Earlier versions kept per file that /files changed, in WorldAPI's backups folder. */
     val fileBackups: Int = 10,
+)
+
+@Serializable
+data class PanelSettings(
+    /** Where people open WorldAPI from outside, such as https://mc.example.com/worldapi; /worldapi admin then sends a link. */
+    val publicUrl: String = "",
+    /** Item icons in the panel: WorldAPI downloads the game's client from Mojang once (about 30 MB) and reads textures from it. */
+    val icons: Boolean = true,
 )
 
 @Serializable

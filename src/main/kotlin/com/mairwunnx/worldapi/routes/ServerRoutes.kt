@@ -114,18 +114,27 @@ val serverRoutes = endpoints("Server", Scope.SERVER_READ) {
         if (command.length > 32_767) badRequest("command is too long")
         auditTarget = command.substringBefore(' ')
         auditDetail = command
-        main {
-            val output = mutableListOf<String>()
-            val sender = api.server.createCommandSender { output += it.plain() }
+        // As the console itself, so `say` reads “[Server] …” in game; the console's answer is the output.
+        val (capture, success, failure) = main {
+            val capture = api.console.capture()
             // A command with bad syntax is the caller's mistake, not a server error: report it as output.
-            val success = try {
-                api.server.dispatchCommand(sender, command)
+            val result = try {
+                api.server.dispatchCommand(api.server.consoleSender, command) to null
             } catch (error: org.bukkit.command.CommandException) {
-                output += generateSequence<Throwable>(error) { it.cause }.last().message ?: "The command failed"
-                false
+                false to (generateSequence<Throwable>(error) { it.cause }.last().message ?: "The command failed")
             }
-            CommandResult(success, output)
+            capture.until = System.currentTimeMillis()
+            Triple(capture, result.first, result.second)
         }
+        // Paper logs through an asynchronous queue: wait until the lines stop coming, a second at most.
+        var seen = -1
+        repeat(10) {
+            kotlinx.coroutines.delay(if (it == 0) 150 else 100)
+            if (capture.lines.size == seen && seen > 0) return@repeat
+            seen = capture.lines.size
+        }
+        api.console.release(capture)
+        CommandResult(success, capture.lines.toList() + listOfNotNull(failure))
     }
 
     for (stop in listOf(false, true)) {

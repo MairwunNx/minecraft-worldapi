@@ -21,6 +21,8 @@ import com.mairwunnx.worldapi.model.GiveRequest
 import com.mairwunnx.worldapi.model.GiveResult
 import com.mairwunnx.worldapi.model.ItemInput
 import com.mairwunnx.worldapi.model.ItemView
+import com.mairwunnx.worldapi.model.TakeRequest
+import com.mairwunnx.worldapi.model.TakeResult
 import io.ktor.http.HttpStatusCode
 import org.bukkit.Material
 import org.bukkit.Nameable
@@ -78,6 +80,21 @@ val containerRoutes = endpoints("Containers", Scope.SERVER_READ) {
             auditTarget = "${world.name} $x $y $z [$slot]"
             auditDetail = item.view()?.components
             item.view(slot)!!
+        }
+    }
+
+    post<TakeRequest, TakeResult>(
+        "/worlds/{world}/blocks/{x}/{y}/{z}/container/slots/{slot}/take", "Take some items from a container slot", Scope.WORLD_WRITE,
+        description = "$SLOTS The rest of the stack keeps its enchantments, name, and the like.",
+    ) { request ->
+        val world = world()
+        val (x, y, z) = coordinates()
+        loadBlockChunk(world, x, z)
+        main {
+            val inventory = containerAt(world, x, y, z)
+            val slot = slot(inventory)
+            auditTarget = "${world.name} $x $y $z [$slot]"
+            take(inventory, slot, request.amount)
         }
     }
 

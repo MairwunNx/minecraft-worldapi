@@ -63,15 +63,18 @@ class FilesTest {
     fun `logs and server-owned files can be read but not written`() {
         root.resolve("logs").createDirectories()
         root.resolve("logs/latest.log").writeText("hello")
-        root.resolve("ops.json").writeText("[]")
+        root.resolve("usercache.json").writeText("[]")
         assertTrue(files.allows(root.resolve("logs/latest.log"), Access.READ))
         assertFalse(files.allows(root.resolve("logs/latest.log"), Access.WRITE))
-        assertTrue(files.allows(root.resolve("ops.json"), Access.READ))
-        assertFalse(files.allows(root.resolve("ops.json"), Access.WRITE))
+        assertTrue(files.allows(root.resolve("usercache.json"), Access.READ))
+        assertFalse(files.allows(root.resolve("usercache.json"), Access.WRITE))
+        // The server applies these itself, so they're writable.
+        assertTrue(files.allows(root.resolve("ops.json"), Access.WRITE))
+        assertEquals("Logs are read-only", files.readOnlyReason(root.resolve("logs/latest.log")))
         assertTrue(files.allows(root.resolve("bukkit.yml"), Access.WRITE))
         assertFalse(files.allows(root.resolve("paper.jar"), Access.READ))
         assertFalse(files.allows(root.resolve("world/region/r.0.0.mca"), Access.READ))
-        assertEquals(403, status { files.requireFile(root.resolve("ops.json"), Access.WRITE) })
+        assertEquals(403, status { files.requireFile(root.resolve("usercache.json"), Access.WRITE) })
     }
 
     @Test

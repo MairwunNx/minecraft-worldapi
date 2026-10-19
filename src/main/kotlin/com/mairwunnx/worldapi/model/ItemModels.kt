@@ -156,6 +156,19 @@ data class ContainerView(val size: Int, val items: List<ItemView>)
 data class GiveRequest(val item: ItemInput)
 
 @Serializable
+data class TakeRequest(
+    /** How many to take from the slot; more than it holds empties it. */
+    val amount: Int,
+)
+
+@Serializable
+data class TakeResult(
+    val taken: Int,
+    /** What's left in the slot; absent when it emptied. */
+    val item: ItemView? = null,
+)
+
+@Serializable
 data class GiveResult(
     val given: Int,
     /** Items that didn't fit and were dropped at the player's feet. */
