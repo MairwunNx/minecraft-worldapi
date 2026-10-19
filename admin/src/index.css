@@ -26,6 +26,8 @@
   --destructive: oklch(0.58 0.22 27);
   --success: oklch(0.6 0.15 155);
   --warning: oklch(0.75 0.15 75);
+  /* Warning as text: yellow alone is too faint on white. */
+  --warning-text: oklch(0.52 0.12 65);
   --border: oklch(0.91 0.008 250);
   --input: oklch(0.91 0.008 250);
   --ring: oklch(0.6 0.11 158);
@@ -55,6 +57,7 @@
   --destructive: oklch(0.66 0.2 22);
   --success: oklch(0.7 0.14 155);
   --warning: oklch(0.8 0.14 80);
+  --warning-text: oklch(0.82 0.13 80);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 14%);
   --ring: oklch(0.62 0.1 158);
@@ -90,6 +93,7 @@
   --color-destructive: var(--destructive);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-warning-text: var(--warning-text);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -150,4 +154,32 @@
 .cm-editor .cm-panels {
   background: var(--popover);
   color: var(--popover-foreground);
+}
+
+/* Syntax colors, shared by the editor and the file viewer: chart tokens, so both themes stay readable. */
+.tok-key {
+  color: var(--chart-1);
+}
+.tok-string {
+  color: var(--chart-3);
+}
+.tok-value {
+  color: var(--chart-2);
+}
+.tok-keyword {
+  color: var(--chart-5);
+}
+.tok-comment {
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+.tok-meta,
+.tok-time {
+  color: var(--muted-foreground);
+}
+.tok-warn {
+  color: var(--warning-text);
+}
+.tok-error {
+  color: var(--destructive);
 }

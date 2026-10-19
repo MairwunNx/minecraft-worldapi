@@ -38,7 +38,8 @@
     "tokens": "Tokens",
     "accounts": "Accounts",
     "groups": "Groups",
-    "audit": "Audit log"
+    "audit": "Audit log",
+    "worlds": "Worlds"
   },
   "menu": {
     "theme": "Theme",
@@ -84,7 +85,8 @@
       "short_one": "Use at least {{count}} character",
       "short_other": "Use at least {{count}} characters",
       "mismatch": "The passwords don’t match"
-    }
+    },
+    "codeFromLink": "The code came with your link. Pick a password to finish."
   },
   "account": {
     "title": "Your account",
@@ -238,23 +240,69 @@
     "filterStats": "Filter statistics",
     "noStats": "No statistics yet.",
     "advancementsDone": "{{done}} of {{total}} advancements done. The newest:",
-    "noAdvancements": "No advancements yet."
+    "deathCount_one": "{{count}} death recorded",
+    "deathCount_other": "{{count}} deaths recorded",
+    "killer": "by {{killer}}",
+    "noDeathHistory": "Your account can’t read the event history, where deaths are kept.",
+    "show": "Show",
+    "advancementFilter": {
+      "all": "All",
+      "done": "Done",
+      "left": "Left to do"
+    },
+    "findAdvancement": "Find an advancement",
+    "noAdvancementMatch": "No advancement matches.",
+    "advancementTabs": {
+      "story": "Minecraft",
+      "nether": "Nether",
+      "end": "The End",
+      "adventure": "Adventure",
+      "husbandry": "Husbandry",
+      "other": "Other"
+    },
+    "frames": {
+      "goal": "Goal",
+      "challenge": "Challenge"
+    },
+    "done": "Done",
+    "notDone": "Not done yet"
   },
   "items": {
     "empty": "Empty slot",
-    "type": "Item",
     "amount": "Amount",
-    "durability": "Durability",
-    "enchantments": "Enchantments",
-    "potion": "Potion",
-    "contents": "Contents",
-    "stacks_one": "{{count}} stack",
-    "stacks_other": "{{count}} stacks",
     "head": "Head",
     "chest": "Chest",
     "legs": "Legs",
     "feet": "Feet",
-    "offhand": "Offhand"
+    "offhand": "Offhand",
+    "andMore_one": "and {{count}} more",
+    "andMore_other": "and {{count}} more",
+    "durabilityValue": "Durability {{left}} / {{max}}",
+    "unbreakable": "Unbreakable",
+    "slot": "Slot {{slot}}",
+    "slotNamed": "{{label}}, slot {{slot}}",
+    "emptySlot": "Empty slot {{slot}}",
+    "key": "Item",
+    "keyHint": "A key such as minecraft:torch. The picture shows when the game knows it.",
+    "put": "Put item",
+    "replace": "Replace",
+    "clear": "Clear slot",
+    "clearTitle": "Clear slot {{slot}}?",
+    "clearText": "{{name}} disappears. Nobody gets it back.",
+    "take": "Take",
+    "takeLabel": "Take, of {{max}}",
+    "takeAll": "Take all",
+    "takeAllTitle": "Take all {{count}} of {{name}}?",
+    "takeAllText": "The slot empties; the items are gone.",
+    "give": "Give item",
+    "offline": "Changes need the player online.",
+    "putDone": "{{name}} put in slot {{slot}}",
+    "cleared": "Slot {{slot}} cleared",
+    "taken_one": "Took {{count}} {{name}}",
+    "taken_other": "Took {{count}} {{name}}",
+    "given_one": "Gave {{count}} item",
+    "given_other": "Gave {{count}} items",
+    "givenDropped": "Gave {{given}}; {{dropped}} didn’t fit and dropped"
   },
   "moderation": {
     "reason": "Reason",
@@ -361,7 +409,8 @@
     "added": "added",
     "removed": "removed",
     "saved": "Saved: +{{added}} −{{removed}} lines",
-    "conflict": "Someone changed the file since you opened it. Reload it and make your change again."
+    "conflict": "Someone changed the file since you opened it. Reload it and make your change again.",
+    "readOnlyBecause": "Read only: {{reason}}"
   },
   "plugins": {
     "title": "Plugins",
@@ -460,5 +509,144 @@
   "insecure": {
     "title": "This connection isn’t secure",
     "body": "You reached WorldAPI from the internet without HTTPS, so your password and tokens travel as plain text. Close port 8110 to the internet and put a reverse proxy with HTTPS in front of it, or connect through an SSH tunnel: <code>ssh -L 8110:localhost:8110 you@your-server</code>."
+  },
+  "worlds": {
+    "title": "Worlds",
+    "text": "Every loaded world, with its time, rules, border, and what lives in it.",
+    "none": "No worlds loaded.",
+    "players_one": "{{count}} player",
+    "players_other": "{{count}} players",
+    "environments": {
+      "normal": "Overworld",
+      "nether": "Nether",
+      "the_end": "The End",
+      "custom": "Custom"
+    }
+  },
+  "world": {
+    "saved": "World changed",
+    "state": "Time and weather",
+    "day": "Day",
+    "dayValue": "Day {{day}}, {{clock}}",
+    "moon": "Moon",
+    "weather": "Weather",
+    "difficulty": "Difficulty",
+    "hardcore": "hardcore",
+    "pvp": "PvP",
+    "on": "On",
+    "off": "Off",
+    "load": "Load",
+    "loadValue": "{{players}} players · {{chunks}} chunks · {{entities}} entities",
+    "spawn": "Spawn",
+    "heights": "Heights",
+    "heightsValue": "{{min}} to {{max}}, sea at {{sea}}",
+    "seed": "Seed",
+    "moons": {
+      "full_moon": "Full moon",
+      "waning_gibbous": "Waning gibbous",
+      "third_quarter": "Third quarter",
+      "waning_crescent": "Waning crescent",
+      "new_moon": "New moon",
+      "waxing_crescent": "Waxing crescent",
+      "first_quarter": "First quarter",
+      "waxing_gibbous": "Waxing gibbous"
+    },
+    "weathers": {
+      "clear": "Clear",
+      "rain": "Rain",
+      "thunder": "Thunder"
+    },
+    "difficulties": {
+      "peaceful": "Peaceful",
+      "easy": "Easy",
+      "normal": "Normal",
+      "hard": "Hard"
+    },
+    "setTime": "Set the time",
+    "times": {
+      "morning": "Morning",
+      "noon": "Noon",
+      "evening": "Evening",
+      "night": "Night",
+      "midnight": "Midnight"
+    },
+    "ticks": "Ticks",
+    "set": "Set",
+    "rules": "Game rules",
+    "findRule": "Find a rule",
+    "rule": "Rule",
+    "value": "Value",
+    "default": "Default: {{value}}",
+    "ruleSaved": "{{rule}} saved",
+    "border": "World border",
+    "borderSize": "Size",
+    "blocks_one": "{{value}} block",
+    "blocks_other": "{{value}} blocks",
+    "borderCenter": "Center",
+    "borderDamage": "Damage",
+    "borderDamageValue": "{{amount}} per block, {{buffer}} blocks of buffer",
+    "borderWarning": "Warning",
+    "borderWarningValue": "{{distance}} blocks, {{seconds}} s",
+    "borderSeconds": "Over, seconds",
+    "centerX": "Center X",
+    "centerZ": "Center Z",
+    "borderApply": "Apply",
+    "borderSaved": "Border changed",
+    "stats": "On disk",
+    "generated": "Generated chunks",
+    "explored": "Explored",
+    "km2": "{{value}} km²",
+    "regions": "Region files",
+    "onDisk": "Size",
+    "entities": "Entities",
+    "entityTotal": "Loaded",
+    "droppedItems": "Dropped items",
+    "droppedValue": "{{entities}} stacks, {{items}} items",
+    "villagers": "Villagers",
+    "namedTamed": "Named · tamed",
+    "busiest": "Busiest chunks",
+    "chunk": "Chunk",
+    "entityCount": "Entities",
+    "tileCount": "Block entities",
+    "hoppers": "Hoppers",
+    "mostly": "Mostly",
+    "blocksAt": "Blocks from {{x}}, {{z}}",
+    "chunks": "Loaded chunks",
+    "chunksCount_one": "{{count}} loaded chunk",
+    "chunksCount_other": "{{count}} loaded chunks",
+    "noChunks": "No chunks loaded.",
+    "forced": "Kept loaded",
+    "locate": "Locate",
+    "kind": "Find",
+    "kinds": {
+      "structure": "Structure",
+      "biome": "Biome",
+      "block": "Block"
+    },
+    "target": "What",
+    "targetHints": {
+      "structure": "A key or #tag, such as minecraft:village_plains or #minecraft:village",
+      "biome": "A key, such as minecraft:cherry_grove",
+      "block": "Keys or #tags, such as minecraft:diamond_ore,#minecraft:logs"
+    },
+    "radius": "Radius",
+    "radiusHints": {
+      "structure": "In chunks",
+      "biome": "In blocks",
+      "block": "In blocks; loaded chunks only"
+    },
+    "find": "Find",
+    "what": "What",
+    "where": "Where",
+    "distance": "Distance",
+    "notFound": "Nothing found in that radius.",
+    "notFoundLoaded_one": "Nothing found; {{count}} chunk wasn’t loaded and was skipped.",
+    "notFoundLoaded_other": "Nothing found; {{count}} chunks weren’t loaded and were skipped.",
+    "containers": "Containers",
+    "holding": "Holding",
+    "noContainers": "No containers in loaded chunks there.",
+    "containerLine": "{{x}} {{y}} {{z}} · {{used}} of {{size}} slots · {{distance}} blocks away",
+    "container": "Container",
+    "notContainer": "This block holds no items."
   }
 }

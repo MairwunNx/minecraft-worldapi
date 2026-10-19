@@ -38,3 +38,6 @@ export const resetSession = async (client: QueryClient) => {
   client.removeQueries({ predicate: (query) => query.queryKey[0] !== "auth" });
   await client.invalidateQueries({ queryKey: ["auth"] });
 };
+
+/** A code from a `#code=XXXX-XXXX` link; the hash never reaches the server or its logs. */
+export const codeInHash = () => new URLSearchParams(window.location.hash.replace(/^#/, "")).get("code")?.trim() || undefined;

@@ -4,6 +4,7 @@ import {
   Activity,
   FileClock,
   FolderTree,
+  Globe,
   KeyRound,
   LogOut,
   Menu,
@@ -45,6 +46,7 @@ export const SECTIONS: Array<{ title: string; items: Item[] }> = [
     items: [
       { to: "/", label: "nav.overview", icon: Activity, needs: ["server:read"] },
       { to: "/players", label: "nav.players", icon: Users, needs: ["players:read"] },
+      { to: "/worlds", label: "nav.worlds", icon: Globe, needs: ["server:read"] },
       { to: "/console", label: "nav.console", icon: SquareTerminal, needs: ["logs:read", "server:console"] },
       { to: "/chat", label: "nav.chat", icon: MessagesSquare, needs: ["chat:read"] },
     ],

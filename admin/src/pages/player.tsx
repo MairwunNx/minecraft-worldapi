@@ -8,6 +8,7 @@ import { client, data, type Schema } from "@/api/client";
 import { Confirm, Definition, Empty, ErrorBox, Loading, PageHeader, TableFrame } from "@/components/common";
 import { FormField } from "@/components/form-field";
 import { Inventory, ItemGrid, itemName } from "@/components/items";
+import { AdvancementsTab, DeathsTab, PlayerGive, usePlayerSlots, where } from "@/pages/player-parts";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,8 +19,6 @@ import { showError } from "@/lib/forms";
 import { useCan } from "@/lib/session";
 
 type Player = Schema<"PlayerView">;
-
-const where = (location?: Schema<"LocationView"> | null) => (location ? `${location.world} ${Math.round(location.x)} ${Math.round(location.y)} ${Math.round(location.z)}` : "—");
 
 /** Kick, ban, operator, whitelist: each asks first, and the page reloads the player after. */
 const Moderation = ({ player }: { player: Player }) => {
@@ -147,28 +146,6 @@ const Summary = ({ player, priv }: { player: Player; priv: boolean }) => {
   return <Definition items={items} />;
 };
 
-const Deaths = ({ deaths }: { deaths: Schema<"Deaths"> }) => {
-  const { t } = useTranslation();
-  if (!deaths.recent.length) return <Empty>{t("player.noDeaths")}</Empty>;
-  return (
-    <div className="flex flex-col gap-3">
-      {deaths.lastLocation && <p className="text-sm text-muted-foreground">{t("player.lastDeath", { where: where(deaths.lastLocation) })}</p>}
-      <ul className="flex flex-col divide-y rounded-lg border bg-card text-sm">
-        {deaths.recent.map((death) => (
-          <li key={death.at} className="flex flex-col gap-0.5 p-3">
-            <span>{death.message ?? death.cause ?? "—"}</span>
-            <span className="text-xs text-muted-foreground">
-              {dateTime(death.at)}
-              {death.location && ` · ${where(death.location)}`}
-              {death.level != null && ` · ${t("player.levelAt", { level: death.level })}`}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-};
-
 const Sessions = ({ sessions }: { sessions: Schema<"SessionView">[] }) => {
   const { t } = useTranslation();
   if (!sessions.length) return <Empty>{t("player.noSessions")}</Empty>;
@@ -217,28 +194,6 @@ const Statistics = ({ statistics }: { statistics: Record<string, number> }) => {
   );
 };
 
-const Advancements = ({ summary }: { summary: Schema<"AdvancementSummary"> }) => {
-  const { t } = useTranslation();
-  return (
-    <div className="flex flex-col gap-3">
-      <p className="text-sm">{t("player.advancementsDone", { done: summary.done, total: summary.total })}</p>
-      {summary.recent.length ? (
-        <ul className="flex flex-col divide-y rounded-lg border bg-card text-sm">
-          {summary.recent.map((advancement) => (
-            <li key={advancement.key} className="flex flex-wrap items-baseline justify-between gap-2 p-3">
-              <span className="font-medium">{advancement.title ?? advancement.key}</span>
-              <span className="text-xs text-muted-foreground">{dateTime(advancement.doneAt)}</span>
-              {advancement.description && <span className="w-full text-xs text-muted-foreground">{advancement.description}</span>}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <Empty>{t("player.noAdvancements")}</Empty>
-      )}
-    </div>
-  );
-};
-
 export const PlayerPage = () => {
   const { t } = useTranslation();
   const { player: id } = useParams({ from: "/app/players/$player" });
@@ -246,13 +201,15 @@ export const PlayerPage = () => {
   const navigate = useNavigate({ from: "/players/$player" });
   const can = useCan();
   const priv = can("players:private");
-  const include = ["effects", "deaths", "sessions", "statistics", "advancements", ...(priv ? ["inventory", "enderchest"] : [])].join(",");
+  const include = ["effects", "deaths", "sessions", "statistics", ...(priv ? ["inventory", "enderchest"] : [])].join(",");
   const query = useQuery({
     queryKey: ["player", id, include],
     queryFn: () => data(client.GET("/players/{player}", { params: { path: { player: id }, query: { include } } })),
     refetchInterval: 20_000,
   });
   const player = query.data;
+  const inventoryActions = usePlayerSlots(player, "inventory", can("players:write"));
+  const enderActions = usePlayerSlots(player, "enderchest", can("players:write"));
   const back = (
     <Link to="/players" className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
       <ArrowLeft className="size-4" aria-hidden />
@@ -318,9 +275,17 @@ export const PlayerPage = () => {
             <TabsContent value="summary">
               <Summary player={player} priv={priv} />
             </TabsContent>
-            <TabsContent value="inventory">{player.inventory ? <Inventory inventory={player.inventory} /> : <Empty>{t("player.noInventory")}</Empty>}</TabsContent>
+            <TabsContent value="inventory" className="flex flex-col gap-3">
+              {player.inventory ? <Inventory inventory={player.inventory} actions={inventoryActions} /> : <Empty>{t("player.noInventory")}</Empty>}
+              {inventoryActions && player.online && <PlayerGive player={player} store="inventory" />}
+            </TabsContent>
             <TabsContent value="enderchest">
-              {player.enderChest ? <ItemGrid items={player.enderChest.items} size={player.enderChest.size} /> : <Empty>{t("player.noInventory")}</Empty>}
+              {player.enderChest ? <ItemGrid items={player.enderChest.items} size={player.enderChest.size} actions={enderActions} /> : <Empty>{t("player.noInventory")}</Empty>}
+              {enderActions && player.online && (
+                <div className="mt-3">
+                  <PlayerGive player={player} store="enderchest" />
+                </div>
+              )}
             </TabsContent>
             <TabsContent value="effects">
               {!player.online ? (
@@ -340,12 +305,12 @@ export const PlayerPage = () => {
                 </ul>
               )}
             </TabsContent>
-            <TabsContent value="deaths">{player.deaths ? <Deaths deaths={player.deaths} /> : <Empty>{t("player.noDeaths")}</Empty>}</TabsContent>
+            <TabsContent value="deaths">{can("events:read") ? <DeathsTab player={player} lastLocation={player.deaths?.lastLocation} /> : <Empty>{t("player.noDeathHistory")}</Empty>}</TabsContent>
             <TabsContent value="sessions">
               <Sessions sessions={player.sessions ?? []} />
             </TabsContent>
             <TabsContent value="statistics">{player.statistics ? <Statistics statistics={player.statistics} /> : <Empty>{t("player.noStats")}</Empty>}</TabsContent>
-            <TabsContent value="advancements">{player.advancements ? <Advancements summary={player.advancements} /> : <Empty>{t("player.noAdvancements")}</Empty>}</TabsContent>
+            <TabsContent value="advancements">{current === "advancements" && <AdvancementsTab player={player.uuid} />}</TabsContent>
           </CardContent>
         </Card>
       </Tabs>

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { ROUTER_BASE } from "@/api/client";
 import { Layout } from "@/components/layout";
 import { NotFound } from "@/components/not-found";
-import { meQuery } from "@/lib/session";
+import { codeInHash, meQuery } from "@/lib/session";
 import { AccountPage } from "@/pages/account";
 import { AccountsPage } from "@/pages/accounts";
 import { AuditPage } from "@/pages/audit";
@@ -17,6 +17,8 @@ import { OverviewPage } from "@/pages/overview";
 import { PlayerPage } from "@/pages/player";
 import { PlayersPage } from "@/pages/players";
 import { PluginsPage } from "@/pages/plugins";
+import { WorldPage } from "@/pages/world";
+import { WorldsPage } from "@/pages/worlds";
 import { TokensPage } from "@/pages/tokens";
 
 interface Context {
@@ -28,10 +30,11 @@ const root = createRootRouteWithContext<Context>()({ component: Outlet, notFound
 const login = createRoute({
   getParentRoute: () => root,
   path: "/login",
-  validateSearch: z.object({ next: z.string().optional().catch(undefined) }),
-  beforeLoad: async ({ context }) => {
+  validateSearch: z.object({ next: z.string().optional().catch(undefined), code: z.string().optional().catch(undefined) }),
+  beforeLoad: async ({ context, search }) => {
     const me = await context.queryClient.ensureQueryData(meQuery);
-    if (me?.kind === "account") throw redirect({ to: "/" });
+    // A code link still opens the form when someone is signed in: it may reset a password or make another account.
+    if (me?.kind === "account" && !search.code && !codeInHash()) throw redirect({ to: "/" });
   },
   component: LoginPage,
 });
@@ -41,6 +44,10 @@ const app = createRoute({
   getParentRoute: () => root,
   id: "app",
   beforeLoad: async ({ context, location }) => {
+    // The link /worldapi admin sends in game: /admin/?code=XXXX-XXXX, or #code=XXXX-XXXX.
+    const code = (location.search as { code?: unknown }).code;
+    if (typeof code === "string" && code) throw redirect({ to: "/login", search: { code } });
+    if (codeInHash()) throw redirect({ to: "/login", hash: location.hash });
     const me = await context.queryClient.ensureQueryData(meQuery);
     if (me?.kind !== "account") throw redirect({ to: "/login", search: { next: location.href } });
   },
@@ -65,6 +72,8 @@ const player = createRoute({
   validateSearch: z.object({ tab: z.string().optional().catch(undefined) }),
   component: PlayerPage,
 });
+const worlds = page("/worlds", WorldsPage);
+const world = page("/worlds/$world", WorldPage);
 const consolePage = page("/console", ConsolePage);
 const chat = page("/chat", ChatPage);
 const files = createRoute({
@@ -85,7 +94,7 @@ const audit = createRoute({
 });
 const account = page("/account", AccountPage);
 
-const tree = root.addChildren([login, app.addChildren([overview, players, player, consolePage, chat, files, plugins, tokens, accounts, groups, audit, account])]);
+const tree = root.addChildren([login, app.addChildren([overview, players, player, worlds, world, consolePage, chat, files, plugins, tokens, accounts, groups, audit, account])]);
 
 export const router = createRouter({
   routeTree: tree,

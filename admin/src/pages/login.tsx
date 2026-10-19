@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { Gamepad2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
@@ -13,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { showError } from "@/lib/forms";
-import { meQuery, resetSession, statusQuery } from "@/lib/session";
+import { codeInHash, meQuery, resetSession, statusQuery } from "@/lib/session";
 
 const MIN_PASSWORD = 10;
 
@@ -59,7 +60,7 @@ const PasswordForm = () => {
   );
 };
 
-const CodeForm = () => {
+const CodeForm = ({ initialCode }: { initialCode?: string }) => {
   const { t } = useTranslation();
   const finish = useFinish();
   const schema = z
@@ -70,7 +71,7 @@ const CodeForm = () => {
       repeat: z.string(),
     })
     .refine((values) => values.password === values.repeat, { path: ["repeat"], message: t("login.errors.mismatch") });
-  const form = useForm<z.infer<typeof schema>>({ resolver: zodResolver(schema), defaultValues: { code: "", name: "", password: "", repeat: "" } });
+  const form = useForm<z.infer<typeof schema>>({ resolver: zodResolver(schema), defaultValues: { code: initialCode ?? "", name: "", password: "", repeat: "" } });
   const submit = form.handleSubmit(async ({ code, name, password }) => {
     try {
       await finish(await auth<Me>("/setup", { code, name: name || undefined, password }));
@@ -88,6 +89,7 @@ const CodeForm = () => {
       <FormField id="code" label={t("login.code")} error={errors.code?.message}>
         <Input id="code" autoComplete="one-time-code" spellCheck={false} className="font-mono" aria-invalid={!!errors.code} {...form.register("code")} />
       </FormField>
+      {initialCode && <p className="text-sm text-muted-foreground">{t("login.codeFromLink")}</p>}
       <FormField id="code-name" label={t("login.newName")} error={errors.name?.message} hint={t("login.newNameHint")}>
         <Input id="code-name" autoComplete="username" aria-invalid={!!errors.name} {...form.register("name")} />
       </FormField>
@@ -107,10 +109,18 @@ const CodeForm = () => {
 export const LoginPage = () => {
   const { t } = useTranslation();
   const status = useQuery(statusQuery).data;
+  const search = useSearch({ from: "/login" });
+  const navigate = useNavigate();
+  // Read the code once, then take it out of the address bar and the history.
+  const [linkCode] = useState(() => search.code?.trim() || codeInHash());
+  useEffect(() => {
+    if (!search.code && !codeInHash()) return;
+    void navigate({ to: "/login", search: { next: search.next }, hash: "", replace: true });
+  }, [search.code, search.next, navigate]);
   const first = status?.accounts === false;
   return (
     <AuthFrame title={first ? t("login.firstTitle") : t("login.title")} description={first ? t("login.firstText") : t("login.text")}>
-      {first && (
+      {first && !linkCode && (
         <Alert className="mb-4">
           <Gamepad2 className="size-4" aria-hidden />
           <AlertDescription>
@@ -120,7 +130,7 @@ export const LoginPage = () => {
           </AlertDescription>
         </Alert>
       )}
-      <Tabs key={first ? "code" : "password"} defaultValue={first ? "code" : "password"}>
+      <Tabs key={first || linkCode ? "code" : "password"} defaultValue={first || linkCode ? "code" : "password"}>
         <TabsList className="w-full">
           <TabsTrigger value="password">{t("login.tabPassword")}</TabsTrigger>
           <TabsTrigger value="code">{t("login.tabCode")}</TabsTrigger>
@@ -129,7 +139,7 @@ export const LoginPage = () => {
           <PasswordForm />
         </TabsContent>
         <TabsContent value="code" className="pt-3">
-          <CodeForm />
+          <CodeForm initialCode={linkCode} />
         </TabsContent>
       </Tabs>
     </AuthFrame>

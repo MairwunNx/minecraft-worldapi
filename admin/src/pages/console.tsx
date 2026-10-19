@@ -32,7 +32,7 @@ const RANK: Record<string, number> = { TRACE: 0, DEBUG: 1, INFO: 2, WARN: 3, WAR
 const levelClass = (level: string) => {
   const rank = RANK[level.toUpperCase()] ?? 2;
   if (rank >= 4) return "text-destructive";
-  if (rank === 3) return "text-warning";
+  if (rank === 3) return "text-warning-text";
   if (rank <= 1) return "text-muted-foreground";
   return "";
 };

@@ -2,7 +2,7 @@ import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-quer
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { structuredPatch } from "diff";
 import { ArrowLeft, ChevronRight, File, FileLock, Folder, FolderOpen, Pencil, RefreshCw, Search, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { ApiError, client, data, type Schema } from "@/api/client";
@@ -15,11 +15,10 @@ import { Input } from "@/components/ui/input";
 import { bytes, dateTime, number } from "@/lib/format";
 import { errorText, showError } from "@/lib/forms";
 import { useCan } from "@/lib/session";
+import { highlightLines } from "@/lib/highlight";
 import { cn } from "@/lib/utils";
 
-type Entry = Schema<"FileEntry">;
 
-const parent = (path: string) => (path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "");
 const ancestors = (path: string) => path.split("/").slice(0, -1).map((_, index, parts) => parts.slice(0, index + 1).join("/"));
 
 const folderQuery = (path: string) => ({
@@ -58,7 +57,7 @@ const FolderNode = ({ path, depth, open, toggle, selected }: { path: string; dep
                 <span className="truncate">{entry.name}</span>
               </button>
             ) : (
-              <Link to="/files" search={{ file: entry.path }} className={row} style={{ paddingLeft: depth * 12 + 22 }} disabled={!entry.readable}>
+              <Link to="/files" search={{ file: entry.path }} className={row} style={{ paddingLeft: depth * 12 + 22 }} disabled={!entry.readable} title={entry.readOnlyReason ?? undefined}>
                 <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                 <span className="truncate">{entry.name}</span>
               </Link>
@@ -92,8 +91,9 @@ const parseLines = (content: string): Line[] =>
       })
     : [];
 
-const Lines = ({ lines, grep }: { lines: Line[]; grep?: string }) => {
+const Lines = ({ path, lines, grep }: { path: string; lines: Line[]; grep?: string }) => {
   const needle = grep?.toLowerCase();
+  const shown = useMemo(() => highlightLines(path, lines.map((line) => line.text)), [path, lines]);
   return (
     <div className="overflow-auto rounded-lg border bg-card font-mono text-xs leading-relaxed">
       <table className="w-full border-collapse">
@@ -108,7 +108,7 @@ const Lines = ({ lines, grep }: { lines: Line[]; grep?: string }) => {
             ) : (
               <tr key={line.number} className={cn(needle && line.text.toLowerCase().includes(needle) && "bg-warning/15")}>
                 <td className="tabular w-px border-r bg-muted/40 px-2 text-right align-top whitespace-nowrap text-muted-foreground select-none">{line.number}</td>
-                <td className="px-3 break-all whitespace-pre-wrap">{line.text || " "}</td>
+                <td className="px-3 break-all whitespace-pre-wrap">{line.text ? shown[index] : " "}</td>
               </tr>
             ),
           )}
@@ -119,7 +119,7 @@ const Lines = ({ lines, grep }: { lines: Line[]; grep?: string }) => {
 };
 
 /** Pages of 500 numbered lines, or matching lines with two around each, or the last 500 lines. */
-const Viewer = ({ path, entry, onEdit }: { path: string; entry?: Entry; onEdit?: (sha: string) => void }) => {
+const Viewer = ({ path, onEdit }: { path: string; onEdit?: (sha: string) => void }) => {
   const { t } = useTranslation();
   const [grepInput, setGrepInput] = useState("");
   const [grep, setGrep] = useState("");
@@ -136,7 +136,7 @@ const Viewer = ({ path, entry, onEdit }: { path: string; entry?: Entry; onEdit?:
     getNextPageParam: (page) => (tail && !grep ? undefined : (page.nextOffset ?? undefined)),
   });
   const first = query.data?.pages[0];
-  const lines = query.data?.pages.flatMap((page) => parseLines(page.content)) ?? [];
+  const lines = useMemo(() => query.data?.pages.flatMap((page) => parseLines(page.content)) ?? [], [query.data]);
   const cut = query.data?.pages.reduce((sum, page) => sum + (page.cutLines ?? 0), 0) ?? 0;
   return (
     <div className="flex min-w-0 flex-col gap-3">
@@ -150,7 +150,11 @@ const Viewer = ({ path, entry, onEdit }: { path: string; entry?: Entry; onEdit?:
             <span>{t("files.modified", { when: dateTime(first.modified) })}</span>
           </>
         )}
-        {entry && !entry.writable && <Badge variant="outline">{t("files.readOnly")}</Badge>}
+        {first && !first.writable && (
+          <Badge variant="outline" className="max-w-full font-normal whitespace-normal" title={first.readOnlyReason ?? undefined}>
+            {first.readOnlyReason ? t("files.readOnlyBecause", { reason: first.readOnlyReason }) : t("files.readOnly")}
+          </Badge>
+        )}
       </div>
       <div className="flex flex-wrap gap-2">
         <form
@@ -185,7 +189,7 @@ const Viewer = ({ path, entry, onEdit }: { path: string; entry?: Entry; onEdit?:
         <Button variant="outline" size="icon" aria-label={t("files.reload")} title={t("files.reload")} onClick={() => query.refetch()}>
           <RefreshCw className="size-4" />
         </Button>
-        {onEdit && first?.sha256 && (
+        {onEdit && first?.writable && first.sha256 && (
           <Button size="sm" onClick={() => onEdit(first.sha256!)}>
             <Pencil className="size-4" aria-hidden />
             {t("files.edit")}
@@ -193,8 +197,8 @@ const Viewer = ({ path, entry, onEdit }: { path: string; entry?: Entry; onEdit?:
         )}
       </div>
       {grep && first?.matches != null && <p className="text-xs text-muted-foreground">{t("files.matches", { count: first.matches })}</p>}
-      {cut > 0 && <p className="text-xs text-warning">{t("files.cut", { count: cut })}</p>}
-      {query.error ? <ErrorBox error={query.error} /> : query.isPending ? <Loading rows={10} /> : lines.length ? <Lines lines={lines} grep={grep} /> : <Empty>{grep ? t("files.noMatches") : t("files.emptyFile")}</Empty>}
+      {cut > 0 && <p className="text-xs text-warning-text">{t("files.cut", { count: cut })}</p>}
+      {query.error ? <ErrorBox error={query.error} /> : query.isPending ? <Loading rows={10} /> : lines.length ? <Lines path={path} lines={lines} grep={grep} /> : <Empty>{grep ? t("files.noMatches") : t("files.emptyFile")}</Empty>}
       {query.hasNextPage && (
         <Button variant="outline" size="sm" className="self-center" disabled={query.isFetchingNextPage} onClick={() => query.fetchNextPage()}>
           {t("files.more")}
@@ -363,9 +367,8 @@ export const FilesPage = () => {
       else next.add(path);
       return next;
     });
-  const listing = useQuery({ ...folderQuery(file ? parent(file) : ""), enabled: !!file });
-  const entry = listing.data?.entries.find((item) => item.path === file);
-  const writable = can("files:write") && !!entry?.writable && !file?.endsWith(".gz");
+  // FileContent.writable already counts files:write; the button shows only where it's true.
+  const writable = can("files:write");
   if (!can("files:read") && !can("logs:read")) return <Empty>{t("files.noAccess")}</Empty>;
   return (
     <div>
@@ -385,7 +388,7 @@ export const FilesPage = () => {
                   {file}
                 </h2>
               </div>
-              {editing ? <Editor path={file} onClose={() => setEditing(false)} /> : <Viewer key={file} path={file} entry={entry} onEdit={writable ? () => setEditing(true) : undefined} />}
+              {editing ? <Editor path={file} onClose={() => setEditing(false)} /> : <Viewer key={file} path={file} onEdit={writable ? () => setEditing(true) : undefined} />}
             </div>
           ) : (
             <Empty>{t("files.pick")}</Empty>
