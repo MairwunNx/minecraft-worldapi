@@ -44,15 +44,17 @@ import org.bukkit.entity.Player
 
 private val playTime = StatRef("minecraft:custom", "minecraft:play_time")
 
-val playerRoutes = endpoints("Players") {
+val playerRoutes = endpoints("Players", Scope.PLAYERS_READ) {
     get(
         "/players", "Everyone who has played here",
         query = pageParams + listOf(
             boolean("online", "Only online (true) or offline (false) players"),
             string("sort", "Order of the list", values = listOf("name", "last_seen", "playtime")),
+            string("search", "Only players whose name contains this, ignoring case"),
         ),
     ) {
         val online = bool("online")
+        val search = query("search")
         val sort = query("sort") ?: "name"
         if (sort !in setOf("name", "last_seen", "playtime")) badRequest("sort must be name, last_seen, or playtime")
         val (limit, cursor) = limit to cursor
@@ -63,7 +65,7 @@ val playerRoutes = endpoints("Players") {
                 PlayerSummary(it.uniqueId.toString(), it.name!!, it.isOnline && !hidden, iso(it.firstPlayed), iso(lastSeen(it, hidden)), (playtime[it.uniqueId] ?: 0) / 20)
             }
         }
-        players.filter { online == null || it.online == online }
+        players.filter { (online == null || it.online == online) && (search == null || it.name.contains(search, ignoreCase = true)) }
             .sortedWith(
                 when (sort) {
                     "last_seen" -> compareByDescending<PlayerSummary> { it.online }.thenByDescending { it.lastSeen }
@@ -88,28 +90,38 @@ val playerRoutes = endpoints("Players") {
         }
     }
 
-    get("/players/{player}", "A player's profile, state, and whereabouts") {
+    get(
+        "/players/{player}", "A player's profile, state, and whereabouts, with more parts on request",
+        description = "`include` adds parts in the same answer: inventory and enderchest (players:private; read from the playerdata file while the player is offline), " +
+            "effects (online only), deaths (the last place, and the newest 5 from the history with causes and killers), sessions (the newest 5), " +
+            "statistics (the minecraft:custom ones), and advancements (counts and the newest 5 done).",
+        query = listOf(string("include", "Comma-separated parts: ${PLAYER_PARTS.joinToString()}")),
+        also = Scope.PLAYERS_PRIVATE,
+    ) {
         val coordinates = seesCoordinates
         val addresses = seesAddresses
-        main {
+        val parts = includes(PLAYER_PARTS)
+        val (player, view, online) = main {
             val player = knownPlayer()
-            playerView(player, coordinates, addresses, hidden = player.player?.let(::hides) == true)
+            val hidden = player.player?.let(::hides) == true
+            Triple(player, playerView(player, coordinates, addresses, hidden), player.player?.takeUnless { hidden })
         }
+        withParts(view, player, online, parts)
     }
 
     patch<PlayerPatch, PlayerView>(
-        "/players/{player}", "Change game mode, health, food, XP, flight, speed, names, and more", Scope.WRITE_PLAYERS,
+        "/players/{player}", "Change game mode, health, food, XP, flight, speed, names, and more", Scope.PLAYERS_WRITE,
         description = "The player must be online; otherwise the answer is 409 player_offline.",
     ) { patch ->
         main {
             val player = onlinePlayer()
             auditTarget = player.name
             patch.apply(player, config.limits.maxMessageLength)
-            playerView(player, coordinates = true, addresses = principal.has(Scope.ADMIN))
+            playerView(player, coordinates = true, addresses = seesAddresses)
         }
     }
 
-    post<TeleportRequest, TeleportResult>("/players/{player}/teleport", "Teleport to coordinates, a player, or a world spawn", Scope.WRITE_PLAYERS) { request ->
+    post<TeleportRequest, TeleportResult>("/players/{player}/teleport", "Teleport to coordinates, a player, or a world spawn", Scope.PLAYERS_WRITE) { request ->
         if (listOfNotNull(request.location, request.player, request.worldSpawn).size != 1) badRequest("Give exactly one of location, player, or worldSpawn")
         val (player, target) = main {
             val player = onlinePlayer()
@@ -125,7 +137,7 @@ val playerRoutes = endpoints("Players") {
         TeleportResult(success, main { player.location.view() })
     }
 
-    post<MessageRequest, Done>("/players/{player}/message", "Send a chat message, title, action bar, or sound to one player", Scope.WRITE_PLAYERS) { request ->
+    post<MessageRequest, Done>("/players/{player}/message", "Send a chat message, title, action bar, or sound to one player", Scope.PLAYERS_WRITE) { request ->
         val limit = config.limits.maxMessageLength
         val message = text(request.message, request.format, limit)
         val subtitle = request.subtitle?.let { text(it, request.format, limit) }
@@ -144,7 +156,7 @@ val playerRoutes = endpoints("Players") {
         }
     }
 
-    post<KickRequest, Done>("/players/{player}/kick", "Kick a player", Scope.ADMIN) { request ->
+    post<KickRequest, Done>("/players/{player}/kick", "Kick a player", Scope.PLAYERS_MODERATE) { request ->
         val reason = request.reason?.let { text(it, request.format, config.limits.maxMessageLength) }
         main {
             val player = onlinePlayer()

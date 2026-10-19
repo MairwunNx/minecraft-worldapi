@@ -103,7 +103,7 @@ object Plan {
                     token.expired(now) -> "Expired ${token.expiresAt}"
                     else -> token.expiresAt
                 }
-                table.addRow(token.name, token.scopes.joinToString { it.id }, expires)
+                table.addRow(token.name, token.scopes.joinToString(), expires)
             }
             return table.build()
         }

@@ -90,4 +90,36 @@ object TamedSeed : Table("tamed_seed") {
     override val primaryKey = PrimaryKey(id)
 }
 
-val TABLES = arrayOf(Events, Sessions, Audit, ExperienceGained, ExperienceBaseline, TamedAnimals, TamedSeed)
+/** Admin panel accounts. Added in 3.0. */
+object Accounts : Table("accounts") {
+    val name = varchar("name", 32)
+    /** PBKDF2-HMAC-SHA256: `pbkdf2$<iterations>$<salt hex>$<hash hex>`. */
+    val password = varchar("password", 256)
+    /** Permissions and group names, comma-separated, as a token lists them. */
+    val groups = text("groups")
+    /** The Minecraft player whose code made the account, if any. */
+    val playerUuid = varchar("player_uuid", 36).nullable()
+    val createdAt = long("created_at")
+    val createdBy = text("created_by")
+    val lastLoginAt = long("last_login_at").nullable()
+
+    override val primaryKey = PrimaryKey(name)
+}
+
+/** Signed-in panel sessions; only a SHA-256 of the cookie is kept. Added in 3.0. */
+object AdminSessions : Table("admin_sessions") {
+    val digest = varchar("digest", 64)
+    val account = varchar("account", 32)
+    val createdAt = long("created_at")
+    val expiresAt = long("expires_at")
+    val address = text("address").nullable()
+    val userAgent = text("user_agent").nullable()
+
+    override val primaryKey = PrimaryKey(digest)
+
+    init {
+        index("admin_sessions_account", false, account)
+    }
+}
+
+val TABLES = arrayOf(Events, Sessions, Audit, ExperienceGained, ExperienceBaseline, TamedAnimals, TamedSeed, Accounts, AdminSessions)

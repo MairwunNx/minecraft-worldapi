@@ -22,11 +22,25 @@ cors:
   allowedOrigins: []
 
 auth:
-  # Clients send a token as "Authorization: Bearer <token>". Scopes:
-  #   read           every GET and the WebSocket
-  #   write:world    world, weather, time, blocks, entities
-  #   write:players  player state, inventories, teleports, effects
-  #   admin          kicks, bans, whitelist, ops, console commands, server control; includes every other scope
+  # Clients send a token as "Authorization: Bearer <token>". A token lists permissions and groups:
+  #   server:read       server, worlds, blocks, entities, plugins, performance
+  #   players:read      players, statistics, advancements, sessions, leaderboards
+  #   players:private   coordinates, inventories, ender chests, containers, death places
+  #   events:read       event history and the WebSocket
+  #   chat:read         chat in the history and on the WebSocket
+  #   logs:read         console lines, the live console, players' commands, files under logs/
+  #   system:read       the host: memory, disk, CPU, container limits
+  #   world:write       blocks, containers, entities, time, weather, rules, border
+  #   players:write     player state, inventories, teleports, effects, messages
+  #   players:moderate  kicks, bans, whitelist, operators, vanished players, IP addresses
+  #   server:console    console commands
+  #   server:control    save, restart, stop, world seeds
+  #   files:read        server and plugin configs
+  #   files:write       changing server and plugin configs
+  #   tokens:manage     tokens, accounts, and the audit log
+  #   code              Java scripts: arbitrary code on the server
+  # The 2.x scopes still work: read is the viewer group, write:world and write:players are
+  # world:write and players:write, and admin is the group below.
   # The first start generated the admin token below. Keep it secret.
   tokens:
     - name: admin
@@ -34,6 +48,14 @@ auth:
       scopes: [admin]
       # Optional: a rate limit for this token only.
       # rateLimit: { requestsPerMinute: 6000, burst: 500 }
+
+  # Groups name sets of permissions and other groups. Change them or add your own; tokens and
+  # admin panel accounts list them by name. admin has everything but files:write and code.
+  groups:
+    viewer: ["server:read", "players:read", "players:private", "events:read", "chat:read"]
+    moderator: [viewer, "logs:read", "players:write", "players:moderate"]
+    admin: ["server:read", "players:read", "players:private", "events:read", "chat:read", "logs:read", "system:read", "world:write", "players:write", "players:moderate", "server:console", "server:control", "files:read", "tokens:manage"]
+    owner: ["server:read", "players:read", "players:private", "events:read", "chat:read", "logs:read", "system:read", "world:write", "players:write", "players:moderate", "server:console", "server:control", "files:read", "files:write", "tokens:manage", code]
 
   # Clients without a token may read these paths (under basePath). "*" matches one path segment,
   # "**" any number. Anonymous clients can never write, whatever this list says.
@@ -134,6 +156,10 @@ limits:
   maxBiomeSearchRadius: 2048
   # Console lines kept in memory for GET /server/logs (admin tokens only).
   consoleLines: 1000
+  # Text one /files/read answer may hold, in characters; longer files read in pages.
+  maxReadChars: 262144
+  # Earlier versions kept per file that /files changed, in plugins/WorldAPI/backups.
+  fileBackups: 10
 
 scripts:
   # Lets tokens with the "code" scope compile and run Java on this server (POST /scripts).

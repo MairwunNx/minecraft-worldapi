@@ -43,6 +43,70 @@ data class EntityView(
     /** Worn and held items by slot; a player's are hidden from anonymous clients unless privacy allows inventories. */
     val equipment: Map<String, ItemView>? = null,
     val effects: List<EffectView>? = null,
+    /** Why it spawned, such as `natural`, `spawner`, or `breeding`. */
+    val spawnReason: String? = null,
+    val fromSpawner: Boolean? = null,
+    /** Whether the game may despawn it when no player is near. */
+    val removeWhenFarAway: Boolean? = null,
+    /** UUID of what holds its lead. */
+    val leashHolder: String? = null,
+    val villager: VillagerView? = null,
+    /** A dropped item: the stack, how long until it can be picked up, and who threw it. */
+    val item: ItemView? = null,
+    val pickupDelay: Int? = null,
+    val thrower: String? = null,
+)
+
+@Serializable
+data class VillagerView(
+    /** Such as `minecraft:librarian`. */
+    val profession: String,
+    /** Biome style, such as `minecraft:plains`. */
+    val type: String,
+    val level: Int,
+    val experience: Int,
+    val trades: List<TradeView>,
+)
+
+@Serializable
+data class TradeView(
+    val ingredients: List<ItemView>,
+    val result: ItemView,
+    val uses: Int,
+    val maxUses: Int,
+    /** The price change from demand and the player's reputation, as the game applies it. */
+    val demand: Int,
+    val specialPrice: Int,
+)
+
+@Serializable
+data class EntityCensus(
+    val world: String,
+    /** Entities counted: in the area asked for, or loaded in the whole world. */
+    val total: Int,
+    /** Count per type, most first; the rest add up in `otherTypes`. */
+    val byType: Map<String, Int>,
+    val otherTypes: Int,
+    /** Item entities and the items they hold. */
+    val droppedItems: Int,
+    val droppedItemCount: Int,
+    val villagers: Int,
+    val named: Int,
+    val tamed: Int,
+    val players: Int,
+    /** The busiest chunks, where lag usually comes from. */
+    val topChunks: List<ChunkLoad>,
+)
+
+@Serializable
+data class ChunkLoad(
+    val x: Int,
+    val z: Int,
+    val entities: Int,
+    val tileEntities: Int,
+    val hoppers: Int,
+    /** The three most common entity types there. */
+    val top: Map<String, Int>,
 )
 
 @Serializable

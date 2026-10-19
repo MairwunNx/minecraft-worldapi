@@ -54,7 +54,7 @@ class ConsoleLogTest {
         val admin = "admin-token-0123456789"
         val read = "read-token-0123456789"
         val config = WorldApiConfig(
-            auth = Auth(tokens = listOf(Token("admin", admin, listOf(Scope.ADMIN)), Token("site", read, listOf(Scope.READ)))),
+            auth = Auth(tokens = listOf(Token("admin", admin, listOf("admin")), Token("site", read, listOf("read")))),
             limits = Limits(consoleLines = 50),
         )
         TestApi(config).use { fake ->

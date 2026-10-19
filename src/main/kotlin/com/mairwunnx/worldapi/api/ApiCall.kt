@@ -11,12 +11,12 @@ class ApiCall(val call: ApplicationCall, val endpoint: Endpoint, val api: WorldA
     var auditTarget: String? = null
     var auditDetail: String? = null
 
-    val seesCoordinates get() = !principal.anonymous || config.privacy.anonymous.coordinates
-    val seesInventories get() = !principal.anonymous || config.privacy.anonymous.inventories
-    val seesAddresses get() = principal.has(Scope.ADMIN) || (principal.anonymous && config.privacy.anonymous.addresses)
-    val seesChat get() = !principal.anonymous || config.privacy.anonymous.chat
-    /** Vanished players show only to admin clients; to everyone else they look offline. */
-    val seesVanished get() = principal.has(Scope.ADMIN)
+    val seesCoordinates get() = principal.has(Scope.PLAYERS_PRIVATE) || (principal.anonymous && config.privacy.anonymous.coordinates)
+    val seesInventories get() = principal.has(Scope.PLAYERS_PRIVATE) || (principal.anonymous && config.privacy.anonymous.inventories)
+    val seesAddresses get() = principal.has(Scope.PLAYERS_MODERATE) || (principal.anonymous && config.privacy.anonymous.addresses)
+    val seesChat get() = principal.has(Scope.CHAT_READ) || (principal.anonymous && config.privacy.anonymous.chat)
+    /** Vanished players show only to moderators; to everyone else they look offline. */
+    val seesVanished get() = principal.has(Scope.PLAYERS_MODERATE)
 
     // A tail parameter like {key...} arrives as several segments: rejoin them.
     fun path(name: String): String = call.parameters.getAll(name)?.joinToString("/")?.takeIf { it.isNotEmpty() } ?: badRequest("Missing path parameter $name")
@@ -42,9 +42,10 @@ class ApiCall(val call: ApplicationCall, val endpoint: Endpoint, val api: WorldA
     fun requireDouble(name: String) = double(name) ?: badRequest("$name is required")
     fun requireInt(name: String) = int(name) ?: badRequest("$name is required")
 
+    /** 0 asks a paged list for its `total` alone. */
     val limit: Int get() {
         val limit = int("limit") ?: minOf(100, config.limits.maxPageSize)
-        if (limit < 1) badRequest("limit must be at least 1")
+        if (limit < 0) badRequest("limit can't be negative")
         return minOf(limit, config.limits.maxPageSize)
     }
 

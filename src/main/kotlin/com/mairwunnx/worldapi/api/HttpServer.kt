@@ -1,5 +1,6 @@
 package com.mairwunnx.worldapi.api
 
+import com.mairwunnx.worldapi.admin.Panel
 import com.mairwunnx.worldapi.core.WorldApi
 import com.mairwunnx.worldapi.store.AuditEntry
 import com.mairwunnx.worldapi.ws.WebSocketHub
@@ -46,7 +47,8 @@ class HttpServer(
     private val hub: WebSocketHub,
     private val logger: Logger,
 ) {
-    private val limiter = RateLimiter()
+    internal val limiter = RateLimiter()
+    internal val exposure = Exposure(logger)
 
     // Settings the Ktor engine reads once; a change to these needs a restart (see changesNeedRestart).
     private val config = api.config
@@ -126,7 +128,9 @@ class HttpServer(
                     val principal = guard(call, read = true, allowMissingToken = true)
                     hub.serve(this, principal)
                 }
+                Panel.authRoutes(this, this@HttpServer, api)
             }
+            Panel.pages(this, base)
         }
     }
 
@@ -141,7 +145,7 @@ class HttpServer(
     private fun Route.install(endpoint: Endpoint) {
         route(endpoint.path, endpoint.method) {
             handle {
-                val principal = guard(call, read = !endpoint.writes, scope = endpoint.scope)
+                val principal = guard(call, read = !endpoint.writes, scope = endpoint.scope, orScopes = endpoint.orScopes)
                 val apiCall = ApiCall(call, endpoint, api, principal)
                 var status = HttpStatusCode.InternalServerError
                 try {
@@ -189,17 +193,27 @@ class HttpServer(
      * read the paths in auth.anonymous.endpoints. A WebSocket client may also send its token in
      * the first message, so a missing token isn't fatal there.
      */
-    private fun guard(call: ApplicationCall, read: Boolean, scope: Scope = Scope.READ, allowMissingToken: Boolean = false): Principal {
+    internal suspend fun guard(call: ApplicationCall, read: Boolean, scope: Scope = Scope.SERVER_READ, allowMissingToken: Boolean = false, orScopes: List<Scope> = emptyList()): Principal {
+        exposure.check(call, api.config.http.trustedProxies)
         val header = call.request.headers[HttpHeaders.Authorization]
         val token = Authenticator.bearer(header)
+        val session = call.request.cookies[Panel.COOKIE]?.takeIf { header == null }
         val principal = when {
             token != null -> auth.authenticate(token) ?: throw ApiException(HttpStatusCode.Unauthorized, "invalid_token", "The token isn't valid")
             header != null -> throw ApiException(HttpStatusCode.Unauthorized, "invalid_token", "Send the token as Authorization: Bearer <token>")
+            session != null -> {
+                // A cookie rides along with any request the browser makes; a custom header proves the panel sent it,
+                // and a WebSocket from another site's page shows itself by its Origin.
+                if (!Panel.sameOrigin(call)) throw ApiException(HttpStatusCode.Forbidden, "csrf", "The panel's session works from its own site only")
+                if (!read && call.request.headers[Panel.CSRF_HEADER] != "1") throw ApiException(HttpStatusCode.Forbidden, "csrf", "Send ${Panel.CSRF_HEADER}: 1 with the panel's writes")
+                val account = api.accounts.session(session) ?: throw ApiException(HttpStatusCode.Unauthorized, "session_expired", "Sign in again")
+                Panel.principal(account, api.config.auth)
+            }
             read && auth.anonymousAllowed(call.request.path().removePrefix(base)) -> Principal.anonymous(clientAddress(call))
             allowMissingToken -> Principal.anonymous(clientAddress(call)).copy(scopes = emptySet())
             else -> throw ApiException(HttpStatusCode.Unauthorized, "token_required", "This endpoint needs a token")
         }
-        if (principal.scopes.isNotEmpty() && !principal.has(scope)) {
+        if (principal.scopes.isNotEmpty() && !principal.has(scope) && orScopes.none(principal::has)) {
             throw ApiException(HttpStatusCode.Forbidden, "missing_scope", "The token \"${principal.name}\" lacks the ${scope.id} scope")
         }
         val limits = api.config.rateLimit
@@ -220,7 +234,7 @@ class HttpServer(
      * a trusted proxy; then the rightmost address that isn't a trusted proxy wins, because
      * everything left of it could be made up by the client.
      */
-    private fun clientAddress(call: ApplicationCall): String {
+    internal fun clientAddress(call: ApplicationCall): String {
         val peer = call.request.origin.remoteAddress
         val settings = api.config.http
         if (!settings.trustForwardedFor) return peer

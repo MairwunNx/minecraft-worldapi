@@ -250,10 +250,10 @@ class WebSocketHub(
 
                     Topics: ${Topic.entries.joinToString { "`${it.id}`" }}.
 
-                    Scope: `read`.
+                    Permission: `events:read`; each topic may need its own, such as `chat:read` or `logs:read`.
                     """.trimIndent(),
                 )
-                put("x-scope", "read")
+                put("x-scope", "events:read")
                 putJsonObject("responses") { putJsonObject("101") { put("description", "Switching to the WebSocket protocol") } }
             }
         }

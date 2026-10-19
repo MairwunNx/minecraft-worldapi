@@ -36,8 +36,12 @@ import org.bukkit.block.data.BlockData
 import org.bukkit.block.sign.Side
 import org.bukkit.Nameable
 
-val blockRoutes = endpoints("Blocks") {
-    get("/worlds/{world}/blocks/{x}/{y}/{z}", "A block: type, state, light, biome, and contents") {
+val blockRoutes = endpoints("Blocks", Scope.SERVER_READ) {
+    get(
+        "/worlds/{world}/blocks/{x}/{y}/{z}", "A block: type, state, light, biome, and contents",
+        description = "A container's items (a double chest's both halves) come in `tileEntity.items`, with players:private or privacy that lets anonymous clients see inventories.",
+        also = Scope.PLAYERS_PRIVATE,
+    ) {
         val world = world()
         val (x, y, z) = coordinates()
         loadBlockChunk(world, x, z)
@@ -45,7 +49,7 @@ val blockRoutes = endpoints("Blocks") {
         main { blockView(world.getBlockAt(x, y, z), inventories) }
     }
 
-    put<BlockSet, BlockView>("/worlds/{world}/blocks/{x}/{y}/{z}", "Set one block", Scope.WRITE_WORLD) { request ->
+    put<BlockSet, BlockView>("/worlds/{world}/blocks/{x}/{y}/{z}", "Set one block", Scope.WORLD_WRITE) { request ->
         val world = world()
         val (x, y, z) = coordinates()
         loadBlockChunk(world, x, z)
@@ -59,7 +63,7 @@ val blockRoutes = endpoints("Blocks") {
     }
 
     post<FillRequest, FillResult>(
-        "/worlds/{world}/blocks/fill", "Fill a box with one block", Scope.WRITE_WORLD,
+        "/worlds/{world}/blocks/fill", "Fill a box with one block", Scope.WORLD_WRITE,
         description = "The box includes both corners. Its volume can't pass limits.maxFillBlocks.",
     ) { request ->
         val world = world()
@@ -150,7 +154,7 @@ val blockRoutes = endpoints("Blocks") {
         }
     }
 
-    patch<ChunkPatch, ChunkView>("/worlds/{world}/chunks/{chunkX}/{chunkZ}", "Keep a chunk loaded, or let it go", Scope.WRITE_WORLD) { patch ->
+    patch<ChunkPatch, ChunkView>("/worlds/{world}/chunks/{chunkX}/{chunkZ}", "Keep a chunk loaded, or let it go", Scope.WORLD_WRITE) { patch ->
         val (cx, cz) = chunkCoordinates()
         auditTarget = "${path("world")} $cx $cz"
         main {
@@ -172,7 +176,7 @@ internal enum class ChunkSort(val id: String, val order: Comparator<ChunkSummary
     }
 }
 
-private fun ApiCall.coordinates(): Triple<Int, Int, Int> {
+internal fun ApiCall.coordinates(): Triple<Int, Int, Int> {
     fun int(name: String) = path(name).toIntOrNull() ?: badRequest("$name must be an integer")
     val x = int("x")
     val y = int("y")

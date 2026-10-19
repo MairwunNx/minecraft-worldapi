@@ -1,5 +1,6 @@
 package com.mairwunnx.worldapi.routes
 
+import com.mairwunnx.worldapi.api.Scope
 import com.mairwunnx.worldapi.api.badRequest
 import com.mairwunnx.worldapi.api.endpoints
 import com.mairwunnx.worldapi.api.page
@@ -25,7 +26,7 @@ import org.bukkit.inventory.SmokingRecipe
 import org.bukkit.inventory.StonecuttingRecipe
 import org.bukkit.inventory.TransmuteRecipe
 
-val recipeRoutes = endpoints("Recipes") {
+val recipeRoutes = endpoints("Recipes", Scope.SERVER_READ) {
     get(
         "/recipes", "Recipes that make an item, or use it",
         description = "Give `item` for the recipes that make it, `uses` for the recipes that take it as an ingredient, or both. " +

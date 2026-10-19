@@ -34,7 +34,7 @@ class WebSocketTest {
     private val admin = "ws-admin-0123456789"
     private val config = WorldApiConfig(
         auth = Auth(
-            tokens = listOf(Token("site", token, listOf(Scope.READ)), Token("ops", admin, listOf(Scope.ADMIN))),
+            tokens = listOf(Token("site", token, listOf("viewer")), Token("ops", admin, listOf("admin"))),
             anonymous = Anonymous(endpoints = listOf("/ws")),
         ),
     )

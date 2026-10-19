@@ -100,3 +100,20 @@ data class ChunkView(
 
 @Serializable
 data class ChunkPatch(val forceLoaded: Boolean)
+
+@Serializable
+data class ContainerSummary(
+    /** Block key, such as `minecraft:chest`. */
+    val type: String,
+    val x: Int,
+    val y: Int,
+    val z: Int,
+    val distance: Double,
+    val customName: String? = null,
+    val size: Int,
+    val usedSlots: Int,
+    /** Item key to count: the items searched for, or else the five most plentiful. */
+    val items: Map<String, Int>,
+    /** Locked with a key item, as /data can set. */
+    val locked: Boolean,
+)

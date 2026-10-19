@@ -15,5 +15,5 @@ fun <T> List<T>.page(limit: Int, cursor: String?): Page<T> {
     val start = cursor?.let { it.toIntOrNull()?.takeIf { n -> n >= 0 } ?: badRequest("Unknown cursor", "invalid_cursor") } ?: 0
     val end = minOf(size, start + limit)
     val items = if (start >= size) emptyList() else subList(start, end)
-    return Page(items, nextCursor = if (end < size) end.toString() else null, total = size)
+    return Page(items, nextCursor = if (end < size && limit > 0) end.toString() else null, total = size)
 }

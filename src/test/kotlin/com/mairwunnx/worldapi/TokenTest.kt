@@ -23,7 +23,7 @@ class TokenTest {
     @Test
     fun `issued tokens are stored as digests only`() {
         val store = store()
-        val token = store.issue("site", setOf(Scope.READ), "MairwunNx", null)
+        val token = store.issue("site", listOf("viewer"), "MairwunNx", null)
         val file = store.tokens.single()
         assertEquals(64, token.length)
         assertEquals(TokenStore.digest(token), file.sha256)
@@ -36,10 +36,10 @@ class TokenTest {
     fun `tokens survive a reload and can be revoked`() {
         val store = store()
         val path = store.javaClass.getDeclaredField("path").apply { isAccessible = true }.get(store) as java.nio.file.Path
-        store.issue("agent", setOf(Scope.READ, Scope.WRITE_WORLD), "MairwunNx", Instant.now().plus(Duration.ofDays(1)))
+        store.issue("agent", listOf("viewer", "world:write"), "MairwunNx", Instant.now().plus(Duration.ofDays(1)))
         val reloaded = TokenStore(path).apply { load() }
-        assertEquals(listOf(Scope.READ, Scope.WRITE_WORLD), reloaded.tokens.single().scopes)
-        assertFailsWith<IllegalArgumentException> { reloaded.issue("agent", setOf(Scope.READ), "x", null) }
+        assertEquals(listOf("viewer", "world:write"), reloaded.tokens.single().scopes)
+        assertFailsWith<IllegalArgumentException> { reloaded.issue("agent", listOf("viewer"), "x", null) }
         val before = reloaded.generation
         assertTrue(reloaded.revoke("agent"))
         assertFalse(reloaded.revoke("agent"))
@@ -50,11 +50,11 @@ class TokenTest {
     @Test
     fun `the authenticator accepts issued tokens until they expire`() {
         val store = store()
-        val live = store.issue("live", setOf(Scope.WRITE_PLAYERS), "MairwunNx", Instant.now().plus(Duration.ofDays(1)))
-        val old = store.issue("old", setOf(Scope.READ), "MairwunNx", Instant.now().plus(Duration.ofSeconds(1)))
+        val live = store.issue("live", listOf("players:write"), "MairwunNx", Instant.now().plus(Duration.ofDays(1)))
+        val old = store.issue("old", listOf("viewer"), "MairwunNx", Instant.now().plus(Duration.ofSeconds(1)))
         var now = Instant.now()
         val auth = Authenticator(Auth(), store.tokens) { now }
-        assertEquals(setOf(Scope.WRITE_PLAYERS), auth.authenticate(live)?.scopes)
+        assertEquals(setOf(Scope.PLAYERS_WRITE), auth.authenticate(live)?.scopes)
         assertNotNull(auth.authenticate(old))
         now = now.plus(Duration.ofMinutes(1))
         assertNull(auth.authenticate(old))

@@ -1,5 +1,6 @@
 package com.mairwunnx.worldapi.routes
 
+import com.mairwunnx.worldapi.api.Scope
 import com.mairwunnx.worldapi.api.Page
 import com.mairwunnx.worldapi.api.badRequest
 import com.mairwunnx.worldapi.api.endpoints
@@ -12,7 +13,7 @@ import com.mairwunnx.worldapi.model.PlayerRef
 import com.mairwunnx.worldapi.store.EventQuery
 import java.time.Instant
 
-val eventRoutes = endpoints("Events") {
+val eventRoutes = endpoints("Events", Scope.EVENTS_READ) {
     get(
         "/events", "Event history: joins, deaths, advancements, skipped nights, boss kills, and more",
         description = "Newest first by default. Recorded types: ${Topic.entries.filter { it.recorded }.joinToString { "`${it.id}`" }}.",
@@ -30,7 +31,8 @@ val eventRoutes = endpoints("Events") {
         val order = query("order") ?: "newest"
         if (order !in setOf("newest", "oldest")) badRequest("order must be newest or oldest")
         if (types.isEmpty()) return@get Page(emptyList<EventView>())
-        val limit = limit
+        // The history has no total to give, so 0 means one.
+        val limit = limit.coerceAtLeast(1)
         val rows = api.history.events(
             EventQuery(
                 types = types.map { it.id },

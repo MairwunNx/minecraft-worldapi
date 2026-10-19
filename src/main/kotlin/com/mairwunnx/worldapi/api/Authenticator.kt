@@ -16,9 +16,10 @@ class Authenticator(config: Auth, issued: List<IssuedToken> = emptyList(), priva
     private class Entry(val digest: ByteArray, val principal: Principal, val rateLimit: RateLimit?, val expiresAt: Instant? = null)
 
     private val entries = config.tokens.map {
-        Entry(sha256(it.token), Principal(it.name, it.scopes.toSet(), "token:${it.name}"), it.rateLimit)
+        Entry(sha256(it.token), Principal(it.name, config.resolver.resolve(it.scopes), "token:${it.name}"), it.rateLimit)
     } + issued.map {
-        Entry(HexFormat.of().parseHex(it.sha256), Principal(it.name, it.scopes.toSet(), "token:${it.name}"), null, it.expiresAt?.let(Instant::parse))
+        // A group removed from config.yml since the token was made simply grants nothing.
+        Entry(HexFormat.of().parseHex(it.sha256), Principal(it.name, config.resolver.resolve(it.scopes), "token:${it.name}"), null, it.expiresAt?.let(Instant::parse))
     }
     private val anonymous = config.anonymous
     private val anonymousPatterns = anonymous.endpoints.map(::PathPattern)

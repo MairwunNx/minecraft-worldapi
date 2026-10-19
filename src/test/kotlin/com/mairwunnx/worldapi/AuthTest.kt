@@ -19,8 +19,8 @@ class AuthTest {
     private val auth = Authenticator(
         Auth(
             tokens = listOf(
-                Token("site", "site-token-0123456789", listOf(Scope.READ)),
-                Token("admin", "admin-token-0123456789", listOf(Scope.ADMIN), RateLimit(10, 5)),
+                Token("site", "site-token-0123456789", listOf("read")),
+                Token("admin", "admin-token-0123456789", listOf("admin"), RateLimit(10, 5)),
             ),
             anonymous = Anonymous(endpoints = listOf("/server", "/players/*", "/leaderboards/**")),
         ),
@@ -44,14 +44,16 @@ class AuthTest {
     }
 
     @Test
-    fun `admin includes every scope but code`() {
+    fun `admin includes every scope but code and files write`() {
         val admin = auth.authenticate("admin-token-0123456789")!!
-        assertTrue(admin.has(Scope.READ))
-        assertTrue(admin.has(Scope.WRITE_WORLD))
+        assertTrue(admin.has(Scope.SERVER_READ))
+        assertTrue(admin.has(Scope.WORLD_WRITE))
+        assertTrue(admin.has(Scope.FILES_READ))
+        assertFalse(admin.has(Scope.FILES_WRITE))
         assertFalse(admin.has(Scope.CODE))
+        // A 2.x read token keeps everything read gave it.
         val site = auth.authenticate("site-token-0123456789")!!
-        assertTrue(site.has(Scope.READ))
-        assertFalse(site.has(Scope.WRITE_PLAYERS))
+        assertEquals(setOf(Scope.SERVER_READ, Scope.PLAYERS_READ, Scope.PLAYERS_PRIVATE, Scope.EVENTS_READ, Scope.CHAT_READ), site.scopes)
         assertEquals(RateLimit(10, 5), auth.rateLimitOf(admin))
         assertNull(auth.rateLimitOf(site))
     }
@@ -81,7 +83,7 @@ class AuthTest {
         val principal = Principal.anonymous("1.2.3.4")
         assertTrue(principal.anonymous)
         assertEquals("ip:1.2.3.4", principal.key)
-        assertEquals(setOf(Scope.READ), principal.scopes)
+        assertEquals(Scope.anonymous, principal.scopes)
     }
 
     @Test
@@ -95,5 +97,26 @@ class AuthTest {
         now += 1_000_000_000L
         assertEquals(0, limiter.acquire("k", limit))
         assertEquals(1, limiter.acquire("k", limit))
+    }
+
+    @Test
+    fun `groups nest, and cycles and unknown names fail`() {
+        val groups = com.mairwunnx.worldapi.api.Groups(mapOf("a" to listOf("server:read", "b"), "b" to listOf("code"), "loop" to listOf("loop2"), "loop2" to listOf("loop")))
+        assertEquals(setOf(Scope.SERVER_READ, Scope.CODE), groups.resolve(listOf("a")))
+        val unknown = mutableListOf<String>()
+        groups.resolve(listOf("wizard"), unknown::add)
+        assertEquals(listOf("wizard"), unknown)
+        kotlin.test.assertFailsWith<IllegalArgumentException> { groups.resolve(listOf("loop")) }
+        kotlin.test.assertFailsWith<IllegalArgumentException> { com.mairwunnx.worldapi.config.ConfigFile.parse("auth:\n  tokens:\n    - name: x\n      token: \"0123456789abcdef0123\"\n      scopes: [wizard]\n") }
+        kotlin.test.assertFailsWith<IllegalArgumentException> { com.mairwunnx.worldapi.config.ConfigFile.parse("auth:\n  groups:\n    a: [b]\n    b: [a]\n") }
+    }
+
+    @Test
+    fun `the default groups keep files write and code to the owner`() {
+        val groups = com.mairwunnx.worldapi.api.Groups(Scope.defaultGroups)
+        assertFalse(Scope.FILES_WRITE in groups.resolve(listOf("admin")))
+        assertFalse(Scope.CODE in groups.resolve(listOf("admin")))
+        assertEquals(Scope.entries.toSet(), groups.resolve(listOf("owner")))
+        assertTrue(groups.resolve(listOf("viewer")).all { it in groups.resolve(listOf("moderator")) })
     }
 }

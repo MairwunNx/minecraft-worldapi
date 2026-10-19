@@ -6,6 +6,9 @@ import com.mairwunnx.worldapi.api.EndpointGroup
 import com.mairwunnx.worldapi.api.Scope
 import com.mairwunnx.worldapi.api.badRequest
 import com.mairwunnx.worldapi.api.endpoints
+import com.mairwunnx.worldapi.api.notFound
+import com.mairwunnx.worldapi.bukkit.hides
+import com.mairwunnx.worldapi.bukkit.knownPlayer
 import com.mairwunnx.worldapi.bukkit.giveOrDrop
 import com.mairwunnx.worldapi.bukkit.onlinePlayer
 import com.mairwunnx.worldapi.bukkit.toItemStack
@@ -21,17 +24,23 @@ import io.ktor.http.HttpStatusCode
 import org.bukkit.entity.Player
 import org.bukkit.inventory.Inventory
 
-private const val SLOTS = "Inventory slots: 0–8 hotbar, 9–35 main, 36 boots, 37 leggings, 38 chestplate, 39 helmet, 40 offhand. Ender chest slots: 0–26. The player must be online."
+private const val SLOTS = "Inventory slots: 0–8 hotbar, 9–35 main, 36 boots, 37 leggings, 38 chestplate, 39 helmet, 40 offhand. Ender chest slots: 0–26."
+private const val READ = "$SLOTS An offline player's items come from their playerdata file, as last saved."
+private const val WRITE = "$SLOTS The player must be online."
 
-val inventoryRoutes = endpoints("Inventories") {
-    get("/players/{player}/inventory", "Main inventory, armor, and offhand with full item data", description = SLOTS) {
+val inventoryRoutes = endpoints("Inventories", Scope.PLAYERS_READ) {
+    get("/players/{player}/inventory", "Main inventory, armor, and offhand with full item data", description = READ, also = Scope.PLAYERS_PRIVATE) {
         requireInventories()
-        main { inventoryView(onlinePlayer()) }
+        val (player, online) = main { knownPlayer().let { it to it.player?.takeUnless(::hides) } }
+        inventories(player, online).first
+            ?: notFound("no_player_data", "No saved inventory for ${player.name ?: player.uniqueId}")
     }
 
-    get("/players/{player}/enderchest", "Ender chest contents", description = SLOTS) {
+    get("/players/{player}/enderchest", "Ender chest contents", description = READ, also = Scope.PLAYERS_PRIVATE) {
         requireInventories()
-        main { onlinePlayer().enderChest.let { ContainerView(it.size, it.views()) } }
+        val (player, online) = main { knownPlayer().let { it to it.player?.takeUnless(::hides) } }
+        inventories(player, online).second
+            ?: notFound("no_player_data", "No saved ender chest for ${player.name ?: player.uniqueId}")
     }
 
     for (kind in listOf("inventory", "enderchest")) containerWrites(kind)
@@ -40,7 +49,7 @@ val inventoryRoutes = endpoints("Inventories") {
 private fun EndpointGroup.containerWrites(kind: String) {
     val title = if (kind == "inventory") "inventory" else "ender chest"
 
-    patch<ItemInput, ItemView>("/players/{player}/$kind/slots/{slot}", "Put an item in a $title slot", Scope.WRITE_PLAYERS, description = SLOTS) { input ->
+    patch<ItemInput, ItemView>("/players/{player}/$kind/slots/{slot}", "Put an item in a $title slot", Scope.PLAYERS_WRITE, description = WRITE) { input ->
         main {
             val player = onlinePlayer()
             val container = container(player, kind)
@@ -53,7 +62,7 @@ private fun EndpointGroup.containerWrites(kind: String) {
         }
     }
 
-    delete("/players/{player}/$kind/slots/{slot}", "Empty a $title slot", Scope.WRITE_PLAYERS, description = SLOTS) {
+    delete("/players/{player}/$kind/slots/{slot}", "Empty a $title slot", Scope.PLAYERS_WRITE, description = WRITE) {
         main {
             val player = onlinePlayer()
             val container = container(player, kind)
@@ -63,7 +72,7 @@ private fun EndpointGroup.containerWrites(kind: String) {
         }
     }
 
-    delete("/players/{player}/$kind", "Empty the whole $title", Scope.WRITE_PLAYERS) {
+    delete("/players/{player}/$kind", "Empty the whole $title", Scope.PLAYERS_WRITE) {
         main {
             val player = onlinePlayer()
             auditTarget = "${player.name} $kind"
@@ -73,7 +82,7 @@ private fun EndpointGroup.containerWrites(kind: String) {
 
     post<GiveRequest, GiveResult>(
         "/players/{player}/$kind/give", "Add an item to the $title",
-        Scope.WRITE_PLAYERS,
+        Scope.PLAYERS_WRITE,
         description = if (kind == "inventory") "Whatever doesn't fit drops at the player's feet." else "Whatever doesn't fit is lost and counted in `dropped`.",
     ) { request ->
         main {

@@ -11,12 +11,27 @@ import java.time.Instant
 class ConsoleLog(private val capacity: () -> Int, private val secrets: () -> Collection<String>) {
     private val lines = ArrayDeque<LogLine>()
 
+    /** Gets every cleaned line as it arrives, for the server.console topic. */
+    @Volatile
+    var listener: ((LogLine) -> Unit)? = null
+
+    // Whatever the listener logs would come straight back here; one line at a time per thread.
+    private val inListener = ThreadLocal.withInitial { false }
+
     fun add(at: Long, level: String, logger: String?, message: String) {
         val line = LogLine(Instant.ofEpochMilli(at).toString(), level.lowercase(), logger?.takeIf { it.isNotEmpty() }, clean(message))
         synchronized(lines) {
             lines.addLast(line)
             val size = capacity().coerceAtLeast(1)
             while (lines.size > size) lines.removeFirst()
+        }
+        val listener = listener ?: return
+        if (inListener.get()) return
+        inListener.set(true)
+        try {
+            listener(line)
+        } finally {
+            inListener.set(false)
         }
     }
 

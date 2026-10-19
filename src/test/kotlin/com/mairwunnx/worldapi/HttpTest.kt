@@ -44,21 +44,21 @@ class HttpTest {
 
     private val config = WorldApiConfig(
         auth = Auth(
-            tokens = listOf(Token("site", read, listOf(Scope.READ)), Token("builder", world, listOf(Scope.WRITE_WORLD))),
+            tokens = listOf(Token("site", read, listOf("viewer")), Token("builder", world, listOf("world:write"))),
             anonymous = Anonymous(endpoints = listOf("/public", "/ws")),
         ),
         rateLimit = RateLimits(anonymous = RateLimit(60, 3)),
     )
 
-    private val routes = endpoints("Test") {
+    private val routes = endpoints("Test", Scope.SERVER_READ) {
         get("/public", "Anyone may read this") { Echo("public") }
         get("/private", "Needs a token") { Echo("private") }
         get("/query", "Reads a query parameter", query = listOf(string("name", "A name"))) { Echo(query("name") ?: "none") }
-        post<Echo, Echo>("/echo", "Echoes the body", Scope.WRITE_WORLD) { body ->
+        post<Echo, Echo>("/echo", "Echoes the body", Scope.WORLD_WRITE) { body ->
             auditTarget = body.name
             body.copy(count = body.count + 1)
         }
-        patch<Echo, Echo>("/admin", "Needs admin", Scope.ADMIN) { it }
+        patch<Echo, Echo>("/admin", "Needs admin", Scope.SERVER_CONTROL) { it }
         get<Echo>("/missing", "Always 404") { notFound("thing_not_found", "No thing here") }
         get<Echo>("/broken", "Always fails") { error("boom") }
     }

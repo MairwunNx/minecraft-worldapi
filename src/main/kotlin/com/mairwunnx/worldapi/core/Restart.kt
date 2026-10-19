@@ -12,7 +12,7 @@ import org.bukkit.Server
 import java.time.Instant
 
 /**
- * A restart with a countdown in chat: it warns players at set marks, saves everything, and stops
+ * A restart or stop with a countdown in chat: it warns players at set marks, saves everything, and stops
  * the server. Whatever runs the server (Docker's restart policy, a start script loop) brings it
  * back. One restart at a time; scheduling another replaces it.
  */
@@ -22,24 +22,26 @@ class Restart(
     private val scope: CoroutineScope,
     private val secondMillis: Long = 1_000,
 ) {
-    private class Pending(val job: Job, val at: Instant, val message: String?)
+    private class Pending(val job: Job, val at: Instant, val message: String?, val stop: Boolean)
 
     @Volatile
     private var pending: Pending? = null
 
-    fun schedule(seconds: Int, message: String?): RestartStatus = synchronized(this) {
+    /** With [stop], players hear that the server stops rather than restarts; what runs it decides whether it comes back. */
+    fun schedule(seconds: Int, message: String?, stop: Boolean = false): RestartStatus = synchronized(this) {
+        val verb = if (stop) "stops" else "restarts"
         pending?.job?.cancel()
         val at = Instant.now().plusSeconds(seconds.toLong())
         val job = scope.launch {
             for (left in seconds downTo 1) {
-                if (left == seconds || left in MARKS) say("Server restarts in ${duration(left)}" + (message?.let { ": $it" } ?: ""))
+                if (left == seconds || left in MARKS) say("Server $verb in ${duration(left)}" + (message?.let { ": $it" } ?: ""))
                 delay(secondMillis)
             }
             // A busy tick only delays the restart; it never calls it off.
             while (true) {
                 try {
                     main.call {
-                        server.broadcast(Component.text("Server restarting now", NamedTextColor.GOLD))
+                        server.broadcast(Component.text(if (stop) "Server stopping now" else "Server restarting now", NamedTextColor.GOLD))
                         server.savePlayers()
                         server.worlds.forEach { it.save() }
                         server.shutdown()
@@ -50,7 +52,7 @@ class Restart(
                 }
             }
         }
-        pending = Pending(job, at, message)
+        pending = Pending(job, at, message, stop)
         status()
     }
 
@@ -59,7 +61,7 @@ class Restart(
         val stopped = synchronized(this) { pending?.also { pending = null } } ?: return false
         if (!stopped.job.isActive) return false
         stopped.job.cancel()
-        say("Restart cancelled")
+        say(if (stopped.stop) "Stop cancelled" else "Restart cancelled")
         return true
     }
 
@@ -71,7 +73,7 @@ class Restart(
     fun status(): RestartStatus {
         val current = pending?.takeIf { it.job.isActive } ?: return RestartStatus(scheduled = false)
         val left = (current.at.toEpochMilli() - System.currentTimeMillis()).coerceAtLeast(0) / 1000
-        return RestartStatus(scheduled = true, at = current.at.toString(), secondsLeft = left, message = current.message)
+        return RestartStatus(scheduled = true, at = current.at.toString(), secondsLeft = left, message = current.message, kind = if (current.stop) "stop" else "restart")
     }
 
     /** A warning lost to a busy tick isn't worth stopping the countdown for. */

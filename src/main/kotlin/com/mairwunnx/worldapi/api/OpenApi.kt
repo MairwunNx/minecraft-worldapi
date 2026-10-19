@@ -54,7 +54,7 @@ class OpenApi(private val title: String, private val version: String) {
             putJsonObject("info") {
                 put("title", title)
                 put("version", version)
-                put("description", "REST access to a Paper server. Send a token as `Authorization: Bearer <token>`. Each operation lists the scope it needs.")
+                put("description", "REST access to a Paper server. Send a token as `Authorization: Bearer <token>`. Each operation lists the permission it needs in `x-scope` (or any of `x-scopes-any`), and in `x-also-needs` one that its full answer needs on top.")
             }
             putJsonArray("servers") { add(buildJsonObject { put("url", serverUrl) }) }
             putJsonArray("tags") {
@@ -76,9 +76,14 @@ class OpenApi(private val title: String, private val version: String) {
     private fun operation(endpoint: Endpoint) = buildJsonObject {
         put("operationId", operationId(endpoint))
         put("summary", endpoint.summary)
-        put("description", listOfNotNull(endpoint.description, "Scope: `${endpoint.scope.id}`.").joinToString("\n\n"))
+        val any = listOf(endpoint.scope) + endpoint.orScopes
+        val needs = "Permission: " + any.joinToString(" or ") { "`${it.id}`" } + "." +
+            (endpoint.also?.let { " Coordinates, items, and the like also need `${it.id}`." } ?: "")
+        put("description", listOfNotNull(endpoint.description, needs).joinToString("\n\n"))
         putJsonArray("tags") { add(JsonPrimitive(endpoint.tag)) }
         put("x-scope", endpoint.scope.id)
+        if (endpoint.orScopes.isNotEmpty()) putJsonArray("x-scopes-any") { any.forEach { add(JsonPrimitive(it.id)) } }
+        endpoint.also?.let { put("x-also-needs", it.id) }
         putJsonArray("security") { add(buildJsonObject { putJsonArray("bearer") { add(JsonPrimitive(endpoint.scope.id)) } }) }
         val parameters = endpoint.pathParams.map { name ->
             buildJsonObject {
@@ -120,7 +125,7 @@ class OpenApi(private val title: String, private val version: String) {
             val errors = buildList {
                 if (endpoint.body != null || endpoint.query.isNotEmpty() || endpoint.pathParams.isNotEmpty()) add(400 to "Invalid request")
                 add(401 to "Missing or unknown token")
-                add(403 to "The token lacks the scope")
+                add(403 to "The token lacks the permission")
                 if (endpoint.pathParams.isNotEmpty()) add(404 to "Not found")
                 add(429 to "Rate limit hit; see Retry-After")
                 add(503 to "The server thread didn't answer in time")

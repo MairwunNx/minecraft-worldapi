@@ -15,7 +15,7 @@ class Topic private constructor(
     val state: Boolean = false,
     val recorded: Boolean = false,
     val privacy: Privacy = Privacy.NONE,
-    val scope: Scope = Scope.READ,
+    val scope: Scope = Scope.EVENTS_READ,
     /** For a plugin's topic: its namespace, and whether the plugin lets anonymous clients see it. */
     val extension: Extension? = null,
 ) {
@@ -34,7 +34,7 @@ class Topic private constructor(
         private val extensions = ConcurrentHashMap<String, Topic>()
 
         private fun builtIn(
-            id: String, state: Boolean = false, recorded: Boolean = false, privacy: Privacy = Privacy.NONE, scope: Scope = Scope.READ,
+            id: String, state: Boolean = false, recorded: Boolean = false, privacy: Privacy = Privacy.NONE, scope: Scope = Scope.EVENTS_READ,
         ) = Topic(id, state, recorded, privacy, scope).also { builtIns += it }
 
         val PLAYER_JOIN = builtIn("player.join", recorded = true)
@@ -43,8 +43,8 @@ class Topic private constructor(
         val PLAYER_DEATH = builtIn("player.death", recorded = true, privacy = Privacy.COORDINATES)
         val PLAYER_RESPAWN = builtIn("player.respawn", privacy = Privacy.COORDINATES)
         val PLAYER_ADVANCEMENT = builtIn("player.advancement", recorded = true)
-        val PLAYER_CHAT = builtIn("player.chat", recorded = true, privacy = Privacy.CHAT)
-        val PLAYER_COMMAND = builtIn("player.command", scope = Scope.ADMIN)
+        val PLAYER_CHAT = builtIn("player.chat", recorded = true, privacy = Privacy.CHAT, scope = Scope.CHAT_READ)
+        val PLAYER_COMMAND = builtIn("player.command", scope = Scope.LOGS_READ)
         val PLAYER_MOVE = builtIn("player.move", state = true, privacy = Privacy.COORDINATES_ONLY)
         val PLAYER_WORLD_CHANGE = builtIn("player.world_change")
         val PLAYER_PORTAL = builtIn("player.portal", privacy = Privacy.COORDINATES)
@@ -75,6 +75,7 @@ class Topic private constructor(
         val SERVER_PERFORMANCE = builtIn("server.performance", state = true)
         val SERVER_STATUS = builtIn("server.status", recorded = true)
         val SERVER_PLUGIN = builtIn("server.plugin")
+        val SERVER_CONSOLE = builtIn("server.console", scope = Scope.LOGS_READ)
         val SCRIPT_LOG = builtIn("script.log", scope = Scope.CODE)
 
         private val byId by lazy { builtIns.associateBy { it.id } }

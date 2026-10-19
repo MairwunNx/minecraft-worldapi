@@ -17,8 +17,8 @@ import io.papermc.paper.registry.RegistryKey
 import org.bukkit.Particle
 import org.bukkit.SoundCategory
 
-val worldEffectRoutes = endpoints("World effects") {
-    post<ExplosionRequest, Done>("/worlds/{world}/explosions", "Make an explosion", Scope.WRITE_WORLD) { request ->
+val worldEffectRoutes = endpoints("World effects", Scope.SERVER_READ) {
+    post<ExplosionRequest, Done>("/worlds/{world}/explosions", "Make an explosion", Scope.WORLD_WRITE) { request ->
         if (request.power !in 0f..config.limits.maxExplosionPower) badRequest("power must be between 0 and ${config.limits.maxExplosionPower}")
         val location = request.location.toLocation(api.server, fallback = world())
         loadBlockChunk(location.world, location.blockX, location.blockZ)
@@ -26,7 +26,7 @@ val worldEffectRoutes = endpoints("World effects") {
         main { Done(location.world.createExplosion(location, request.power, request.fire, request.breakBlocks)) }
     }
 
-    post<LightningRequest, Done>("/worlds/{world}/lightning", "Strike lightning", Scope.WRITE_WORLD) { request ->
+    post<LightningRequest, Done>("/worlds/{world}/lightning", "Strike lightning", Scope.WORLD_WRITE) { request ->
         val location = request.location.toLocation(api.server, fallback = world())
         loadBlockChunk(location.world, location.blockX, location.blockZ)
         auditTarget = "${location.world.name} ${location.blockX} ${location.blockY} ${location.blockZ}"
@@ -36,7 +36,7 @@ val worldEffectRoutes = endpoints("World effects") {
         }
     }
 
-    post<SoundRequest, Done>("/worlds/{world}/sounds", "Play a sound at a spot", Scope.WRITE_WORLD) { request ->
+    post<SoundRequest, Done>("/worlds/{world}/sounds", "Play a sound at a spot", Scope.WORLD_WRITE) { request ->
         val location = request.location.toLocation(api.server, fallback = world())
         if (request.volume !in 0f..16f || request.pitch !in 0.5f..2f) badRequest("volume must be 0–16 and pitch 0.5–2")
         val category = SoundCategory.entries.firstOrNull { it.name.equals(request.category, ignoreCase = true) } ?: badRequest("Unknown sound category")
@@ -47,7 +47,7 @@ val worldEffectRoutes = endpoints("World effects") {
         }
     }
 
-    post<ParticleRequest, Done>("/worlds/{world}/particles", "Show particles at a spot", Scope.WRITE_WORLD) { request ->
+    post<ParticleRequest, Done>("/worlds/{world}/particles", "Show particles at a spot", Scope.WORLD_WRITE) { request ->
         if (request.count !in 1..config.limits.maxParticleCount) badRequest("count must be between 1 and ${config.limits.maxParticleCount}")
         val location = request.location.toLocation(api.server, fallback = world())
         main {

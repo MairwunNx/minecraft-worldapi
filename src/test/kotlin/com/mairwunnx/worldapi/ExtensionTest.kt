@@ -84,7 +84,7 @@ class ExtensionTest {
     fun `anonymous clients see public topics only, unless the server keeps them private`() {
         register()
         val anonymous = Principal.anonymous("127.0.0.1")
-        val token = Principal("site", setOf(Scope.READ), "token")
+        val token = Principal("site", Scope.legacy.getValue("read"), "token")
         val killed = Topic.of("ext.mobosses.boss.killed")!!
         val spawned = Topic.of("ext.mobosses.boss.spawned")!!
         assertTrue(Visibility(anonymous, WorldApiConfig()).allows(killed))

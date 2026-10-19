@@ -25,7 +25,11 @@ import com.mairwunnx.worldapi.bukkit.uuidOrNull
 import com.mairwunnx.worldapi.bukkit.view
 import com.mairwunnx.worldapi.bukkit.world
 import com.mairwunnx.worldapi.model.EntityPatch
+import com.mairwunnx.worldapi.model.ChunkLoad
+import com.mairwunnx.worldapi.model.EntityCensus
 import com.mairwunnx.worldapi.model.EntitySummary
+import com.mairwunnx.worldapi.model.TradeView
+import com.mairwunnx.worldapi.model.VillagerView
 import com.mairwunnx.worldapi.model.EntityView
 import com.mairwunnx.worldapi.model.RemovedEntities
 import com.mairwunnx.worldapi.model.SpawnRequest
@@ -33,10 +37,14 @@ import com.mairwunnx.worldapi.model.Spawned
 import io.papermc.paper.registry.RegistryKey
 import kotlinx.coroutines.future.await
 import org.bukkit.Location
+import org.bukkit.World
+import org.bukkit.block.Hopper
 import org.bukkit.attribute.Attribute
 import org.bukkit.entity.Ageable
 import org.bukkit.entity.Entity
 import org.bukkit.entity.EntityType
+import org.bukkit.entity.Item
+import org.bukkit.entity.Villager
 import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Mob
 import org.bukkit.entity.Player
@@ -44,38 +52,65 @@ import org.bukkit.entity.Tameable
 import org.bukkit.inventory.EquipmentSlot
 import org.bukkit.util.Vector
 
-val entityRoutes = endpoints("Entities") {
+val entityRoutes = endpoints("Entities", Scope.SERVER_READ) {
     get(
-        "/worlds/{world}/entities", "Entities in a world, filtered by type and area",
-        description = "Give x, y, z, and radius to search around a point. Without a point, it lists every loaded entity.",
+        "/worlds/{world}/entities", "Entities in a world, filtered by type, area, name, or chunk",
+        description = "Give x, y, z, and radius to search around a point, nearest first. Without a point, it lists loaded entities by UUID. " +
+            "Pages hold 25 by default: for a picture of a crowded world, GET /worlds/{world}/entities/summary first.",
         query = pageParams + listOf(
             string("type", "Entity key, such as `minecraft:zombie`; several separated by commas"),
             number("x", "Center X"), number("y", "Center Y"), number("z", "Center Z"),
             number("radius", "Search radius in blocks; the server caps it"),
+            string("name", "Only entities whose custom name (or player name) contains this, ignoring case"),
+            string("chunk", "Only this chunk, as `chunkX,chunkZ`"),
         ),
     ) {
         val types = query("type")?.split(',')?.map { registryEntry(RegistryKey.ENTITY_TYPE, it.trim(), "entity") }?.toSet()
-        val center = listOf(double("x"), double("y"), double("z"))
-        val radius = double("radius")
-        if (center.any { it != null } && center.any { it == null }) badRequest("Give all of x, y, and z, or none")
-        if (radius != null && (radius <= 0 || radius > config.limits.maxEntityRadius)) badRequest("radius must be between 0 and ${config.limits.maxEntityRadius}")
+        val area = area()
+        val name = query("name")
+        val chunk = query("chunk")?.split(',')?.map { it.trim().toIntOrNull() ?: badRequest("chunk must be chunkX,chunkZ") }
+            ?.takeIf { it.size == 2 } ?: query("chunk")?.let { badRequest("chunk must be chunkX,chunkZ") }
         val coordinates = seesCoordinates
-        val (limit, cursor) = limit to cursor
+        val limit = if (int("limit") == null) minOf(25, limit) else limit
+        val cursor = cursor
         main {
             val world = world()
-            val found: Collection<Entity> = if (center[0] != null) {
-                val r = radius ?: 32.0
-                world.getNearbyEntities(Location(world, center[0]!!, center[1]!!, center[2]!!), r, r, r) { it.location.distance(Location(world, center[0]!!, center[1]!!, center[2]!!)) <= r }
-            } else {
-                world.entities
+            val origin = area?.let { Location(world, it.x, it.y, it.z) }
+            val found: Collection<Entity> = when {
+                chunk != null -> if (world.isChunkLoaded(chunk[0], chunk[1])) world.getChunkAt(chunk[0], chunk[1]).entities.toList() else emptyList()
+                origin != null -> nearby(world, origin, area.radius)
+                else -> world.entities
             }
             found.asSequence()
                 .filter { types == null || it.type in types }
+                .filter { name == null || (it.customName()?.plain() ?: (it as? Player)?.name)?.contains(name, ignoreCase = true) == true }
+                .filter { origin == null || chunk == null || it.location.distanceSquared(origin) <= area.radius * area.radius }
                 .filterNot { it is Player && hides(it) }
-                .sortedBy { it.uniqueId }
+                .sortedWith(if (origin != null) compareBy { it.location.distanceSquared(origin) } else compareBy { it.uniqueId })
                 .map { summary(it, coordinates) }
                 .toList()
                 .page(limit, cursor)
+        }
+    }
+
+    get(
+        "/worlds/{world}/entities/summary", "How many entities there are, of which types, and where they crowd",
+        description = "Counts loaded entities in the whole world, or around x, y, z within radius: per type, dropped items, villagers, named mobs, tamed pets, " +
+            "and the ten busiest chunks with their block entities and hoppers. A compact first look before listing entities.",
+        query = listOf(
+            string("type", "Count only these entity keys, separated by commas"),
+            number("x", "Center X"), number("y", "Center Y"), number("z", "Center Z"),
+            number("radius", "Radius in blocks around x, y, z; the server caps it"),
+        ),
+    ) {
+        val types = query("type")?.split(',')?.map { registryEntry(RegistryKey.ENTITY_TYPE, it.trim(), "entity") }?.toSet()
+        val area = area()
+        main {
+            val world = world()
+            val entities = (area?.let { nearby(world, Location(world, it.x, it.y, it.z), it.radius) } ?: world.entities)
+                .filter { types == null || it.type in types }
+                .filterNot { it is Player && hides(it) }
+            census(world, entities)
         }
     }
 
@@ -85,7 +120,7 @@ val entityRoutes = endpoints("Entities") {
         main { entityView(entity(), coordinates, inventories) }
     }
 
-    patch<EntityPatch, EntityView>("/worlds/{world}/entities/{uuid}", "Change an entity: name, flags, health, position", Scope.WRITE_WORLD) { patch ->
+    patch<EntityPatch, EntityView>("/worlds/{world}/entities/{uuid}", "Change an entity: name, flags, health, position", Scope.WORLD_WRITE) { patch ->
         val location = patch.location?.toLocation(api.server)
         main {
             val entity = entity()
@@ -120,7 +155,7 @@ val entityRoutes = endpoints("Entities") {
         description = "Removes loaded entities of the given types without drops, up to `max` at once (limits.maxEntityRemoval at most). " +
             "Players are never removed. Named mobs and tamed pets are skipped unless `includeNamed` is true. " +
             "With `dryRun`, nothing is removed and the answer says what would be.",
-        scope = Scope.WRITE_WORLD,
+        scope = Scope.WORLD_WRITE,
         query = listOf(
             string("type", "Entity keys, separated by commas, such as `minecraft:item,minecraft:arrow`", required = true),
             number("x", "Center X"), number("y", "Center Y"), number("z", "Center Z"),
@@ -168,7 +203,7 @@ val entityRoutes = endpoints("Entities") {
         }
     }
 
-    delete("/worlds/{world}/entities/{uuid}", "Remove an entity", Scope.WRITE_WORLD) {
+    delete("/worlds/{world}/entities/{uuid}", "Remove an entity", Scope.WORLD_WRITE) {
         main {
             val entity = entity()
             if (entity is Player) badRequest("Players can't be removed; kick them instead")
@@ -178,7 +213,7 @@ val entityRoutes = endpoints("Entities") {
     }
 
     post<SpawnRequest, Spawned>(
-        "/worlds/{world}/entities", "Spawn entities", Scope.WRITE_WORLD,
+        "/worlds/{world}/entities", "Spawn entities", Scope.WORLD_WRITE,
         description = "Spawns up to limits.maxSpawnCount at once.",
         status = io.ktor.http.HttpStatusCode.Created,
     ) { request ->
@@ -217,6 +252,44 @@ private fun ApiCall.entity(): Entity {
     val uuid = uuidOrNull(id) ?: badRequest("\"$id\" isn't a UUID")
     // A vanished player is as absent here as anywhere else.
     return world().getEntity(uuid)?.takeUnless { it is Player && hides(it) }.orNotFound("entity_not_found") { "No loaded entity $id in ${path("world")}" }
+}
+
+private class Area(val x: Double, val y: Double, val z: Double, val radius: Double)
+
+/** x, y, z, and radius from the query, all or none; radius defaults to 32 and stays within limits.maxEntityRadius. */
+private fun ApiCall.area(): Area? {
+    val center = listOf(double("x"), double("y"), double("z"))
+    val radius = double("radius")
+    if (center.any { it != null } && center.any { it == null }) badRequest("Give all of x, y, and z, or none")
+    if (radius != null && center[0] == null) badRequest("radius needs x, y, and z")
+    if (radius != null && (radius <= 0 || radius > config.limits.maxEntityRadius)) badRequest("radius must be between 0 and ${config.limits.maxEntityRadius}")
+    return center[0]?.let { Area(it, center[1]!!, center[2]!!, radius ?: 32.0) }
+}
+
+private fun nearby(world: World, origin: Location, radius: Double): Collection<Entity> =
+    world.getNearbyEntities(origin, radius, radius, radius) { it.location.distanceSquared(origin) <= radius * radius }
+
+private fun census(world: World, entities: List<Entity>): EntityCensus {
+    val byType = entities.groupingBy { it.type.key.asString() }.eachCount().entries.sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
+    val items = entities.filterIsInstance<Item>()
+    val chunks = entities.groupBy { it.location.blockX shr 4 to (it.location.blockZ shr 4) }.entries.sortedByDescending { it.value.size }.take(10).map { (at, inside) ->
+        val (cx, cz) = at
+        val tiles = if (world.isChunkLoaded(cx, cz)) world.getChunkAt(cx, cz).getTileEntities(false) else emptyArray()
+        ChunkLoad(cx, cz, inside.size, tiles.size, tiles.count { it is Hopper }, topTypes(inside.map { it.type.key.asString() }, 3))
+    }
+    return EntityCensus(
+        world = world.name,
+        total = entities.size,
+        byType = byType.take(20).associateTo(LinkedHashMap()) { it.key to it.value },
+        otherTypes = byType.drop(20).sumOf { it.value },
+        droppedItems = items.size,
+        droppedItemCount = items.sumOf { it.itemStack.amount },
+        villagers = entities.count { it is Villager },
+        named = entities.count { it !is Player && it.customName() != null },
+        tamed = entities.count { it is Tameable && it.isTamed },
+        players = entities.count { it is Player },
+        topChunks = chunks,
+    )
 }
 
 private fun summary(entity: Entity, coordinates: Boolean) = EntitySummary(
@@ -263,5 +336,23 @@ fun entityView(entity: Entity, coordinates: Boolean, inventories: Boolean): Enti
         owner = (entity as? Tameable)?.owner?.let { entity.server.getOfflinePlayer(it.uniqueId).ref() },
         equipment = equipment?.takeIf { it.isNotEmpty() },
         effects = living?.effectViews(),
+        spawnReason = entity.entitySpawnReason?.name?.lowercase(),
+        fromSpawner = entity.fromMobSpawner(),
+        removeWhenFarAway = living?.removeWhenFarAway,
+        leashHolder = living?.takeIf { it.isLeashed }?.let { runCatching { it.leashHolder.uniqueId.toString() }.getOrNull() },
+        villager = (entity as? Villager)?.let { villager ->
+            VillagerView(
+                profession = villager.profession.key.asString(),
+                type = villager.villagerType.key.asString(),
+                level = villager.villagerLevel,
+                experience = villager.villagerExperience,
+                trades = villager.recipes.map { trade ->
+                    TradeView(trade.ingredients.mapNotNull { it.view() }, trade.result.view()!!, trade.uses, trade.maxUses, trade.demand, trade.specialPrice)
+                },
+            )
+        },
+        item = (entity as? Item)?.itemStack?.view(),
+        pickupDelay = (entity as? Item)?.pickupDelay,
+        thrower = (entity as? Item)?.thrower?.toString(),
     )
 }

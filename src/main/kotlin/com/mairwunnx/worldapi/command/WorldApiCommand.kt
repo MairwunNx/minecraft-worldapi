@@ -16,9 +16,13 @@ interface TokenCommands {
     fun list(): List<String>
     fun revoke(name: String): Result<String>
     fun issuedNames(): List<String>
+
+    /** Shows the player a code for the admin panel, or says why not. */
+    fun adminCode(player: Player, group: String?): String?
+    fun groupNames(): List<String>
 }
 
-/** `/worldapi reload | status | token create|list|revoke`, for operators with worldapi.admin. */
+/** `/worldapi reload | status | admin [group] | token create|list|revoke`, for operators with worldapi.admin. */
 object WorldApiCommand {
     fun build(reload: () -> Result<String>, status: () -> List<String>, tokens: TokenCommands): LiteralCommandNode<CommandSourceStack> =
         Commands.literal("worldapi")
@@ -35,6 +39,16 @@ object WorldApiCommand {
                 status().forEach { context.source.sender.sendMessage(Component.text(it)) }
                 Command.SINGLE_SUCCESS
             })
+            .then(
+                Commands.literal("admin")
+                    .executes { context -> admin(context.source.sender, tokens, null) }
+                    .then(Commands.argument("group", StringArgumentType.word())
+                        .suggests { _, builder ->
+                            tokens.groupNames().filter { it.startsWith(builder.remainingLowerCase) }.forEach(builder::suggest)
+                            builder.buildFuture()
+                        }
+                        .executes { context -> admin(context.source.sender, tokens, StringArgumentType.getString(context, "group")) }),
+            )
             .then(
                 Commands.literal("token")
                     .then(Commands.literal("create").then(Commands.argument("name", StringArgumentType.word()).executes { context ->
@@ -68,4 +82,14 @@ object WorldApiCommand {
                     )),
             )
             .build()
+
+    private fun admin(sender: org.bukkit.command.CommandSender, tokens: TokenCommands, group: String?): Int {
+        // Like a token, the code goes to one player's chat; the console would log it.
+        if (sender !is Player) {
+            sender.sendMessage(Component.text("Get a panel code in game: the console would write it to the log.", NamedTextColor.RED))
+        } else {
+            tokens.adminCode(sender, group)?.let { sender.sendMessage(Component.text(it, NamedTextColor.RED)) }
+        }
+        return Command.SINGLE_SUCCESS
+    }
 }

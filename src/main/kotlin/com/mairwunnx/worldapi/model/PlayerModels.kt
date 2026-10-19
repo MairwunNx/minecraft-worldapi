@@ -47,6 +47,45 @@ data class PlayerView(
     val respawnLocation: LocationView? = null,
     /** Present while the player is online. */
     val state: PlayerState? = null,
+    /** The parts asked for with `include`; each is absent unless asked for. */
+    val inventory: InventoryView? = null,
+    val enderChest: ContainerView? = null,
+    /** Online players only. */
+    val effects: List<EffectView>? = null,
+    val deaths: Deaths? = null,
+    /** The newest sessions, at most 5. */
+    val sessions: List<SessionView>? = null,
+    /** The `minecraft:custom` statistics (play time, deaths, distances, kills); the rest is under /statistics. */
+    val statistics: Map<String, Long>? = null,
+    val advancements: AdvancementSummary? = null,
+)
+
+@Serializable
+data class Deaths(
+    /** Where the game last saw the player die; it keeps this even past the history WorldAPI keeps. */
+    val lastLocation: LocationView? = null,
+    /** The newest deaths from WorldAPI's history, at most 5. */
+    val recent: List<DeathView>,
+)
+
+@Serializable
+data class DeathView(
+    val at: String,
+    val message: String? = null,
+    /** Damage type, such as `minecraft:fall`. */
+    val cause: String? = null,
+    /** Who or what killed the player: a player's name, or an entity key. */
+    val killer: String? = null,
+    val level: Int? = null,
+    val location: LocationView? = null,
+)
+
+@Serializable
+data class AdvancementSummary(
+    val done: Int,
+    val total: Int,
+    /** The newest finished ones, at most 5. */
+    val recent: List<AdvancementView>,
 )
 
 @Serializable

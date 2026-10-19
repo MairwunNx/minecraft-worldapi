@@ -21,19 +21,19 @@ import org.bukkit.Difficulty
 import org.bukkit.GameRule
 import org.bukkit.World
 
-val worldRoutes = endpoints("Worlds") {
+val worldRoutes = endpoints("Worlds", Scope.SERVER_READ) {
     get("/worlds", "Every loaded world") {
-        val admin = principal.has(Scope.ADMIN)
+        val admin = principal.has(Scope.SERVER_CONTROL)
         main { api.server.worlds.map { WorldSummary(it.name, it.key.asString(), it.environment.name.lowercase(), it.playerCount, if (admin) it.seed.toString() else null) } }
     }
 
     get("/worlds/{world}", "Time, weather, moon, border, rules, and load of one world") {
-        val admin = principal.has(Scope.ADMIN)
+        val admin = principal.has(Scope.SERVER_CONTROL)
         main { worldView(world(), admin) }
     }
 
-    patch<WorldPatch, WorldView>("/worlds/{world}", "Change time, weather, difficulty, spawn, or PvP", Scope.WRITE_WORLD) { patch ->
-        val admin = principal.has(Scope.ADMIN)
+    patch<WorldPatch, WorldView>("/worlds/{world}", "Change time, weather, difficulty, spawn, or PvP", Scope.WORLD_WRITE) { patch ->
+        val admin = principal.has(Scope.SERVER_CONTROL)
         main {
             val world = world()
             auditTarget = world.name
@@ -47,7 +47,7 @@ val worldRoutes = endpoints("Worlds") {
     }
 
     patch<Map<String, JsonPrimitive>, List<GameRuleView>>(
-        "/worlds/{world}/gamerules", "Set game rules", Scope.WRITE_WORLD,
+        "/worlds/{world}/gamerules", "Set game rules", Scope.WORLD_WRITE,
         description = "The body maps rule names to values: `{ \"keep_inventory\": true, \"players_sleeping_percentage\": 100 }`. All rules are checked before any changes.",
     ) { rules ->
         if (rules.isEmpty()) badRequest("Name at least one rule")
@@ -67,7 +67,7 @@ val worldRoutes = endpoints("Worlds") {
         main { border(world()) }
     }
 
-    patch<BorderPatch, Border>("/worlds/{world}/border", "Resize or move the world border", Scope.WRITE_WORLD) { patch ->
+    patch<BorderPatch, Border>("/worlds/{world}/border", "Resize or move the world border", Scope.WORLD_WRITE) { patch ->
         main {
             val world = world()
             auditTarget = world.name

@@ -1,5 +1,6 @@
 package com.mairwunnx.worldapi
 
+import com.mairwunnx.worldapi.api.Scope
 import com.mairwunnx.worldapi.api.HttpServer
 import com.mairwunnx.worldapi.bukkit.Vanished
 import com.mairwunnx.worldapi.command.TokenCommands
@@ -90,14 +91,16 @@ class WorldApiPlugin : JavaPlugin() {
         } catch (error: Exception) {
             logger.severe("tokens.yml is invalid, so in-game tokens don't work until it's fixed: ${error.message}")
         }
-        api = WorldApi(server, main, history, bus, Statistics(server, main), Experience(store), scripts, tokens, config, pluginMeta.version, vanished, Extensions(bus, logger), Tamed(store))
+        api = WorldApi(server, main, history, bus, Statistics(server, main), Experience(store), scripts, tokens, config, pluginMeta.version, vanished, Extensions(bus, logger), Tamed(store), com.mairwunnx.worldapi.admin.AdminAccounts(store),
+            com.mairwunnx.worldapi.files.ServerFiles(java.nio.file.Path.of(""), dataFolder.toPath(), dataFolder.toPath().resolve("backups")))
+        warnLegacy(loaded)
         stopConsole = try {
             ConsoleAppender.install(api.console)
         } catch (error: Throwable) {
             logger.warning("Can't read the console, so GET /server/logs stays empty: $error")
             null
         }
-        val menu = TokenMenu(this, tokens, { config.get().scripts.enabled }, logger)
+        val menu = TokenMenu(this, tokens, { config.get().auth.groups }, logger)
         server.pluginManager.registerEvents(menu, this)
 
         hub = WebSocketHub(config::get, { token -> http?.authenticate(token) }, Snapshots(server, main))
@@ -194,6 +197,7 @@ class WorldApiPlugin : JavaPlugin() {
         val new = ConfigFile.load(dataFolder.toPath().resolve("config.yml")).first
         api.tokens.load()
         config.set(new)
+        warnLegacy(new)
         // The store keeps its connection; a new database takes a restart.
         val database = if (new.database != old.database) "; the database change applies after a restart" else ""
         if (http == null || HttpServer.changesNeedRestart(old, new)) {
@@ -218,14 +222,14 @@ class WorldApiPlugin : JavaPlugin() {
 
         override fun list(): List<String> {
             val now = Instant.now()
-            val fromConfig = config.get().auth.tokens.map { "${it.name}: ${it.scopes.joinToString { s -> s.id }} (config.yml)" }
+            val fromConfig = config.get().auth.tokens.map { "${it.name}: ${it.scopes.joinToString()} (config.yml)" }
             val issued = api.tokens.tokens.map {
                 val state = when {
                     it.expired(now) -> "expired ${it.expiresAt}"
                     it.expiresAt != null -> "expires ${it.expiresAt}"
                     else -> "never expires"
                 }
-                "${it.name}: ${it.scopes.joinToString { s -> s.id }} ($state, made by ${it.createdBy})"
+                "${it.name}: ${it.scopes.joinToString()} ($state, made by ${it.createdBy})"
             }
             return (fromConfig + issued).ifEmpty { listOf("No tokens yet. Create one with /worldapi token create <name>.") }
         }
@@ -238,6 +242,45 @@ class WorldApiPlugin : JavaPlugin() {
         }
 
         override fun issuedNames() = api.tokens.tokens.map { it.name }
+
+        override fun groupNames() = config.get().auth.groups.keys.toList()
+
+        override fun adminCode(player: org.bukkit.entity.Player, group: String?): String? {
+            val groups = config.get().auth.groups
+            // A quick read on the server thread: the command needs the answer now, and SQLite answers in microseconds.
+            val (accounts, existing) = kotlinx.coroutines.runBlocking { api.accounts.count() to api.accounts.find(player.name) }
+            val chosen = group ?: if (accounts == 0L) "owner" else "admin"
+            if (existing == null && chosen !in groups) return "No group $chosen in config.yml. Groups: ${groups.keys.joinToString()}"
+            val code = if (existing != null) {
+                api.accounts.issueCode(player.name, player.uniqueId.toString(), existing.groups, player.name, reset = true)
+            } else {
+                api.accounts.issueCode(player.name, player.uniqueId.toString(), listOf(chosen), player.name)
+            }
+            logger.info("${player.name} got an admin panel code" + if (existing != null) " to reset their password" else " for an account in group $chosen")
+            player.sendMessage(net.kyori.adventure.text.Component.text(
+                if (existing != null) "A code to set a new password for your panel account ${player.name}, good for 30 minutes:"
+                else "A code for a panel account ${player.name} in group $chosen, good for 30 minutes:",
+                net.kyori.adventure.text.format.NamedTextColor.GREEN,
+            ))
+            player.sendMessage(
+                net.kyori.adventure.text.Component.text("[$code]", net.kyori.adventure.text.format.NamedTextColor.AQUA, net.kyori.adventure.text.format.TextDecoration.BOLD)
+                    .clickEvent(net.kyori.adventure.text.event.ClickEvent.copyToClipboard(code))
+                    .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(net.kyori.adventure.text.Component.text("Copies the code"))),
+            )
+            player.sendMessage(net.kyori.adventure.text.Component.text("Open WorldAPI's /admin page, choose \"I have a code\", and enter it with a password.", net.kyori.adventure.text.format.NamedTextColor.GRAY))
+            return null
+        }
+    }
+
+    /** 2.x scope names still work, with the access they had; the log says what replaces them. */
+    private fun warnLegacy(settings: com.mairwunnx.worldapi.config.WorldApiConfig) {
+        val old = (settings.auth.tokens.map { it.name to it.scopes } + api.tokens.tokens.map { it.name to it.scopes })
+            .filter { (_, scopes) -> scopes.any { it in Scope.legacy && it !in settings.auth.groups } }
+            .map { it.first }
+        if (old.isNotEmpty()) {
+            logger.warning("Tokens ${old.joinToString()} use 2.x scopes (read, write:world, write:players); they keep working. " +
+                "Their 3.0 names: read is the viewer group, write:world is world:write, write:players is players:write.")
+        }
     }
 
     private fun status(): List<String> {

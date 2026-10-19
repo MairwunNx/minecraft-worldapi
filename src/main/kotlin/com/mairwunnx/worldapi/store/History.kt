@@ -50,6 +50,8 @@ data class Session(val id: Long, val playerUuid: String, val playerName: String,
 
 data class AuditEntry(val token: String, val method: String, val path: String, val target: String?, val status: Int, val detail: String?)
 
+data class AuditRow(val id: Long, val at: Long, val entry: AuditEntry)
+
 /** The queries behind the history endpoints. */
 class History(private val store: Store) {
     fun record(type: String, at: Instant, playerUuid: String?, playerName: String?, world: String?, data: JsonObject, hidden: Boolean = false) = store.write {
@@ -133,6 +135,18 @@ class History(private val store: Store) {
             it[status] = entry.status
             it[detail] = entry.detail
         }
+    }
+
+    /** The audit log, newest first; [actor] narrows it to one token or account. */
+    suspend fun auditLog(before: Long?, limit: Int, actor: String?): List<AuditRow> = store.read {
+        Audit.selectAll()
+            .apply {
+                val where = listOfNotNull(before?.let { Audit.id less it }, actor?.let { Audit.token eq it })
+                if (where.isNotEmpty()) where(where.reduce(Op<Boolean>::and))
+            }
+            .orderBy(Audit.id, SortOrder.DESC)
+            .limit(limit)
+            .map { AuditRow(it[Audit.id], it[Audit.at], AuditEntry(it[Audit.token], it[Audit.method], it[Audit.path], it[Audit.target], it[Audit.status], it[Audit.detail])) }
     }
 
     /** The last time anything was written, to close sessions a crash left open. */

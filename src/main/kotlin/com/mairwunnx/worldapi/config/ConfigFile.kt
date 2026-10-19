@@ -44,6 +44,10 @@ object ConfigFile {
             config.auth.tokens.groupBy { it.name }.filter { it.value.size > 1 }.keys.forEach {
                 add("auth.tokens: the name \"$it\" appears more than once")
             }
+            runCatching { config.auth.resolver.validate() }.onFailure { add("auth.groups: ${it.message}") }
+            config.auth.tokens.forEach { token ->
+                token.scopes.filterNot(config.auth.resolver::contains).forEach { add("auth.tokens.${token.name}: \"$it\" is neither a permission nor a group") }
+            }
             config.auth.tokens.filter { it.token.length < 16 || it.token == TOKEN_PLACEHOLDER }.forEach {
                 add("auth.tokens.${it.name}: the token must be at least 16 characters")
             }

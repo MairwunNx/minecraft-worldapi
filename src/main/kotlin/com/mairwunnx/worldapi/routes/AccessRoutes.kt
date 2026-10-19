@@ -21,12 +21,12 @@ import java.time.Duration
 
 private const val SOURCE = "WorldAPI"
 
-val accessRoutes = endpoints("Access") {
-    get("/server/whitelist", "Whitelist state and players", scope = Scope.ADMIN) {
+val accessRoutes = endpoints("Access", Scope.PLAYERS_MODERATE) {
+    get("/server/whitelist", "Whitelist state and players", scope = Scope.PLAYERS_MODERATE) {
         main { whitelist(api.server) }
     }
 
-    patch<WhitelistPatch, Whitelist>("/server/whitelist", "Turn the whitelist on or off, add or remove players", Scope.ADMIN) { patch ->
+    patch<WhitelistPatch, Whitelist>("/server/whitelist", "Turn the whitelist on or off, add or remove players", Scope.PLAYERS_MODERATE) { patch ->
         val add = patch.add.map { profile(it) }
         val remove = patch.remove.map { profile(it) }
         auditTarget = (patch.add.map { "+$it" } + patch.remove.map { "-$it" }).joinToString(" ").ifEmpty { null }
@@ -40,11 +40,11 @@ val accessRoutes = endpoints("Access") {
         }
     }
 
-    get("/server/ops", "Server operators", scope = Scope.ADMIN) {
+    get("/server/ops", "Server operators", scope = Scope.PLAYERS_MODERATE) {
         main { Operators(api.server.operators.map { it.ref() }.sortedBy { it.name?.lowercase() }) }
     }
 
-    patch<OperatorsPatch, Operators>("/server/ops", "Make players operators or take it away", Scope.ADMIN) { patch ->
+    patch<OperatorsPatch, Operators>("/server/ops", "Make players operators or take it away", Scope.PLAYERS_MODERATE) { patch ->
         val add = patch.add.map { profile(it) }
         val remove = patch.remove.map { profile(it) }
         auditTarget = (patch.add.map { "+$it" } + patch.remove.map { "-$it" }).joinToString(" ").ifEmpty { null }
@@ -55,12 +55,12 @@ val accessRoutes = endpoints("Access") {
         }
     }
 
-    get("/server/bans", "Banned players and IP addresses", scope = Scope.ADMIN) {
+    get("/server/bans", "Banned players and IP addresses", scope = Scope.PLAYERS_MODERATE) {
         main { bans(api.server) }
     }
 
     patch<BansPatch, Bans>(
-        "/server/bans", "Ban or pardon players and IP addresses", Scope.ADMIN,
+        "/server/bans", "Ban or pardon players and IP addresses", Scope.PLAYERS_MODERATE,
         description = "Banned players who are online get kicked.",
     ) { patch ->
         val ban = patch.ban.map { it to profile(it.player) }

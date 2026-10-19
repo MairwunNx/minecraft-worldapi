@@ -1,5 +1,6 @@
 package com.mairwunnx.worldapi.routes
 
+import com.mairwunnx.worldapi.api.Scope
 import com.mairwunnx.worldapi.api.badRequest
 import com.mairwunnx.worldapi.api.boolean
 import com.mairwunnx.worldapi.api.endpoints
@@ -8,7 +9,6 @@ import com.mairwunnx.worldapi.api.notFound
 import com.mairwunnx.worldapi.api.string
 import com.mairwunnx.worldapi.bukkit.world
 import com.mairwunnx.worldapi.model.BlockPosition
-import com.mairwunnx.worldapi.model.StructureResult
 import com.mairwunnx.worldapi.model.WorldStats
 import io.papermc.paper.registry.RegistryAccess
 import io.papermc.paper.registry.RegistryKey
@@ -22,43 +22,7 @@ import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.round
 
-val worldInfoRoutes = endpoints("Worlds") {
-    get(
-        "/worlds/{world}/structures/nearest", "Find the nearest structure",
-        description = "Searching can take a while and runs on the server thread, so the radius is capped by limits.maxStructureRadius (in chunks). " +
-            "`type` takes a structure key such as `minecraft:stronghold`, or a prefix such as `village` that matches every structure starting with it.",
-        query = listOf(
-            string("type", "Structure key or prefix", required = true),
-            integer("x", "Search from this X; defaults to the world spawn"),
-            integer("z", "Search from this Z; defaults to the world spawn"),
-            integer("radius", "Search radius in chunks"),
-            boolean("unexplored", "Only structures nobody has found yet, as treasure maps do"),
-        ),
-    ) {
-        val type = query("type")!!.lowercase().removePrefix("minecraft:")
-        val radius = int("radius") ?: config.limits.maxStructureRadius
-        if (radius !in 1..config.limits.maxStructureRadius) badRequest("radius must be between 1 and ${config.limits.maxStructureRadius}")
-        val x = int("x")
-        val z = int("z")
-        val unexplored = bool("unexplored") ?: false
-        main {
-            val world = world()
-            val origin = Location(world, (x ?: world.spawnLocation.blockX).toDouble(), 64.0, (z ?: world.spawnLocation.blockZ).toDouble())
-            val registry = RegistryAccess.registryAccess().getRegistry(RegistryKey.STRUCTURE)
-            val candidates = registry.stream().filter { it.key.key == type || it.key.key.startsWith(type) }.toList()
-            if (candidates.isEmpty()) badRequest("No structure matches \"$type\"", "unknown_structure")
-            val found = candidates.mapNotNull { world.locateNearestStructure(origin, it, radius, unexplored) }
-                .minByOrNull { it.location.distanceSquared(origin) }
-                ?: notFound("structure_not_found", "No $type within $radius chunks")
-            val at = found.location
-            StructureResult(
-                registry.getKey(found.structure)?.asString() ?: type,
-                BlockPosition(at.blockX, at.blockY, at.blockZ),
-                round(Math.hypot(at.x - origin.x, at.z - origin.z) * 10) / 10,
-            )
-        }
-    }
-
+val worldInfoRoutes = endpoints("Worlds", Scope.SERVER_READ) {
     get("/worlds/{world}/stats", "Explored area, region files, and size on disk") {
         val folder = main { world().let { it.name to regionFolder(it) } }
         val (name, region) = folder

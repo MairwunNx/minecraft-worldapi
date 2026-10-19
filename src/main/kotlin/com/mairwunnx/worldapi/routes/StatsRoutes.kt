@@ -1,6 +1,7 @@
 package com.mairwunnx.worldapi.routes
 
 import com.mairwunnx.worldapi.bukkit.hides
+import com.mairwunnx.worldapi.api.Scope
 import com.mairwunnx.worldapi.api.endpoints
 import com.mairwunnx.worldapi.api.integer
 import com.mairwunnx.worldapi.api.notFound
@@ -21,7 +22,7 @@ private val killedRef = StatRef("minecraft:killed", "*")
 private val playTime = StatRef("minecraft:custom", "minecraft:play_time")
 private val deaths = StatRef("minecraft:custom", "minecraft:deaths")
 
-val statsRoutes = endpoints("Leaderboards") {
+val statsRoutes = endpoints("Leaderboards", Scope.PLAYERS_READ) {
     get("/leaderboards", "The preset leaderboards") {
         Board.presets.values.map { BoardInfo(it.id, it.title, it.unit) }
     }

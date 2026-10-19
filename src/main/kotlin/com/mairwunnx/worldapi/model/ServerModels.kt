@@ -40,6 +40,7 @@ data class ServerInfo(
     /** Across every world. */
     val loadedChunks: Int,
     val entities: Int,
+    val datapacks: List<DatapackView> = emptyList(),
 )
 
 @Serializable
@@ -51,6 +52,8 @@ data class Performance(
     val cpu: Cpu,
     val worlds: List<WorldLoad>,
     val at: String,
+    /** GET /server/performance only; the streamed topic leaves it out. */
+    val jvm: Jvm? = null,
 )
 
 @Serializable
@@ -95,8 +98,10 @@ data class RestartStatus(
     val at: String? = null,
     val secondsLeft: Long? = null,
     val message: String? = null,
-    /** On DELETE: whether a pending restart was called off. */
+    /** On DELETE: whether a pending restart or stop was called off. */
     val cancelled: Boolean? = null,
+    /** `restart` or `stop`; one shutdown is pending at a time, and scheduling either replaces it. */
+    val kind: String? = null,
 )
 
 @Serializable
@@ -125,6 +130,10 @@ data class PluginInfo(
     val description: String? = null,
     val authors: List<String> = emptyList(),
     val website: String? = null,
+    /** The plugin's folder, relative to the server folder, as /files takes it. */
+    val folder: String? = null,
+    /** Its config files (yml, json, properties, toml, conf), relative to the server folder; at most 50. */
+    val configs: List<String> = emptyList(),
 )
 
 @Serializable
@@ -219,3 +228,93 @@ data class BanRequest(
 
 @Serializable
 data class IpBanRequest(val ip: String, val reason: String? = null, val durationSeconds: Long? = null)
+
+/** The JVM inside: memory regions, garbage collection, threads, classes, and buffers. */
+@Serializable
+data class Jvm(
+    val heap: MemoryRegion,
+    val nonHeap: MemoryRegion,
+    /** Eden, survivor, old generation, metaspace, code cache, as the collector names them. */
+    val pools: List<MemoryPool>,
+    val gc: List<Collector>,
+    val threads: Threads,
+    val classesLoaded: Int,
+    /** Direct and mapped buffers live outside the heap; Netty and chunk IO use them. */
+    val buffers: List<BufferPool>,
+)
+
+@Serializable
+data class MemoryRegion(val usedBytes: Long, val committedBytes: Long, val maxBytes: Long? = null)
+
+@Serializable
+data class MemoryPool(val name: String, val type: String, val usedBytes: Long, val committedBytes: Long, val maxBytes: Long? = null)
+
+@Serializable
+data class Collector(val name: String, val count: Long, val timeMillis: Long)
+
+@Serializable
+data class Threads(val live: Int, val daemon: Int, val peak: Int)
+
+@Serializable
+data class BufferPool(val name: String, val count: Long, val usedBytes: Long, val capacityBytes: Long)
+
+/** The machine and process around the server. */
+@Serializable
+data class SystemView(
+    val os: String,
+    val osVersion: String,
+    val arch: String,
+    val cpus: Int,
+    /** 1, 5, and 15 minutes; the last two only where the OS reports them (Linux). */
+    val loadAverage: List<Double>? = null,
+    val processCpu: Double? = null,
+    val systemCpu: Double? = null,
+    val memory: HostMemory,
+    /** The disk that holds the server folder. */
+    val disk: Disk,
+    /** cgroup limits when the server runs in a container; absent outside one. */
+    val container: ContainerLimits? = null,
+    val openFiles: Long? = null,
+    val maxOpenFiles: Long? = null,
+    /** The server process's resident memory (Linux). */
+    val processResidentBytes: Long? = null,
+    val java: JavaRuntime,
+    val at: String,
+)
+
+@Serializable
+data class HostMemory(
+    val totalBytes: Long? = null,
+    val freeBytes: Long? = null,
+    /** What new programs could use without swapping (Linux MemAvailable). */
+    val availableBytes: Long? = null,
+    val swapTotalBytes: Long? = null,
+    val swapFreeBytes: Long? = null,
+)
+
+@Serializable
+data class Disk(val path: String, val totalBytes: Long, val freeBytes: Long, val usableBytes: Long)
+
+@Serializable
+data class ContainerLimits(
+    /** Null when the container has no memory limit. */
+    val memoryLimitBytes: Long? = null,
+    val memoryUsedBytes: Long? = null,
+    /** CPUs the container may use; null without a limit. */
+    val cpuLimit: Double? = null,
+)
+
+@Serializable
+data class JavaRuntime(val name: String, val vendor: String, val version: String, val uptimeSeconds: Long, val startedAt: String)
+
+@Serializable
+data class DatapackView(
+    /** Such as `vanilla`, `file/dungeons-and-taverns.zip`, or `paper`. */
+    val name: String,
+    val title: String,
+    val description: String? = null,
+    val enabled: Boolean,
+    val required: Boolean,
+    /** `built_in`, `world`, `server`, or `feature`, as the server tells where it came from. */
+    val source: String? = null,
+)

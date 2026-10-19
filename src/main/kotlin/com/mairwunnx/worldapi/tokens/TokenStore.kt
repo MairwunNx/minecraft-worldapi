@@ -1,7 +1,6 @@
 package com.mairwunnx.worldapi.tokens
 
 import com.charleskorn.kaml.Yaml
-import com.mairwunnx.worldapi.api.Scope
 import com.mairwunnx.worldapi.config.ConfigFile
 import kotlinx.serialization.Serializable
 import java.nio.file.Files
@@ -19,7 +18,8 @@ import kotlin.io.path.writeText
 data class IssuedToken(
     val name: String,
     val sha256: String,
-    val scopes: List<Scope>,
+    /** Permissions and group names, as in config.yml. */
+    val scopes: List<String>,
     val createdAt: String,
     val createdBy: String,
     /** Absent for a token that never expires. */
@@ -52,10 +52,10 @@ class TokenStore(private val path: Path) {
 
     /** Creates a token and returns its plain value, which exists nowhere else afterwards. */
     @Synchronized
-    fun issue(name: String, scopes: Set<Scope>, createdBy: String, expiresAt: Instant?): String {
+    fun issue(name: String, scopes: List<String>, createdBy: String, expiresAt: Instant?): String {
         require(tokens.none { it.name == name }) { "A token named $name already exists" }
         val token = ConfigFile.newToken()
-        save(tokens + IssuedToken(name, digest(token), scopes.sortedBy { it.ordinal }, Instant.now().toString(), createdBy, expiresAt?.toString()))
+        save(tokens + IssuedToken(name, digest(token), scopes.distinct(), Instant.now().toString(), createdBy, expiresAt?.toString()))
         return token
     }
 

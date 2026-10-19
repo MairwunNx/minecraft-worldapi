@@ -1,5 +1,6 @@
 package com.mairwunnx.worldapi.routes
 
+import com.mairwunnx.worldapi.api.Scope
 import com.mairwunnx.worldapi.api.ApiException
 import com.mairwunnx.worldapi.api.endpoints
 import com.mairwunnx.worldapi.api.notFound
@@ -30,7 +31,7 @@ data class ExtensionInfo(
     val topics: List<ExtensionTopicInfo>,
 )
 
-val extensionRoutes = endpoints("Extensions") {
+val extensionRoutes = endpoints("Extensions", Scope.SERVER_READ) {
     get<List<ExtensionInfo>>(
         "/extensions", "Other plugins’ data: their namespaces, resources, and event topics",
         description = "Plugins register these through the extension bridge (see the reference). Anonymous clients see only what the plugin marks public.",

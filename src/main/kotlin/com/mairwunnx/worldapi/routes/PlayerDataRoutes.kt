@@ -30,12 +30,12 @@ import org.bukkit.advancement.Advancement
 import org.bukkit.entity.Player
 import java.time.Instant
 
-val playerDataRoutes = endpoints("Player data") {
+val playerDataRoutes = endpoints("Player data", Scope.PLAYERS_READ) {
     get("/players/{player}/effects", "Active potion effects") {
         main { onlinePlayer().effectViews() }
     }
 
-    post<EffectRequest, List<EffectView>>("/players/{player}/effects", "Give a potion effect", Scope.WRITE_PLAYERS) { request ->
+    post<EffectRequest, List<EffectView>>("/players/{player}/effects", "Give a potion effect", Scope.PLAYERS_WRITE) { request ->
         main {
             val player = onlinePlayer()
             auditTarget = "${player.name} ${request.type}"
@@ -44,7 +44,7 @@ val playerDataRoutes = endpoints("Player data") {
         }
     }
 
-    delete("/players/{player}/effects/{effect}", "Remove one effect", Scope.WRITE_PLAYERS) {
+    delete("/players/{player}/effects/{effect}", "Remove one effect", Scope.PLAYERS_WRITE) {
         main {
             val player = onlinePlayer()
             auditTarget = "${player.name} ${path("effect")}"
@@ -52,7 +52,7 @@ val playerDataRoutes = endpoints("Player data") {
         }
     }
 
-    delete("/players/{player}/effects", "Remove every effect", Scope.WRITE_PLAYERS) {
+    delete("/players/{player}/effects", "Remove every effect", Scope.PLAYERS_WRITE) {
         main {
             val player = onlinePlayer()
             auditTarget = player.name
@@ -92,7 +92,7 @@ val playerDataRoutes = endpoints("Player data") {
         Advancements(player.ref(), list.count { it.done && !it.key.contains("recipes/") && !it.key.endsWith("/root") }, list)
     }
 
-    post<com.mairwunnx.worldapi.api.NoBody, AdvancementView>("/players/{player}/advancements/{key...}", "Grant an advancement", Scope.WRITE_PLAYERS) {
+    post<com.mairwunnx.worldapi.api.NoBody, AdvancementView>("/players/{player}/advancements/{key...}", "Grant an advancement", Scope.PLAYERS_WRITE) {
         main {
             val player = onlinePlayer()
             val advancement = advancement(path("key"))
@@ -103,7 +103,7 @@ val playerDataRoutes = endpoints("Player data") {
         }
     }
 
-    delete("/players/{player}/advancements/{key...}", "Revoke an advancement", Scope.WRITE_PLAYERS) {
+    delete("/players/{player}/advancements/{key...}", "Revoke an advancement", Scope.PLAYERS_WRITE) {
         main {
             val player = onlinePlayer()
             val advancement = advancement(path("key"))
@@ -131,7 +131,7 @@ val playerDataRoutes = endpoints("Player data") {
         }
     }
 
-    patch<PermissionPatch, PermissionView>("/players/{player}/permissions", "Make a player an operator or take it away", Scope.ADMIN) { patch ->
+    patch<PermissionPatch, PermissionView>("/players/{player}/permissions", "Make a player an operator or take it away", Scope.PLAYERS_MODERATE) { patch ->
         main {
             val player = knownPlayer()
             auditTarget = "${player.name} op=${patch.op}"
@@ -143,7 +143,7 @@ val playerDataRoutes = endpoints("Player data") {
     get("/players/{player}/sessions", "Play sessions WorldAPI recorded, newest first", query = pageParams) {
         val (player, hidden) = main { knownPlayer().let { it to (it.player?.let(::hides) == true) } }
         val before = cursor?.let { it.toLongOrNull() ?: badRequest("Unknown cursor", "invalid_cursor") }
-        val limit = limit
+        val limit = limit.coerceAtLeast(1)
         // Sessions played vanished stay with admin clients, and so does the open one of a player who vanished since joining.
         val sessions = api.history.sessions(player.uniqueId.toString(), before, limit + 1, includeHidden = seesVanished)
             .filterNot { hidden && it.leftAt == null }
@@ -183,14 +183,14 @@ internal fun view(advancement: Advancement, done: Boolean, at: Instant?, criteri
     )
 }
 
-private fun liveAdvancements(player: Player, recipes: Boolean): List<AdvancementView> {
+internal fun liveAdvancements(player: Player, recipes: Boolean): List<AdvancementView> {
     val list = mutableListOf<AdvancementView>()
     player.server.advancementIterator().forEach { if (included(it, recipes)) list += advancementView(it, player) }
     return list.sortedBy { it.key }
 }
 
 /** Offline players: the advancements file has criteria with dates, the server has titles. */
-private fun com.mairwunnx.worldapi.api.ApiCall.fileAdvancements(text: String, recipes: Boolean): List<AdvancementView> {
+internal fun com.mairwunnx.worldapi.api.ApiCall.fileAdvancements(text: String, recipes: Boolean): List<AdvancementView> {
     val saved = if (text.isBlank()) emptyMap() else kotlinx.serialization.json.Json.parseToJsonElement(text).let { it as kotlinx.serialization.json.JsonObject }
     val list = mutableListOf<AdvancementView>()
     api.server.advancementIterator().forEach { advancement ->

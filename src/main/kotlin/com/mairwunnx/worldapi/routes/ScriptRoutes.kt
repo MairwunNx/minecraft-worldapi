@@ -14,7 +14,7 @@ import com.mairwunnx.worldapi.model.ScriptView
 private const val SCRIPT_DOCS = "Scripts are Java, compiled on the server. They may use Java and the Paper API only; blocked calls are listed in config.yml. " +
     "Off unless scripts.enabled is true, and every call needs the code scope, which admin doesn't include."
 
-val scriptRoutes = endpoints("Scripts") {
+val scriptRoutes = endpoints("Scripts", Scope.SERVER_READ) {
     post<ScriptRunRequest, ScriptRunResult>(
         "/scripts/run", "Compile and run Java once, and return what it returns", Scope.CODE,
         description = "$SCRIPT_DOCS Send a class implementing WorldApiScript, or just the body of `run`: `return server.getOnlinePlayers().size();`. " +

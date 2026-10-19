@@ -1,5 +1,6 @@
 package com.mairwunnx.worldapi.tokens
 
+import com.mairwunnx.worldapi.api.Groups
 import com.mairwunnx.worldapi.api.Scope
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.event.ClickEvent
@@ -22,17 +23,18 @@ import java.time.Duration
 import java.time.Instant
 import java.util.logging.Logger
 
-/** The chest menu behind `/worldapi token create <name>`: pick scopes and a lifetime, then create. */
+/** The chest menu behind `/worldapi token create <name>`: pick groups and a lifetime, then create. */
 class TokenMenu(
     private val plugin: Plugin,
     private val store: TokenStore,
-    private val scriptsEnabled: () -> Boolean,
+    /** auth.groups from config.yml, read each time the menu opens. */
+    private val groups: () -> Map<String, List<String>>,
     private val logger: Logger,
 ) : Listener {
     private class Choice(val label: String, val duration: Duration?)
 
-    private class Session(val name: String, val player: Player) : InventoryHolder {
-        val scopes = mutableSetOf(Scope.READ)
+    private class Session(val name: String, val player: Player, val offered: List<String>, val resolver: Groups) : InventoryHolder {
+        val groups = mutableSetOf<String>()
         var lifetime = 0
         lateinit var view: Inventory
         override fun getInventory() = view
@@ -46,13 +48,16 @@ class TokenMenu(
         Choice("90 days", Duration.ofDays(90)),
     )
 
-    private val scopeSlots = mapOf(10 to Scope.READ, 11 to Scope.WRITE_WORLD, 12 to Scope.WRITE_PLAYERS, 13 to Scope.ADMIN, 14 to Scope.CODE)
+    // The first six groups of config.yml; more are for the admin panel.
+    private val groupSlots = (10..15).toList()
     private val lifetimeSlot = 16
     private val createSlot = 22
     private val cancelSlot = 26
 
     fun open(player: Player, name: String) {
-        val session = Session(name, player)
+        val all = groups()
+        val session = Session(name, player, all.keys.take(groupSlots.size), Groups(all))
+        session.offered.firstOrNull()?.let(session.groups::add)
         session.view = plugin.server.createInventory(session, 27, Component.text("New token: $name"))
         render(session)
         player.openInventory(session.view)
@@ -63,33 +68,40 @@ class TokenMenu(
         view.clear()
         val filler = item(Material.GRAY_STAINED_GLASS_PANE, Component.empty(), emptyList())
         (0 until view.size).forEach { view.setItem(it, filler) }
-        scopeSlots.forEach { (slot, scope) -> view.setItem(slot, scopeItem(scope, scope in session.scopes)) }
+        session.offered.forEachIndexed { index, group -> view.setItem(groupSlots[index], groupItem(session, group, group in session.groups)) }
         val lifetime = lifetimes[session.lifetime]
         view.setItem(lifetimeSlot, item(Material.CLOCK, Component.text("Lifetime: ${lifetime.label}", NamedTextColor.YELLOW), listOf(gray("Click to change"))))
-        val ready = session.scopes.isNotEmpty()
+        val ready = session.groups.isNotEmpty()
         view.setItem(
             createSlot,
             item(
                 if (ready) Material.LIME_CONCRETE else Material.GRAY_CONCRETE,
                 Component.text("Create token", if (ready) NamedTextColor.GREEN else NamedTextColor.GRAY),
-                listOf(gray(if (ready) "Scopes: ${session.scopes.sortedBy { it.ordinal }.joinToString { it.id }}" else "Pick at least one scope")),
+                listOf(gray(if (ready) "Groups: ${session.groups.joinToString()}" else "Pick at least one group")),
             ),
         )
         view.setItem(cancelSlot, item(Material.BARRIER, Component.text("Cancel", NamedTextColor.RED), emptyList()))
     }
 
-    private fun scopeItem(scope: Scope, on: Boolean): ItemStack {
-        val (material, description) = when (scope) {
-            Scope.READ -> Material.BOOK to listOf("Every GET and the WebSocket")
-            Scope.WRITE_WORLD -> Material.GRASS_BLOCK to listOf("Time, weather, rules, blocks,", "entities, explosions")
-            Scope.WRITE_PLAYERS -> Material.PLAYER_HEAD to listOf("Player state, teleports,", "inventories, effects")
-            Scope.ADMIN -> Material.NETHER_STAR to listOf("Everything above, plus bans,", "ops, and console commands")
-            Scope.CODE -> Material.COMMAND_BLOCK to listOf("Run Java on the server.", "Only for people you'd give SSH.") +
-                if (scriptsEnabled()) emptyList() else listOf("Scripts are off in config.yml")
+    private fun groupItem(session: Session, group: String, on: Boolean): ItemStack {
+        val scopes = session.resolver.resolve(listOf(group))
+        val material = when {
+            Scope.CODE in scopes || Scope.FILES_WRITE in scopes -> Material.COMMAND_BLOCK
+            Scope.SERVER_CONSOLE in scopes -> Material.NETHER_STAR
+            Scope.PLAYERS_MODERATE in scopes -> Material.IRON_SWORD
+            scopes.any { it.id.endsWith(":write") } -> Material.GRASS_BLOCK
+            else -> Material.BOOK
         }
-        val lore = description.map(::gray) + Component.empty() +
+        // Lore lines stay short: a chest tooltip wraps nothing.
+        val description = scopes.sortedBy { it.ordinal }.map { it.id }.chunked(3).map { it.joinToString() }
+        val warning = when {
+            Scope.CODE in scopes -> listOf("Runs Java on the server.", "Only for people you'd give SSH.")
+            Scope.FILES_WRITE in scopes -> listOf("Changes server and plugin configs.")
+            else -> emptyList()
+        }
+        val lore = description.map(::gray) + warning.map { Component.text(it, NamedTextColor.GOLD).decoration(TextDecoration.ITALIC, false) } + Component.empty() +
             Component.text(if (on) "On, click to turn off" else "Off, click to turn on", if (on) NamedTextColor.GREEN else NamedTextColor.DARK_GRAY)
-        return item(material, Component.text(scope.id, if (on) NamedTextColor.GREEN else NamedTextColor.WHITE), lore).apply {
+        return item(material, Component.text(group, if (on) NamedTextColor.GREEN else NamedTextColor.WHITE), lore).apply {
             editMeta { it.setEnchantmentGlintOverride(on) }
         }
     }
@@ -102,9 +114,9 @@ class TokenMenu(
         if (event.clickedInventory != session.view) return
         val player = session.player
         when (val slot = event.rawSlot) {
-            in scopeSlots -> {
-                val scope = scopeSlots.getValue(slot)
-                if (!session.scopes.remove(scope)) session.scopes += scope
+            in groupSlots.take(session.offered.size) -> {
+                val group = session.offered[groupSlots.indexOf(slot)]
+                if (!session.groups.remove(group)) session.groups += group
                 click(player)
                 render(session)
             }
@@ -113,7 +125,7 @@ class TokenMenu(
                 click(player)
                 render(session)
             }
-            createSlot -> if (session.scopes.isNotEmpty()) create(session)
+            createSlot -> if (session.groups.isNotEmpty()) create(session)
             cancelSlot -> player.closeInventory()
         }
     }
@@ -129,13 +141,13 @@ class TokenMenu(
         player.closeInventory()
         val expires = lifetimes[session.lifetime].duration?.let { Instant.now().plus(it) }
         val token = try {
-            store.issue(session.name, session.scopes, player.name, expires)
+            store.issue(session.name, session.groups.toList(), player.name, expires)
         } catch (error: IllegalArgumentException) {
             player.sendMessage(Component.text(error.message ?: "Couldn't create the token", NamedTextColor.RED))
             return
         }
         // The log gets the name and scopes; the token goes only to this player's chat.
-        logger.info("${player.name} created token \"${session.name}\" with ${session.scopes.joinToString { it.id }}" + (expires?.let { ", expires $it" } ?: ""))
+        logger.info("${player.name} created token \"${session.name}\" with ${session.groups.joinToString()}" + (expires?.let { ", expires $it" } ?: ""))
         player.playSound(player.location, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.6f, 1.2f)
         player.sendMessage(Component.text("Token \"${session.name}\" is ready. It's shown only this once:", NamedTextColor.GREEN))
         player.sendMessage(

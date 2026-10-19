@@ -1,8 +1,10 @@
 package com.mairwunnx.worldapi.config
 
+import com.mairwunnx.worldapi.api.Groups
 import com.mairwunnx.worldapi.api.Scope
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
 /** Mirrors config.yml. Every field has a default, so a partial file still loads. */
 @Serializable
@@ -41,14 +43,20 @@ data class Cors(val allowedOrigins: List<String> = emptyList())
 @Serializable
 data class Auth(
     val tokens: List<Token> = emptyList(),
+    /** Named sets of permissions and other groups that tokens and accounts list by name. */
+    val groups: Map<String, List<String>> = Scope.defaultGroups,
     val anonymous: Anonymous = Anonymous(),
-)
+) {
+    @Transient
+    val resolver = Groups(groups)
+}
 
 @Serializable
 data class Token(
     val name: String,
     val token: String,
-    val scopes: List<Scope>,
+    /** Permissions and group names, such as `[viewer, world:write]`. */
+    val scopes: List<String>,
     val rateLimit: RateLimit? = null,
 )
 
@@ -165,6 +173,10 @@ data class Limits(
     val maxBiomeSearchRadius: Int = 2_048,
     /** Console lines kept in memory for GET /server/logs. */
     val consoleLines: Int = 1_000,
+    /** Text one /files/read answer may hold, in characters. */
+    val maxReadChars: Int = 262_144,
+    /** Earlier versions kept per file that /files changed, in WorldAPI's backups folder. */
+    val fileBackups: Int = 10,
 )
 
 @Serializable

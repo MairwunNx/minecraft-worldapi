@@ -18,7 +18,7 @@ class ConfigTest {
     fun `the shipped config matches the defaults in code`() {
         val parsed = ConfigFile.parse(ConfigFile.defaultText().replace("{generated}", token))
         assertEquals(WorldApiConfig().copy(auth = WorldApiConfig().auth.copy(tokens = parsed.auth.tokens)), parsed)
-        assertEquals(listOf(Scope.ADMIN), parsed.auth.tokens.single().scopes)
+        assertEquals(listOf("admin"), parsed.auth.tokens.single().scopes)
     }
 
     @Test
@@ -51,7 +51,8 @@ class ConfigTest {
                   scopes: [read, "write:world", "write:players", code]
             """.trimIndent(),
         )
-        assertEquals(listOf(Scope.READ, Scope.WRITE_WORLD, Scope.WRITE_PLAYERS, Scope.CODE), config.auth.tokens.single().scopes)
+        assertEquals(listOf("read", "write:world", "write:players", "code"), config.auth.tokens.single().scopes)
+        assertEquals(Scope.legacy.values.flatten().toSet() + Scope.CODE, config.auth.resolver.resolve(config.auth.tokens.single().scopes))
     }
 
     @Test

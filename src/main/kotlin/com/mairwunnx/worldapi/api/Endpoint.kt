@@ -24,6 +24,10 @@ class Endpoint(
     val response: KSerializer<*>?,
     val status: HttpStatusCode,
     val handler: suspend ApiCall.(Any?) -> Any?,
+    /** Permissions that do instead of [scope]; the handler then checks which one fits the request. */
+    val orScopes: List<Scope> = emptyList(),
+    /** A permission the full answer needs on top, such as players:private for coordinates and items; without it parts are hidden or refused. */
+    val also: Scope? = null,
 ) {
     val writes get() = method != HttpMethod.Get
     val pathParams: List<String> = Regex("\\{(\\w+)(\\.\\.\\.)?}").findAll(path).map { it.groupValues[1] }.toList()
@@ -51,7 +55,7 @@ fun boolean(name: String, description: String) = QueryParam(name, ParamType.BOOL
 
 /** The standard `limit` and `cursor` pair for paginated lists. */
 val pageParams = listOf(
-    integer("limit", "How many items to return; the server caps it"),
+    integer("limit", "How many items to return; the server caps it. 0 returns only `total` where a list has one"),
     string("cursor", "The `nextCursor` from the previous page"),
 )
 
@@ -59,23 +63,25 @@ val pageParams = listOf(
 @Serializable
 class NoBody
 
-/** Collects the endpoints of one resource group, all under one OpenAPI tag. */
-class EndpointGroup(val tag: String) {
+/** Collects the endpoints of one resource group, all under one OpenAPI tag. Its GETs need [read] unless they say otherwise. */
+class EndpointGroup(val tag: String, val read: Scope) {
     val endpoints = mutableListOf<Endpoint>()
 
     @PublishedApi
     internal fun add(
         method: HttpMethod, path: String, summary: String, description: String?, scope: Scope,
         query: List<QueryParam>, body: KSerializer<*>?, response: KSerializer<*>?, status: HttpStatusCode,
+        orScopes: List<Scope> = emptyList(), also: Scope? = null,
         handler: suspend ApiCall.(Any?) -> Any?,
     ) {
-        endpoints += Endpoint(method, path, tag, summary, description, scope, query, body, response, status, handler)
+        endpoints += Endpoint(method, path, tag, summary, description, scope, query, body, response, status, handler, orScopes, also)
     }
 
     inline fun <reified R> get(
-        path: String, summary: String, description: String? = null, scope: Scope = Scope.READ,
-        query: List<QueryParam> = emptyList(), noinline handler: suspend ApiCall.() -> R,
-    ) = add(HttpMethod.Get, path, summary, description, scope, query, null, responseOf<R>(), HttpStatusCode.OK) { handler() }
+        path: String, summary: String, description: String? = null, scope: Scope = read,
+        query: List<QueryParam> = emptyList(), orScopes: List<Scope> = emptyList(), also: Scope? = null,
+        noinline handler: suspend ApiCall.() -> R,
+    ) = add(HttpMethod.Get, path, summary, description, scope, query, null, responseOf<R>(), HttpStatusCode.OK, orScopes, also) { handler() }
 
     inline fun <reified B, reified R> post(
         path: String, summary: String, scope: Scope, description: String? = null, query: List<QueryParam> = emptyList(),
@@ -105,4 +111,4 @@ class EndpointGroup(val tag: String) {
     internal inline fun <reified R> responseOf(): KSerializer<*>? = if (R::class == Unit::class) null else serializer<R>()
 }
 
-fun endpoints(tag: String, block: EndpointGroup.() -> Unit): List<Endpoint> = EndpointGroup(tag).apply(block).endpoints
+fun endpoints(tag: String, read: Scope, block: EndpointGroup.() -> Unit): List<Endpoint> = EndpointGroup(tag, read).apply(block).endpoints
