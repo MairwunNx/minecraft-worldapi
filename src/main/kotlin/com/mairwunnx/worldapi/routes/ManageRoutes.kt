@@ -100,6 +100,20 @@ val manageRoutes = endpoints("Access control", Scope.TOKENS_MANAGE) {
         view(api.accounts.find(name)!!, ids(config.auth.resolver.resolve(patch.groups)))
     }
 
+    post<com.mairwunnx.worldapi.api.NoBody, InviteCode>(
+        "/accounts/{name}/reset", "Make a code that sets a new password for an account", Scope.TOKENS_MANAGE, status = HttpStatusCode.Created,
+        description = "For someone who forgot their password and can't run /worldapi admin in game. They enter the code on the sign-in page, under “I have a code”, " +
+            "with a new password, within 30 minutes; their sessions end. $GRANT",
+    ) {
+        val name = path("name")
+        val account = api.accounts.find(name) ?: notFound("account_not_found", "No account $name")
+        checkGrant(account.groups)
+        auditTarget = name
+        auditDetail = "password reset code"
+        val code = api.accounts.issueCode(name, account.playerUuid, account.groups, principal.name, reset = true)
+        InviteCode(code, Instant.now().plusMillis(AdminAccounts.CODE_MILLIS).toString(), account.groups)
+    }
+
     delete("/accounts/{name}", "Delete an account and end its sessions", Scope.TOKENS_MANAGE) {
         val name = path("name")
         if (principal.name == "panel:$name") badRequest("You can't delete your own account")
