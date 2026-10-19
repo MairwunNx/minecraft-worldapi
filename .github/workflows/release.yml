@@ -64,11 +64,18 @@ jobs:
         with:
           distribution: temurin
           java-version: 25
+      # The admin panel builds with Bun inside the Gradle build.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
       - uses: gradle/actions/setup-gradle@v6
       - name: Build and test
         run: ./gradlew build -PreleaseVersion="$VERSION"
       - name: Publish the GitHub release
-        run: gh release create "v$VERSION" --target "$GITHUB_SHA" --title "WorldAPI $VERSION" --notes-file "$NOTES" "build/libs/worldapi-$VERSION.jar"
+        # worldapi.jar too, so releases/latest/download/worldapi.jar always fetches the newest one.
+        run: |
+          cp "build/libs/worldapi-$VERSION.jar" build/libs/worldapi.jar
+          gh release create "v$VERSION" --target "$GITHUB_SHA" --title "WorldAPI $VERSION" --notes-file "$NOTES" "build/libs/worldapi-$VERSION.jar" build/libs/worldapi.jar
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Publish to Modrinth

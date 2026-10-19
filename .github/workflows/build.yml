@@ -17,6 +17,10 @@ jobs:
         with:
           distribution: temurin
           java-version: 25
+      # The admin panel builds with Bun inside the Gradle build.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
       - uses: gradle/actions/setup-gradle@v6
       - name: Build and test
         # Builds outside a release carry the commit in their version, so a jar always says where it came from.

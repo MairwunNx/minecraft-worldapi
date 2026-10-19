@@ -25,6 +25,9 @@ jobs:
         with:
           distribution: temurin
           java-version: 25
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
       - uses: gradle/actions/setup-gradle@v6
       - uses: anthropics/claude-code-action@v1
         env:

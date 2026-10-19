@@ -1,4 +1,6 @@
 import io.papermc.hangarpublishplugin.model.Platforms
+import org.gradle.process.ExecOperations
+import javax.inject.Inject
 
 plugins {
     kotlin("jvm") version "2.4.21"
@@ -67,11 +69,54 @@ tasks.test {
     inputs.property("testDatabases", providers.environmentVariable("WORLDAPI_TEST_DATABASES").orElse(""))
 }
 
+// The admin panel (admin/, React and Vite) builds with Bun into build/admin-dist, and the jar serves it under /admin.
+// `-PskipPanel` leaves it out for quick builds: the jar then answers /admin with a note instead.
+abstract class BuildPanel @Inject constructor(private val exec: ExecOperations) : DefaultTask() {
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val sources: ConfigurableFileCollection
+
+    @get:Internal
+    abstract val panel: DirectoryProperty
+
+    @get:OutputDirectory
+    abstract val output: DirectoryProperty
+
+    @TaskAction
+    fun build() {
+        val windows = System.getProperty("os.name").lowercase().contains("windows")
+        val names = if (windows) listOf("bun.exe", "bun.cmd") else listOf("bun")
+        val dirs = System.getenv("PATH").orEmpty().split(File.pathSeparator) + (System.getProperty("user.home") + "/.bun/bin")
+        val bun = dirs.flatMap { dir -> names.map { File(dir, it) } }.firstOrNull { it.canExecute() }?.absolutePath
+            ?: throw GradleException("The admin panel needs Bun (https://bun.sh) to build. Install it, or build without the panel: ./gradlew build -PskipPanel")
+        val dir = panel.get().asFile
+        exec.exec { workingDir = dir; commandLine(bun, "install", "--frozen-lockfile") }
+        // `bun run build` makes the API types from docs/openapi.json, typechecks, and bundles.
+        exec.exec { workingDir = dir; commandLine(bun, "run", "build"); environment("WORLDAPI_PANEL_OUT", output.get().asFile.absolutePath) }
+    }
+}
+
+val skipPanel = providers.gradleProperty("skipPanel").isPresent
+
+val buildPanel = tasks.register<BuildPanel>("buildPanel") {
+    description = "Builds the admin panel with Bun."
+    enabled = !skipPanel
+    panel = layout.projectDirectory.dir("admin")
+    sources.from(
+        fileTree("admin") { exclude("**/node_modules/**", "src/api/generated/**", "*.tsbuildinfo", "dist/**") },
+        "docs/openapi.json",
+    )
+    output = layout.buildDirectory.dir("admin-dist")
+}
+
 tasks.processResources {
     val version = project.version.toString()
     inputs.property("version", version)
     filesMatching("paper-plugin.yml") {
         expand("version" to version)
+    }
+    if (!skipPanel) {
+        from(buildPanel) { into("admin") }
     }
 }
 

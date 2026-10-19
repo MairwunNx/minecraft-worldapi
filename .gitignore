@@ -5,3 +5,10 @@ build/
 *.iml
 /run/
 .DS_Store
+# The admin panel: Bun's packages, the API types `bun run generate` makes from docs/openapi.json, and tsc's cache.
+# Its build goes to build/admin-dist.
+admin/node_modules/
+admin/scripts/openapi/node_modules/
+admin/src/api/generated/
+admin/*.tsbuildinfo
+admin/dist/
