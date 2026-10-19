@@ -3,7 +3,7 @@
 ## 2.4.1
 
 - `invulnerable` in entity and player data shows the flag that `PATCH` sets again. Since Paper 26.3 build 205 the old check answers whether damage gets through, which is also true for a player in creative mode.
-- Built against Paper API 26.3 build 205 and Gradle 9.8.1.
+- Exposed 1.6.0 inside the jar. Built against Paper API 26.3 build 205 with Gradle 9.8.1.
 
 ## 2.4.0
 

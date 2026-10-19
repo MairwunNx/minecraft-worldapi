@@ -19,7 +19,7 @@ repositories {
 }
 
 val ktorVersion = "3.6.0"
-val exposedVersion = "1.5.1"
+val exposedVersion = "1.6.0"
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:26.3.build.205-stable")
