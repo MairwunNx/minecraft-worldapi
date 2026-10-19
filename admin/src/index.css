@@ -183,3 +183,14 @@
 .tok-error {
   color: var(--destructive);
 }
+
+/* A stack's count as the game draws it: white with a dark drop shadow one pixel down and right, so it reads on any texture. */
+.stack-count {
+  color: #fff;
+  font-weight: 700;
+  font-size: 11px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 1px 1px 0 #3f3f3f;
+  pointer-events: none;
+}

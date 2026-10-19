@@ -1,4 +1,4 @@
-import { useId, useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { iconUrl, type Schema } from "@/api/client";
 import { Confirm } from "@/components/common";
@@ -33,64 +33,106 @@ const initials = (type: string) => {
 // ---------- Icons ----------
 
 /**
- * What the panel knows about each icon: a missing one (404) shows initials for the rest of the visit;
- * while WorldAPI still downloads the game's textures (503 icons_loading) the picture retries after Retry-After.
+ * Icons load through one queue instead of <img> error events: a few requests at a time, each
+ * picture handed to the page only once it arrived, so a slot never shows the browser's broken
+ * image. While WorldAPI still downloads the game's textures (503 icons_loading), or the rate limit
+ * says wait (429), a request waits Retry-After and tries again; slots show initials meanwhile.
+ * Unknown items (404) keep their initials. Pictures become data: URLs, which the CSP allows.
  */
-const icons = new Map<string, { missing?: boolean; retry: number }>();
+type IconState = { status: "loading" } | { status: "ok"; url: string } | { status: "missing" };
+
+const icons = new Map<string, IconState>();
 const iconListeners = new Set<() => void>();
-let iconVersion = 0;
-const bump = () => {
-  iconVersion++;
+const queue: string[] = [];
+const PARALLEL = 6;
+let active = 0;
+
+const setIcon = (key: string, state: IconState) => {
+  icons.set(key, state);
   iconListeners.forEach((listener) => listener());
 };
-const subscribeIcons = (listener: () => void) => {
-  iconListeners.add(listener);
-  return () => void iconListeners.delete(listener);
-};
 
-const failed = async (key: string) => {
-  const state = icons.get(key) ?? { retry: 0 };
-  icons.set(key, state);
+const readAsDataUrl = (blob: Blob) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+
+const later = (key: string, seconds: number) => window.setTimeout(() => enqueue(key), Math.min(120, Math.max(1, seconds)) * 1000);
+
+const load = async (key: string, attempt: number) => {
   try {
-    const response = await fetch(iconUrl(key, state.retry + 1), { credentials: "same-origin" });
-    if (response.status === 503) {
-      const wait = Math.min(60, Number(response.headers.get("Retry-After")) || 5);
-      window.setTimeout(() => {
-        state.retry++;
-        bump();
-      }, wait * 1000);
-      return;
+    const response = await fetch(iconUrl(key), { credentials: "same-origin" });
+    if (response.ok) return setIcon(key, { status: "ok", url: await readAsDataUrl(await response.blob()) });
+    const wait = Number(response.headers.get("Retry-After")) || 0;
+    if (response.status === 429 || response.status === 503) {
+      // icons_unavailable means the download failed; asking again now and then picks up a later success.
+      const code = ((await response.json().catch(() => null)) as { error?: { code?: string } } | null)?.error?.code;
+      return later(key, wait || (code === "icons_unavailable" ? 60 : 5));
     }
-    if (response.ok) state.retry++;
-    else state.missing = true;
+    setIcon(key, { status: "missing" });
   } catch {
-    state.missing = true;
+    if (attempt < 5) later(key, 5 * (attempt + 1));
+    else setIcon(key, { status: "missing" });
   }
-  bump();
 };
 
-/** The item's picture at a whole multiple of 16 px, kept sharp; its initials when the game has none. */
-export const ItemIcon = ({ type, size = 32, className }: { type: string; size?: 16 | 24 | 32 | 48; className?: string }) => {
-  useSyncExternalStore(subscribeIcons, () => iconVersion);
-  const state = icons.get(type);
-  if (state?.missing)
+const attempts = new Map<string, number>();
+const pump = () => {
+  while (active < PARALLEL && queue.length) {
+    const key = queue.shift()!;
+    const attempt = attempts.get(key) ?? 0;
+    attempts.set(key, attempt + 1);
+    active++;
+    void load(key, attempt).finally(() => {
+      active--;
+      pump();
+    });
+  }
+};
+
+function enqueue(key: string) {
+  if (!queue.includes(key)) queue.push(key);
+  pump();
+}
+
+const useIcon = (key: string) => {
+  const state = useSyncExternalStore(
+    (listener) => {
+      iconListeners.add(listener);
+      return () => void iconListeners.delete(listener);
+    },
+    () => icons.get(key),
+  );
+  useEffect(() => {
+    if (!icons.has(key)) {
+      icons.set(key, { status: "loading" });
+      enqueue(key);
+    }
+  }, [key]);
+  return state ?? { status: "loading" as const };
+};
+
+/**
+ * The item's picture, scaled to the box whatever size the server renders it at (16 px flat items,
+ * 64 px block cubes), kept sharp; its initials until it arrives, or when the game has none.
+ */
+export const ItemIcon = ({ type, size, className }: { type: string; size?: number; className?: string }) => {
+  const icon = useIcon(type);
+  const box = size ? { width: size, height: size } : undefined;
+  if (icon.status !== "ok")
     return (
-      <span className={cn("flex shrink-0 items-center justify-center font-mono font-semibold", size <= 24 ? "text-[9px]" : "text-[11px]", className)} style={{ width: size, height: size }} aria-hidden>
+      <span
+        className={cn("flex shrink-0 items-center justify-center font-mono font-semibold text-muted-foreground", size && size <= 24 ? "text-[9px]" : "text-[11px]", icon.status === "loading" && "animate-pulse", className)}
+        style={box}
+        aria-hidden
+      >
         {initials(type)}
       </span>
     );
-  return (
-    <img
-      key={state?.retry ?? 0}
-      src={iconUrl(type, state?.retry ?? 0)}
-      width={size}
-      height={size}
-      alt=""
-      draggable={false}
-      className={cn("shrink-0 [image-rendering:pixelated]", className)}
-      onError={() => void failed(type)}
-    />
-  );
+  return <img src={icon.url} alt="" draggable={false} style={box} className={cn("shrink-0 object-contain [image-rendering:pixelated]", className)} />;
 };
 
 // ---------- Enchantments, as the game's tooltip shows them ----------
@@ -207,6 +249,12 @@ const PutForm = ({ initial, onSubmit, label }: { initial?: Item; onSubmit: (inpu
   const [busy, setBusy] = useState(false);
   const target = fullKey(key);
   const needle = key.trim().toLowerCase();
+  // The preview asks for the icon once typing pauses, not for every partial key.
+  const [preview, setPreview] = useState(target);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setPreview(target), 400);
+    return () => window.clearTimeout(timer);
+  }, [target]);
   return (
     <form
       className="flex flex-col gap-2"
@@ -238,7 +286,7 @@ const PutForm = ({ initial, onSubmit, label }: { initial?: Item; onSubmit: (inpu
         <FormField id={`${id}-amount`} label={t("items.amount")}>
           <Input id={`${id}-amount`} type="number" min={1} max={99} inputMode="numeric" value={amount} onChange={(event) => setAmount(event.target.value)} className="w-24" />
         </FormField>
-        {target && <ItemIcon key={target} type={target} size={32} className="mb-0.5" />}
+        {preview && preview === target && <ItemIcon key={preview} type={preview} size={32} className="mb-0.5" />}
         <Button type="submit" size="sm" className="mb-0.5 ml-auto" disabled={busy || !target}>
           {label}
         </Button>
@@ -355,8 +403,8 @@ const Slot = ({ slot, item, actions, label }: { slot: number; item?: Item | null
         open && "ring-2 ring-ring",
       )}
     >
-      {item ? <ItemIcon type={item.type} size={32} className="h-[80%] w-[80%] object-contain" /> : label?.slice(0, 4)}
-      {item && item.amount > 1 && <span className="tabular absolute right-0.5 bottom-0 text-[10px] font-semibold text-foreground [text-shadow:0_0_2px_var(--card)]">{item.amount}</span>}
+      {item ? <ItemIcon type={item.type} className="h-[82%] w-[82%]" /> : label?.slice(0, 4)}
+      {item && item.amount > 1 && <span className="stack-count absolute right-0.5 bottom-0">{item.amount}</span>}
       {worn !== null && (
         <span className="absolute inset-x-0.5 bottom-0.5 h-0.5 rounded-full bg-muted" aria-hidden>
           <span className={cn("block h-full rounded-full", worn > 0.3 ? "bg-success" : "bg-destructive")} style={{ width: `${worn * 100}%` }} />

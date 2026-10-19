@@ -68,7 +68,7 @@ export const auth = async <T>(path: string, body?: unknown): Promise<T> => {
 };
 
 /** An item's 16×16 picture, from the game's own textures. */
-export const iconUrl = (key: string, retry = 0) => `${API_BASE}/icons/${encodeURIComponent(key.includes(":") ? key : `minecraft:${key}`).replace("%3A", ":")}${retry ? `?r=${retry}` : ""}`;
+export const iconUrl = (key: string) => `${API_BASE}/icons/${encodeURIComponent(key.includes(":") ? key : `minecraft:${key}`).replace("%3A", ":")}`;
 
 export interface Me {
   name: string;

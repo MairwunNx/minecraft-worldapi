@@ -367,7 +367,12 @@
     "off": "Live chat is off on this server. Turn on events.chat in WorldAPI’s config.yml to record and stream it.",
     "filter": "Filter by player or text",
     "none": "No chat recorded.",
-    "older": "Older messages"
+    "older": "Older messages",
+    "server": "Server",
+    "send": "Message to everyone, as the server",
+    "sendButton": "Send",
+    "sendHint": "Players see it as a server message. It isn’t kept in the chat history.",
+    "minimessage": "MiniMessage formatting"
   },
   "files": {
     "title": "Files",
@@ -485,7 +490,14 @@
     "delete": "Delete",
     "deleteTitle": "Delete {{name}}?",
     "deleteText": "Their sessions end now, and the name becomes free.",
-    "deleted": "{{name}} deleted"
+    "deleted": "{{name}} deleted",
+    "reset": "Reset password",
+    "resetTitle": "Reset the password of {{name}}?",
+    "resetText": "You get a code that sets a new password. Once it’s used, every session of this account ends. It works once, for 30 minutes.",
+    "resetDoneTitle": "New password for {{name}}",
+    "resetDoneText": "Send them the link, or the code for “I have a code” on the sign-in page. It works once, until {{time}}, and ends their sessions. This is the only time it shows.",
+    "code": "Code",
+    "link": "Link"
   },
   "groups": {
     "title": "Groups",

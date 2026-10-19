@@ -1,9 +1,9 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Trash2, UserPlus } from "lucide-react";
+import { KeyRound, Pencil, Trash2, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { client, data, type Schema } from "@/api/client";
+import { ApiError, client, data, type Schema } from "@/api/client";
 import { Confirm, Empty, ErrorBox, Loading, PageHeader, Secret, TableFrame } from "@/components/common";
 import { FormField } from "@/components/form-field";
 import { ScopePicker } from "@/components/scope-picker";
@@ -130,6 +130,72 @@ const EditGroups = ({ account }: { account: Schema<"AccountView"> }) => {
   );
 };
 
+/**
+ * A one-time code that sets a new password for someone else: shown once, with a link that opens the
+ * sign-in page with the code filled in. Using it ends their sessions; it expires in 30 minutes.
+ */
+const ResetPassword = ({ name }: { name: string }) => {
+  const { t } = useTranslation();
+  const [code, setCode] = useState<Schema<"InviteCode"> | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const reset = async () => {
+    setBusy(true);
+    try {
+      setCode(await data(client.POST("/accounts/{name}/reset", { params: { path: { name } } })));
+    } catch (failure) {
+      if (failure instanceof ApiError && failure.code === "cannot_grant") setError(failure.message);
+      else showError(failure);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const link = code ? new URL(`./?code=${encodeURIComponent(code.code)}`, document.baseURI).toString() : "";
+  return (
+    <>
+      <Confirm
+        size="icon"
+        variant="ghost"
+        disabled={busy}
+        label={<KeyRound className="size-4" aria-label={t("accounts.reset")} />}
+        title={t("accounts.resetTitle", { name })}
+        text={t("accounts.resetText")}
+        action={t("accounts.reset")}
+        onConfirm={reset}
+      />
+      <Dialog open={!!code || !!error} onOpenChange={(open) => !open && (setCode(null), setError(null))}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t("accounts.resetDoneTitle", { name })}</DialogTitle>
+            <DialogDescription>{error ? "" : t("accounts.resetDoneText", { time: code ? time(code.expiresAt) : "" })}</DialogDescription>
+          </DialogHeader>
+          {error ? (
+            <p className="text-sm text-destructive" role="alert">
+              {error}
+            </p>
+          ) : (
+            code && (
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-muted-foreground">{t("accounts.code")}</span>
+                  <Secret value={code.code} />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-muted-foreground">{t("accounts.link")}</span>
+                  <Secret value={link} />
+                </div>
+              </div>
+            )
+          )}
+          <DialogFooter>
+            <Button onClick={() => (setCode(null), setError(null))}>{t("common.done")}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+};
+
 export const AccountsPage = () => {
   const { t } = useTranslation();
   const me = useMe();
@@ -184,6 +250,7 @@ export const AccountsPage = () => {
                   <TableCell>
                     <div className="flex justify-end gap-1">
                       <EditGroups account={account} />
+                      {account.name !== me?.name && <ResetPassword name={account.name} />}
                       {account.name !== me?.name && (
                         <Confirm
                           destructive

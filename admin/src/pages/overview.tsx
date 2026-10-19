@@ -90,7 +90,11 @@ const Worlds = ({ live }: { live: Performance }) => {
         <TableBody>
           {live.worlds.map((world) => (
             <TableRow key={world.world}>
-              <TableCell className="font-medium">{world.world}</TableCell>
+              <TableCell className="font-medium">
+                <Link to="/worlds/$world" params={{ world: world.world }} className="hover:underline">
+                  {world.world}
+                </Link>
+              </TableCell>
               <TableCell className="tabular text-right">{number(world.players)}</TableCell>
               <TableCell className="tabular text-right">{number(world.loadedChunks)}</TableCell>
               <TableCell className="tabular text-right">{number(world.entities)}</TableCell>
