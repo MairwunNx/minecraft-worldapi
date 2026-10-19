@@ -11,7 +11,7 @@ import java.util.function.Function
  * How other plugins reach WorldAPI without a library: a `java.util.function.Function` in Bukkit's
  * ServicesManager, registered by WorldAPI, that takes requests as maps of plain Java values and answers
  * with maps. Every request carries `v`, the version of this contract, so WorldAPI can grow it without
- * breaking older plugins. docs/reference.md (“Extensions”) describes it for plugin authors.
+ * breaking older plugins. The wiki's “Extensions” page describes it for plugin authors.
  *
  * - `register`: `plugin`, `namespace`, `description`, `resources` (each `path`, `description`,
  *   `public`, `mainThread`, `get`: a Function from path and query parameters to a value), and

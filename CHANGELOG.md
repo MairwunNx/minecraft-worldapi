@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.2.1
+
+- 📖 **A manual on the wiki.** The docs moved to the [GitHub wiki](https://github.com/MairwunNx/minecraft-worldapi/wiki), step by step. The HTTP exposure warning in the console links to its “Reverse proxy” page.
+
 ## 3.2.0
 
 - 🧊 **Blocks look like blocks.** Item icons draw block items as the game’s inventory does: an isometric cube with the top lit and the sides shaded, slabs half as tall, grass and leaves in their plains colors, and chests, ender chests, and barrels with their lids and latches. Other items stay flat, as in the game. Block icons are 64×64.

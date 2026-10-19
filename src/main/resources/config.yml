@@ -131,7 +131,7 @@ events:
   retentionDays: 0
 
 # Other plugins' data, through the extension bridge: their resources under
-# /extensions and their topics as ext.<namespace>.<event> (docs/reference.md).
+# /extensions and their topics as ext.<namespace>.<event> (https://github.com/MairwunNx/minecraft-worldapi/wiki/Extensions).
 # A plugin marks what anonymous clients may see; list here what they mustn't
 # anyway: a namespace (mobosses), a resource (mobosses/bosses), or a topic
 # (ext.mobosses.boss.spawned).

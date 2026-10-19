@@ -1,6 +1,6 @@
 # WorldAPI: notes for AI agents
 
-A Paper 26.3 plugin that serves the server's state over REST and a WebSocket: worlds, players, statistics, events, and admin actions, plus Java scripts for those with the `code` permission, configs and logs as files, and an admin panel at `/admin`. README.md explains it for humans; read it first. Two things depend on it: the MCP server in MairwunNx/minecraft-mcp, and the Moonlands site in MairwunNx/minecraft.
+A Paper 26.3 plugin that serves the server's state over REST and a WebSocket: worlds, players, statistics, events, and admin actions, plus Java scripts for those with the `code` permission, configs and logs as files, and an admin panel at `/admin`. README.md shows it off; the GitHub wiki explains it for humans, so read it first. Two things depend on it: the MCP server in MairwunNx/minecraft-mcp, and the Moonlands site in MairwunNx/minecraft.
 
 ## Talking to the owner
 
@@ -44,11 +44,12 @@ A Paper 26.3 plugin that serves the server's state over REST and a WebSocket: wo
 1. Change the route and its data classes.
 2. `WORLDAPI_UPDATE_OPENAPI=1 ./gradlew test` rewrites `docs/openapi.json`; a stale document fails the tests.
 3. In minecraft-mcp, `npm run generate` and fix what the typecheck flags.
+4. Describe it on the matching API page of the wiki.
 
 ## Building and testing
 
 - `./gradlew build` runs the tests and builds the shaded jar in `build/libs`; Java 25.
-- There is no MockBukkit for Paper 26.3; tests use the small fakes in `src/test`. Anything that needs a real server goes to a local Paper in Docker (the compose snippet in README.md).
+- There is no MockBukkit for Paper 26.3; tests use the small fakes in `src/test`. Anything that needs a real server goes to a local Paper in Docker (the compose snippet on the wiki's “Installation” page).
 - Dependencies are shaded and relocated under `com.mairwunnx.worldapi.libs`. The SQLite driver comes from Paper; the PostgreSQL and MariaDB drivers are relocated too, so the store passes Hikari their class names from class references. `WORLDAPI_TEST_DATABASES=postgresql://u:p@host:port/db,mysql://...` runs `StoreTest` against real servers.
 
 ## Checking a change
@@ -60,7 +61,7 @@ A Paper 26.3 plugin that serves the server's state over REST and a WebSocket: wo
    ```
    Pass `--game` the version the project targets, and `--build` to pin a Paper build. The script downloads Paper and Modrinth plugins into `~/.cache/paper-smoke` and keeps the server folder when something fails.
    Plan reports a failing extension method only as a warning and a file in `plugins/Plan/logs/`, which the script doesn't catch: after a change to `plan/`, add `--keep` and check that folder is empty. Player values appear only once a player joins.
-3. Endpoints and the WebSocket need a running server to call: the Docker compose snippet in README.md, then `curl` with the admin token from its `config.yml`. After a release reaches Moonlands, `curl -s https://minecraft.mairwunnx.com/worldapi/api/v1/server` shows its `worldApiVersion`, and the site and `scripts/live-check.mjs` in minecraft-mcp read it.
+3. Endpoints and the WebSocket need a running server to call: the Docker compose snippet on the wiki's “Installation” page, then `curl` with the admin token from its `config.yml`. After a release reaches Moonlands, `curl -s https://minecraft.mairwunnx.com/worldapi/api/v1/server` shows its `worldApiVersion`, and the site and `scripts/live-check.mjs` in minecraft-mcp read it.
 
 ## Admin panel
 
@@ -89,9 +90,10 @@ Where the versions live, for `/update-deps` and `/update-minecraft` (both in `.c
 
 ## Docs
 
-- README.md and README.RU.md are for server owners and people who build on WorldAPI: who it's for, install, tokens, config, safety. Change both together, and MODRINTH.md when what the plugin does changes. MODRINTH.md is also the Hangar page: no build, stack, AI, or related projects, and no Moonlands banner.
-- `docs/reference.md` holds the API reference: endpoint groups, conventions, leaderboards, the WebSocket and its topics, Java scripts. A new endpoint or topic goes there, not in the README.
-- Internals stay out of the READMEs; this file keeps them.
+- README.md and README.RU.md are the shop window: badges, a pitch, “What you get”, “Get started” in three steps, links into the wiki, and “Related projects” (the same list in every project of the family). No install alternatives, config, API, build, stack, AI, or License sections. Change both together.
+- MODRINTH.md is the store page, synced to Modrinth by the release workflow (the Hangar page is edited by hand on the site): the pitch, “What you get”, “Get started”, a link to the wiki, and “Related projects”; no Moonlands banner.
+- The GitHub wiki is the manual, English only: installation, first steps, tokens and permissions, the panel, configuration, the reverse proxy, security, monitoring, MCP, FAQ, the REST API by area, the WebSocket, extensions, Java scripts, and developer pages. Clone `https://github.com/MairwunNx/minecraft-worldapi.wiki.git`, edit, and push to `master`. A new endpoint, topic, config key, or permission goes on its wiki page in the same session; endpoint tables follow `docs/openapi.json`. The wiki names the game version and Java in “Installation” and “Development”, so `/update-minecraft` changes them there too.
+- Internals stay out of the READMEs; this file and the wiki's developer pages keep them.
 
 ## Releasing and Moonlands
 

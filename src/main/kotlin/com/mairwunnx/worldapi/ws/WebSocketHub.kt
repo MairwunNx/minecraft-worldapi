@@ -235,7 +235,7 @@ class WebSocketHub(
             encodeDefaults = true
         }
 
-        /** The WebSocket in the OpenAPI document; the protocol itself lives in the README. */
+        /** The WebSocket in the OpenAPI document; the protocol itself lives on the wiki's “WebSocket” page. */
         fun openApiPath(): JsonObject = buildJsonObject {
             putJsonObject("get") {
                 put("operationId", "getWs")

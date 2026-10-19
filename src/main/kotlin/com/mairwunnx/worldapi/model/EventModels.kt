@@ -14,7 +14,7 @@ data class EventView(
     val atMillis: Long,
     val player: PlayerRef? = null,
     val world: String? = null,
-    /** Fields depend on the type; see the topic list in the README. */
+    /** Fields depend on the type; see the topic list on the wiki's “WebSocket” page. */
     val data: JsonObject,
 )
 

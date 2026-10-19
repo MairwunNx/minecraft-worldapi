@@ -59,7 +59,7 @@ class Exposure(private val logger: Logger, private val quietMillis: Long = 6 * 3
                 "or reach it through an SSH tunnel:",
                 "  ssh -L 8110:localhost:8110 you@your-server",
                 "",
-                "How: https://github.com/MairwunNx/minecraft-worldapi#http-exposure",
+                "How: https://github.com/MairwunNx/minecraft-worldapi/wiki/Reverse-proxy",
                 "This warning repeats every 6 hours while it happens.",
             )
             val width = lines.maxOf { it.length }
