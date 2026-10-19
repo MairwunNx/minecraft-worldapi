@@ -150,6 +150,7 @@ Make a token in game: `/worldapi token create <name>` opens a chest menu. Click 
 
 | Command | What it does |
 |---|---|
+| `/worldapi` | Opens a menu with all of the below: state, panel code, tokens, accounts, groups, reload |
 | `/worldapi admin [group]` | A code for the admin panel: your first account, or a new password for yours |
 | `/worldapi token create <name>` | Opens the token menu |
 | `/worldapi token list` | Every token with its permissions and expiry |
@@ -207,7 +208,7 @@ auth:
 
 WorldAPI serves a panel at `/admin`, next to the API: `http://localhost:8110/admin/` through an SSH tunnel, or `https://<your-domain>/worldapi/admin/` behind a proxy (see “HTTP exposure”). It shows the load live, streams the console with a command line, follows chat, and lets you look through players, files, and plugins, and manage tokens and accounts. Each account sees only what its groups allow.
 
-1. In game, run `/worldapi admin`. You get a code for 30 minutes. The first account joins the `owner` group, later ones `admin`, or the group you name.
+1. In game, run `/worldapi admin`. You get a code for 30 minutes, and with `panel.publicUrl` set in `config.yml`, a link that opens the panel with the code filled in. The first account joins the `owner` group, later ones `admin`, or the group you name.
 2. Open the panel, choose “I have a code”, and enter it with a password of at least 10 characters. The account takes your player name.
 3. Sign in with that name and password from then on. A forgotten password? Run `/worldapi admin` again for a code that sets a new one.
 
@@ -228,6 +229,7 @@ Everything lives in `plugins/WorldAPI/config.yml`, with a comment on every setti
 | `events` | Chat recording, off by default, and how long to keep history |
 | `database` | SQLite, PostgreSQL, or MySQL and MariaDB |
 | `limits` | Caps on page size, fills, spawns, removals, search radii, file reads, backups, and more |
+| `panel` | The panel’s public address for links in game, and item icons |
 | `scripts` | Java scripts, off by default |
 
 ### Database

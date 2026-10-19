@@ -1,5 +1,21 @@
 # Changelog
 
+## 3.1.0
+
+- 🧰 **A menu in game.** `/worldapi` alone opens a chest menu: WorldAPI’s state, a code for the admin panel, tokens to see, create (type the name in chat), and revoke, panel accounts, groups, and a config reload. The subcommands stay.
+- 🔗 **A link to the panel.** With the new `panel.publicUrl` in `config.yml`, `/worldapi admin` sends a clickable link that opens the panel with the code already filled in.
+- 🖥️ **The panel grows.**
+  - A Worlds section edits time, weather, difficulty, game rules, and the border, and shows entities, the busiest chunks, a locate box, and containers near a point.
+  - Inventories, ender chests, and chests show real item icons, and their slots take part of a stack, put an item in, or clear.
+  - Enchantments read as in the game’s tooltip, one per line with Roman numerals and curses in red.
+  - A player’s page lists every advancement by tab, and every death a page at a time.
+  - The file editor highlights YAML, JSON, .properties, TOML, and logs.
+  - A link with `?code=` opens the sign-in with the code filled in.
+- 🖼️ **Item icons** for the panel at `GET /icons/{key}`. Mojang’s textures can’t ship in the jar, so WorldAPI downloads the game’s client for the server’s version from Mojang once, into `plugins/WorldAPI/cache`, and reads icons from it. `panel.icons: false` turns this off.
+- ✂️ **Take part of a stack.** `POST …/slots/{slot}/take` with an `amount` takes items from a player’s inventory, ender chest, or a container, and leaves the rest with its enchantments and name.
+- 📝 **ops.json, whitelist.json, and the ban lists are writable** through `/files`. WorldAPI applies the new content through the server, which saves the file itself, so nothing it keeps in memory gets lost. Every file says why when it stays read-only (`readOnlyReason`).
+- `POST /server/commands` runs commands as the console, so `say` reads “[Server] …” in game instead of “[FeedbackForwardingSender] …”. The output is what the command printed to the console.
+
 ## 3.0.0
 
 WorldAPI 3.0 gives server owners an admin panel, configs and logs as files, and finer permissions. Read “Upgrading from 2.x” below before you update: the API changed in places.
