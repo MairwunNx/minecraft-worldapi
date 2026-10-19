@@ -1,9 +1,35 @@
 # Changelog
 
-## 2.4.1
+## 3.0.0
 
+WorldAPI 3.0 gives server owners an admin panel, configs and logs as files, and finer permissions. Read “Upgrading from 2.x” below before you update: the API changed in places.
+
+- 🖥️ **An admin panel** at `/admin`, served by WorldAPI itself: live load, JVM and host numbers, the console streaming live with a command line, chat, players with their inventories and deaths, files with an editor, plugins, tokens, accounts, and the audit log. Run `/worldapi admin` in game for a code, then sign in with a password. Each account sees what its groups allow.
+- 🔑 **Permissions and groups replace scopes.** Sixteen permissions, from `server:read` to `files:write`, and four groups in `config.yml` (`viewer`, `moderator`, `admin`, `owner`) that you can change or extend. Tokens and accounts list either. Nobody hands out a permission they lack. The in-game token menu offers groups.
+- 🗂️ **Configs and logs as files.** `GET /files` lists a folder, and `GET /files/read` reads numbered lines a page at a time, the last lines, or by search with context, gzipped logs included. `POST /files/edit` replaces exact text, `POST /files/set` sets keys in YAML (comments kept), `.properties`, or JSON, and `PUT /files/write` replaces a file. Writing needs `files:write`, which only `owner` has. Every write keeps the previous version and checks the file didn’t change meanwhile. `GET /server/configs` lists the server’s and each plugin’s configs.
+- 🧍 **A player in one request.** `GET /players/{player}?include=inventory,enderchest,effects,deaths,sessions,statistics,advancements`. Inventories and ender chests of offline players now read from their playerdata. `deaths` gives the last death place and the newest five deaths with causes and killers.
+- 📦 **Containers.** `GET /worlds/{world}/containers` finds chests, barrels, shulker boxes, and the like near a point, with how many of an item each holds. New endpoints put items into a container’s slots, empty them, or add to a container.
+- 🧭 **One search for everything.** `GET /worlds/{world}/locate?kind=block|biome|structure` finds the nearest blocks, biomes, or structures, several targets at once.
+- 🐄 **Entities without a flood.** `GET /worlds/{world}/entities/summary` counts entities by type and names the busiest chunks with their hoppers. Entity lists page 25 at a time and filter by name and chunk. An entity shows a villager’s trades, a dropped item’s stack, its lead, and why it spawned.
+- 📈 **Deeper numbers.** `GET /server/performance` adds the JVM: memory pools, garbage collection, threads, classes, buffers. `GET /server/system` describes the host: load, memory, swap, disk, container limits, open files. `GET /server` lists the datapacks, and `GET /server/plugins` each plugin’s config files.
+- 🖨️ **The console live,** on the `server.console` topic, with tokens blanked as in `GET /server/logs`.
+- ⏹️ **`POST /server/stop`**, with a countdown like restart.
+- 🚨 **A warning when WorldAPI is reachable without HTTPS.** When a request comes from the internet straight to the port, or through a proxy that serves plain HTTP, the console shows a framed warning (at most every 6 hours) and the admin panel a red banner before anyone types a password. Requests from the machine itself and local networks don’t count.
+- `limit=0` on a paged list answers with the total alone.
+- `GET /players/{player}/inventory` and `/enderchest` read offline players from their playerdata too.
+- The OpenAPI document names each operation’s permission in `x-scope`, the alternatives in `x-scopes-any`, and in `x-also-needs` the one that coordinates and items need on top, so clients can tell what a token may call.
 - `invulnerable` in entity and player data shows the flag that `PATCH` sets again. Since Paper 26.3 build 205 the old check answers whether damage gets through, which is also true for a player in creative mode.
 - Exposed 1.6.0 inside the jar. Built against Paper API 26.3 build 205 with Gradle 9.8.1.
+
+### Upgrading from 2.x
+
+- **Tokens keep working.** `read` now means the `viewer` group, `write:world` and `write:players` mean `world:write` and `players:write`, and `admin` is the `admin` group: everything but `files:write` and `code`. The log names tokens that still use the old names. Add `groups` to `auth` in your `config.yml` only if you want to change them; the defaults apply without it.
+- **The `admin` scope no longer covers `code`, and neither does the `admin` group.** Give `code` or the `owner` group to whoever runs Java scripts.
+- **Removed:** `GET /worlds/{world}/structures/nearest` and `GET /worlds/{world}/search`. Use `GET /worlds/{world}/locate`; its results come in `found`, each with `type`, `x`, `y`, `z`, and `distance`.
+- **Entity lists** return 25 entities per page unless you pass `limit`.
+- **The `hello` message on the WebSocket** lists permissions such as `server:read` instead of scopes.
+- **Vanished players** show to clients with `players:moderate` rather than `admin`; the `admin` group has it.
+- The database gets two tables, `accounts` and `admin_sessions`, on the first start. Nothing else changes in it.
 
 ## 2.4.0
 

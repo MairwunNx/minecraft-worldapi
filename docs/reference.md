@@ -8,11 +8,12 @@ The full reference lives at `/api/v1/docs`, and the same document is in [`openap
 
 | Group | Endpoints |
 |---|---|
-| Server | `GET /server`, `GET /server/performance`, `GET /server/plugins`, `GET /server/logs`, `POST /server/broadcast`, `POST /server/commands`, `POST /server/save`, `POST`/`DELETE /server/restart` |
+| Server | `GET /server`, `GET /server/performance`, `GET /server/system`, `GET /server/plugins`, `GET /server/configs`, `GET /server/logs`, `POST /server/broadcast`, `POST /server/commands`, `POST /server/save`, `POST`/`DELETE /server/restart` and `/server/stop` |
 | Access | `GET`/`PATCH` `/server/whitelist`, `/server/ops`, `/server/bans` |
-| Worlds | `GET /worlds`, `GET`/`PATCH /worlds/{world}`, `GET`/`PATCH` `/gamerules`, `/border`, `GET /stats`, `GET /structures/nearest`, `GET /search` |
+| Worlds | `GET /worlds`, `GET`/`PATCH /worlds/{world}`, `GET`/`PATCH` `/gamerules`, `/border`, `GET /stats`, `GET /locate` |
 | Blocks | `GET`/`PUT /worlds/{world}/blocks/{x}/{y}/{z}`, `POST /blocks/fill`, `GET /biomes/{x}/{y}/{z}`, `GET /highest/{x}/{z}`, `GET /chunks`, `GET`/`PATCH /chunks/{chunkX}/{chunkZ}` |
-| Entities | `GET`/`POST`/`DELETE /worlds/{world}/entities`, `GET`/`PATCH`/`DELETE /entities/{uuid}` |
+| Containers | `GET /worlds/{world}/containers`; at a block, `PATCH`/`DELETE /container/slots/{slot}`, `DELETE /container`, `POST /container/give` |
+| Entities | `GET`/`POST`/`DELETE /worlds/{world}/entities`, `GET /entities/summary`, `GET`/`PATCH`/`DELETE /entities/{uuid}` |
 | World effects | `POST /worlds/{world}/explosions`, `/lightning`, `/sounds`, `/particles` |
 | Players | `GET /players`, `GET /players/online`, `GET`/`PATCH /players/{player}`, `POST /teleport`, `/message`, `/kick` |
 | Inventories | `GET /players/{player}/inventory` and `/enderchest`; for each, `PATCH`/`DELETE /slots/{slot}`, `DELETE` the whole thing, `POST /give` |
@@ -20,13 +21,17 @@ The full reference lives at `/api/v1/docs`, and the same document is in [`openap
 | Leaderboards | `GET /leaderboards`, `GET /leaderboards/{statistic}`, `GET /aggregates` |
 | Recipes | `GET /recipes` |
 | Events | `GET /events` |
+| Files | `GET /files`, `GET /files/read`, `PUT /files/write`, `POST /files/edit`, `POST /files/set` |
+| Access control | `GET`/`POST /tokens`, `DELETE /tokens/{name}`, `GET /groups`, `GET /accounts`, `POST /accounts/invite`, `PATCH`/`DELETE /accounts/{name}`, `GET /audit` |
+| Panel sign-in | `GET /auth/status`, `GET /auth/me`, `POST /auth/login`, `/auth/setup`, `/auth/password`, `/auth/logout` (not in the OpenAPI document) |
 | Scripts | `POST /scripts/run`, `GET`/`POST /scripts`, `GET`/`DELETE /scripts/{id}`, `GET /scripts/{id}/logs` |
 
 Conventions:
 
 - JSON in camelCase. Times are ISO-8601; where ticks matter, they come along (`dayTime`, `fullTime`, `durationTicks`).
 - Players go by UUID or name; worlds by folder name (`world_nether`) or key (`minecraft:the_nether`).
-- Lists page with `limit` and `cursor`: pass the `nextCursor` of one page to get the next.
+- Lists page with `limit` and `cursor`: pass the `nextCursor` of one page to get the next. Lists with a `total` answer `limit=0` with the total alone, for a quick count.
+- Each operation names the permission it needs; the README lists them and the groups. `GET /auth/me` says what a token or account has.
 - GET reads, POST creates or runs an action, PATCH changes properties, PUT sets a block, DELETE removes.
 - Write bodies are strict: an unknown field is a `400`, not a silent no-op. Only the fields you send change.
 - Errors look the same everywhere, with the matching HTTP status:
@@ -35,17 +40,32 @@ Conventions:
   { "error": { "code": "player_offline", "message": "Steve isn't online" } }
   ```
 
-- `GET /server` carries the current load next to the version and settings, so a status page needs one request: `tps`, `tps5m`, and `tps15m` (capped at 20), `mspt`, `memoryUsedMb` and `memoryMaxMb` for the Java heap, and `loadedChunks` and `entities` across every world. `GET /server/performance` breaks the same numbers down by world and adds tick percentiles and CPU.
+- `GET /server` carries the current load next to the version and settings, so a status page needs one request: `tps`, `tps5m`, and `tps15m` (capped at 20), `mspt`, `memoryUsedMb` and `memoryMaxMb` for the Java heap, and `loadedChunks` and `entities` across every world. `GET /server/performance` breaks the same numbers down by world and adds tick percentiles, CPU, and `jvm`: heap and non-heap memory, each memory pool, garbage collection per collector, threads, loaded classes, and direct buffers. `GET /server/system` (`system:read`) describes the host: load averages, memory and swap, the disk under the server folder, cgroup limits in a container, open files, resident memory, and the Java runtime; Linux fills in more than other systems. `GET /server` also lists the datapacks, enabled or not.
+- `GET /players/{player}?include=inventory,enderchest,effects,deaths,sessions,statistics,advancements` adds those parts to the profile in one answer. An offline player’s inventory and ender chest come from their playerdata file. `deaths` holds the last place the game saw them die and the newest five deaths from the history, with causes and killers.
 - Changing a player’s state, inventory, or effects needs them online; for offline players the answer is `409 player_offline`. Their statistics and advancements still read from the saved files.
 - Items look the same everywhere: inventories, ender chests, containers in `GET /blocks`, entity equipment, and the `player.inventory` topic. Next to the type, name, and `enchantments`, an item carries whatever applies to it: `storedEnchantments` on enchanted books; `attributes`, the modifiers the game applies, a type’s defaults included; `potion` with the effects of a potion, tipped arrow, or suspicious stew; `trim`; `dyedColor`; `repairCost` for the anvil; a written book’s title and author, without its pages; a firework’s flight and explosions; and the `contents` of a shulker box or bundle, one level deep. Fields that don’t apply are left out, and `components` still holds the whole item in command syntax. Attribute amounts are what the item adds: the tooltip shows attack damage 1 higher and attack speed 4 higher, since it counts the player’s base values.
 - Anonymous clients see no items that belong to a player unless `privacy.anonymous.inventories` is on: no container contents, no `player.inventory`, and no equipment on a player in `GET /entities/{uuid}`. Mobs and armor stands show their gear to everyone, as the game does.
 - `GET /players/{player}/advancements` lists every advancement on the server, started or not, with its title and parent, so `done=false` reads as what’s left to do.
-- `GET /worlds/{world}/chunks?sort=entities` puts the busiest chunks first, and `GET /server/performance` names each world’s most common entity types: together they find what lags.
-- `GET /worlds/{world}/search` finds the nearest blocks of some types (`blocks=minecraft:diamond_ore,#minecraft:logs`) or the nearest biome. Block search reads copies of chunks that are already loaded, off the server thread, and never loads more. It needs a token whatever `auth.anonymous` says, because it would show ores through walls. Biome search asks the world generator, so it reaches unexplored land; anonymous clients get it only when they may see coordinates.
+- `GET /worlds/{world}/entities/summary` counts entities per type, dropped items, villagers, named mobs, and pets, and names the ten busiest chunks with their block entities and hoppers, for the whole world or around a point. `GET /worlds/{world}/chunks?sort=entities` and the entity types in `GET /server/performance` add to it: together they find what lags. Entity lists page 25 at a time by default and filter by `type`, `name`, `chunk`, or a point and radius.
+- `GET /worlds/{world}/locate?kind=block|biome|structure&target=…` finds the nearest of anything. Block search (`target=minecraft:diamond_ore,#minecraft:logs`) reads copies of chunks that are already loaded, off the server thread, and never loads more; it needs a token whatever `auth.anonymous` says, because it would show ores through walls. Biomes and structures ask the world generator, so they reach unexplored land, and give the nearest of each target; structures take prefixes, so `village` finds every kind of village. Anonymous clients locate only when they may see coordinates.
+- `GET /worlds/{world}/containers?x=&y=&z=&radius=&item=minecraft:diamond` finds chests, barrels, shulker boxes, hoppers, and the like in loaded chunks, nearest first, with how many of the items each holds, or their five most plentiful items without `item`. A double chest counts once. `GET /blocks/{x}/{y}/{z}` shows one in full; the container endpoints under a block change its slots.
 - `DELETE /worlds/{world}/entities?type=minecraft:item` clears entities in bulk, around a point if you give one. It never touches players, skips named mobs and tamed pets unless `includeNamed=true`, and `dryRun=true` only counts.
-- `GET /server/logs` returns recent console lines for admin tokens, filtered by `level` and `grep`. WorldAPI keeps them from its own start, up to `limits.consoleLines`, and blanks out its tokens.
-- Vanished players stay hidden from every client without the `admin` scope, anonymous ones included. WorldAPI calls a player vanished while a vanish plugin (SuperVanish, PremiumVanish, Essentials, and others) sets the `vanished` metadata on them. To such a client they look offline: they're missing from `GET /players/online` and the online counts in `GET /server` and `GET /server/performance`; `GET /players` and `GET /players/{player}` show them with `online: false`, no live state, and no position; leaderboards mark them offline; entity lists leave them out, and `GET /worlds/{world}/entities/{uuid}` answers `404`. Endpoints that need an online player answer `409 player_offline`, so a `write:players` token can't reach them either. `GET /events` and `GET /players/{player}/sessions` leave out what was recorded while the player was vanished, and the session of a player who vanished after joining. Admin clients see everyone.
-- `POST /server/restart` counts down in chat, saves every world and player, and stops the server; `DELETE` calls it off. Something must start the server again: Docker’s restart policy, or a start script that loops.
+- `GET /server/logs` returns recent console lines (`logs:read`), filtered by `level` and `grep`. WorldAPI keeps them from its own start, up to `limits.consoleLines`, and blanks out its tokens. The `server.console` topic streams the same lines live; older logs are files under `logs/`.
+- Vanished players stay hidden from every client without `players:moderate`, anonymous ones included. WorldAPI calls a player vanished while a vanish plugin (SuperVanish, PremiumVanish, Essentials, and others) sets the `vanished` metadata on them. To such a client they look offline: they're missing from `GET /players/online` and the online counts in `GET /server` and `GET /server/performance`; `GET /players` and `GET /players/{player}` show them with `online: false`, no live state, and no position; leaderboards mark them offline; entity lists leave them out, and `GET /worlds/{world}/entities/{uuid}` answers `404`. Endpoints that need an online player answer `409 player_offline`, so a `players:write` token can't reach them either. `GET /events` and `GET /players/{player}/sessions` leave out what was recorded while the player was vanished, and the session of a player who vanished after joining. Clients with `players:moderate` see everyone.
+- `POST /server/restart` counts down in chat, saves every world and player, and stops the server; `DELETE` calls it off. Something must start the server again: Docker’s restart policy, or a start script that loops. `POST /server/stop` does the same with “stops” in the warnings; whether the server stays down depends on what runs it.
+
+### Files
+
+`/files` reaches the server folder: `server.properties`, `bukkit.yml`, `spigot.yml`, Paper’s `config/`, every plugin’s folder, a world’s `paper-world.yml`, and `logs/`. `GET /server/configs` lists the configs that exist here. Paths are relative, with forward slashes.
+
+- **Reading** needs `files:read`, or `logs:read` for `logs/`. `GET /files?path=plugins/TAB` lists a folder. `GET /files/read?path=…` returns numbered lines as an editor shows them, `<number>\t<text>`, 200 at a time from `offset`, or the last `tail` lines, or with `grep` (text, or a regular expression with `regex=true`) the matching lines with `context` lines around each, `--` between groups. `nextOffset` reads on; `totalLines` and `matches` count the whole file. Lines past 2000 characters are cut, an answer stops at `limits.maxReadChars`, and gzipped logs read as text.
+- **Writing** needs `files:write`, which only the `owner` group has unless you add it elsewhere. `POST /files/edit` replaces exact text, each `oldText` found once unless `replaceAll`, all edits or none. `POST /files/set` sets keys by dotted path in YAML (comments kept), `.properties` (only the lines it sets change), or JSON; `null` removes a key. `PUT /files/write` replaces a file whole or creates one. Send the `sha256` from `/files/read` as `expectedSha256`, and a write fails with `409 file_changed` when someone changed the file since.
+- Every write keeps the previous version in `plugins/WorldAPI/backups/`, `limits.fileBackups` per file, and goes to the audit log with the lines added and removed. The server and plugins read their configs at start or on their own reload command, so a change takes a restart or that reload.
+- Never shared: WorldAPI’s own folder (its tokens, database, and backups), hidden files, keys, databases, jars, and anything a link leads to outside the server folder. Never written: `logs/`, and `ops.json`, `whitelist.json`, `banned-players.json`, `banned-ips.json`, and `usercache.json`, which the server keeps in memory and saves over any edit; their endpoints change them.
+
+### Admin panel and accounts
+
+The panel at `/admin` calls this same API with a session cookie instead of a token. `POST /auth/setup` takes a code from `/worldapi admin` in game, or an invite from `POST /accounts/invite`, with a password, and signs in; `POST /auth/login` signs in later. The cookie is HttpOnly and SameSite=Strict, and every write it carries must also send `X-WorldAPI-Panel: 1`, so another site can’t act through it. `GET /auth/me` answers for tokens too, with the permissions they come to. Tokens, accounts, and the audit log are under “Access control” (`tokens:manage`); nobody hands out a permission they lack.
 
 ### Leaderboards
 
@@ -74,7 +94,7 @@ Any vanilla statistic works too: `custom:jump`, `killed:zombie`, `crafted:*`. `G
 
 ## WebSocket
 
-Events about a vanished player, and their state in snapshots, reach `admin` clients only. Counts inside events (`online` in `player.join`, `player.leave`, and `server.status`; sleepers in `player.sleep` and `world.night_skipped`; players per world in `server.performance`) leave vanished players out for everyone.
+Events about a vanished player, and their state in snapshots, reach clients with `players:moderate` only. Counts inside events (`online` in `player.join`, `player.leave`, and `server.status`; sleepers in `player.sleep` and `world.night_skipped`; players per world in `server.performance`) leave vanished players out for everyone.
 
 Connect to `/api/v1/ws`. Send the token in the `Authorization` header, or as the first message if your client can’t set headers. Never put it in the URL.
 
@@ -85,7 +105,7 @@ Connect to `/api/v1/ws`. Send the token in the `Authorization` header, or as the
 { "op": "ping" }
 ```
 
-The server answers with `hello` (heartbeat interval, scopes, the topics you may use), `authenticated`, `subscribed`, then a `snapshot` of the current state for topics that have one, then `event` messages as things happen. `heartbeat` arrives every 20 seconds.
+The server answers with `hello` (heartbeat interval, permissions, the topics you may use), `authenticated`, `subscribed`, then a `snapshot` of the current state for topics that have one, then `event` messages as things happen. `heartbeat` arrives every 20 seconds.
 
 ```json
 { "op": "event", "topic": "player.death", "event": {
@@ -100,7 +120,7 @@ The server answers with `hello` (heartbeat interval, scopes, the topics you may 
 | `player.death`, `player.respawn` | Deaths with the message, cause, and killer; respawns with the bed or anchor |
 | `player.advancement` | An advancement with its title and frame (`task`, `goal`, `challenge`) |
 | `player.chat` | Chat messages, only when `events.chat` is on |
-| `player.command` | Commands players run; admin tokens only |
+| `player.command` | Commands players run; `logs:read` only |
 | `player.move` | Positions, at most once a second per player, only when they moved. Hidden from anonymous clients by default |
 | `player.health`, `player.damage` | Health with its maximum, food, absorption, active effects, and whether the player is frozen, when any of them change; damage with its cause, at most four a second |
 | `player.inventory` | The full inventory when it changes |
@@ -115,7 +135,8 @@ The server answers with `hello` (heartbeat interval, scopes, the topics you may 
 | `block.break`, `block.place` | Blocks per player and type, added up over a few seconds |
 | `server.performance` | TPS, tick times, memory, and CPU every five seconds |
 | `server.status`, `server.plugin` | Start, stop, saves; plugins enabled and disabled |
-| `script.log` | Lines Java scripts log; `code` tokens only |
+| `server.console` | Console lines as they’re printed, colors stripped and tokens blanked; `logs:read` only |
+| `script.log` | Lines Java scripts log; `code` only |
 
 Joins, leaves, kicks, deaths, advancements, chat, skipped nights, boss kills, raids, and server status also go to the history behind `GET /events`.
 
@@ -175,7 +196,7 @@ bridge?.apply(mapOf("v" to 1, "op" to "publish", "namespace" to "mobosses", "eve
 
 ## Java scripts
 
-With `scripts.enabled: true`, a token with the `code` scope can send Java to the server. WorldAPI compiles it with the Eclipse compiler bundled in the jar, so a JRE is enough, and loads it in its own class loader.
+With `scripts.enabled: true`, a token with the `code` permission can send Java to the server. WorldAPI compiles it with the Eclipse compiler bundled in the jar, so a JRE is enough, and loads it in its own class loader.
 
 Run something once and get the result back:
 

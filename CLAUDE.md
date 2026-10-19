@@ -1,6 +1,6 @@
 # WorldAPI: notes for AI agents
 
-A Paper 26.3 plugin that serves the server's state over REST and a WebSocket: worlds, players, statistics, events, and admin actions, plus Java scripts for those with the `code` scope. README.md explains it for humans; read it first. Two things depend on it: the MCP server in MairwunNx/minecraft-mcp, and the Moonlands site in MairwunNx/minecraft.
+A Paper 26.3 plugin that serves the server's state over REST and a WebSocket: worlds, players, statistics, events, and admin actions, plus Java scripts for those with the `code` permission, configs and logs as files, and an admin panel at `/admin`. README.md explains it for humans; read it first. Two things depend on it: the MCP server in MairwunNx/minecraft-mcp, and the Moonlands site in MairwunNx/minecraft.
 
 ## Talking to the owner
 
@@ -13,8 +13,9 @@ A Paper 26.3 plugin that serves the server's state over REST and a WebSocket: wo
 |---|---|
 | `WorldApiPlugin.kt`, `core/` | Startup and shutdown; `MainThread.kt` runs Bukkit calls on the server thread, with a timeout |
 | `config/` | `config.yml` through kaml in strict mode; an unknown key is an error, not a silent default |
-| `api/` | Ktor server, the endpoint DSL, auth and scopes, rate limits, trusted proxies, and the OpenAPI generator |
-| `routes/` | One file per area; each endpoint declares its scope, so the router and `docs/openapi.json` come from the same list |
+| `api/` | Ktor server, the endpoint DSL, auth, permissions and groups (`Scope.kt`), rate limits, trusted proxies, the HTTPS warning (`Exposure.kt`), and the OpenAPI generator |
+| `files/` | `/files`: which paths may be read or written (`ServerFiles`), paged and grep reads, writes with backups, and key edits in YAML, .properties, and JSON (`ConfigValues`) |
+| `routes/` | One file per area; each endpoint declares its permission (and `orScopes`, `also` where they apply), so the router and `docs/openapi.json` come from the same list |
 | `events/` | `Topic` (every stream and its privacy), listeners, the sampler for state topics, snapshots, and `Visibility`, which strips what anonymous clients mustn't see |
 | `ws/` | The WebSocket hub: per-client outboxes, state topics coalesce, event topics drop the oldest |
 | `stats/` | Statistics from live players and the stats files, leaderboards, aggregates |
@@ -24,14 +25,16 @@ A Paper 26.3 plugin that serves the server's state over REST and a WebSocket: wo
 | `extensions/` | Other plugins' data: `Bridge` (the `Function` in Bukkit's ServicesManager that plugins call with maps), `Extensions` (their namespaces and resources), `JsonValues` (their plain values as JSON); `routes/ExtensionRoutes.kt` serves them, and their topics are `Topic.extension` |
 | `tokens/`, `command/` | Issued tokens (stored as SHA-256), the in-game token menu, `/worldapi` |
 | `script/`, `src/main/java/.../script/api` | Java scripts: compiled by the bundled ECJ, loaded by a filtered class loader, checked against blocked calls |
+| `admin/` (Kotlin side in `admin/*.kt`) | The admin panel: React, Vite, shadcn/ui, TanStack Router and Query, built with Bun into the jar under `admin/`; `Panel.kt` serves it at `/admin` and holds the sign-in endpoints, `Accounts.kt` the accounts and sessions |
 
 ## Rules that keep it working
 
 - Bukkit calls happen on the server thread through `core/MainThread.kt`; IO, the database, and network never do.
 - Anonymous clients never get coordinates, inventories, addresses, or chat. A new topic or field declares its `Privacy` in `Topic.kt`, and `Visibility` must strip it for anonymous clients. Moonlands opens topics to anonymous visitors in its own config, so check what a new field would show there.
-- `admin` doesn't include `code`. Scripts run arbitrary Java on the server; they stay off by default.
+- Permissions live in `Scope.kt`; groups in config.yml `auth.groups`, with defaults in `Scope.defaultGroups` that the shipped config.yml must match (a test checks). Only `owner` has `files:write` and `code` by default; keep it so. Anyone grants only what they have (`canGrant`).
+- `/files` never reaches WorldAPI's own folder, hidden files, keys, databases, jars, or a link out of the server folder; logs and files the server keeps in memory stay read-only. A new rule goes into `ServerFiles` with a test in `FilesTest`.
 - Never log or print a token. The token menu shows a new one once, to the player who made it.
-- Vanished players look offline to every client without `admin`. A new endpoint or field that names or counts online players checks `ApiCall.hides` (or `seesVanished`) on the server thread; an event about a player goes through `EventBus`, which marks it `hidden` from `Vanished`, and the hub and history serve hidden events to admin clients only. Counts inside events leave vanished players out for everyone.
+- Vanished players look offline to every client without `players:moderate`. A new endpoint or field that names or counts online players checks `ApiCall.hides` (or `seesVanished`) on the server thread; an event about a player goes through `EventBus`, which marks it `hidden` from `Vanished`, and the hub and history serve hidden events to `players:moderate` clients only. Counts inside events leave vanished players out for everyone.
 - The extension bridge is a contract other plugins compile against without our classes: plain Java types in, maps out, and `v` on every request. Add ops and fields; never change what an existing one means, or bump `Bridge.CONTRACT` and keep the old behavior for the old version. WorldAPI stores none of a plugin's data, only its `recorded` events.
 - Statistics use vanilla ids, as in the stats files. Bukkit names some differently (PLAY_ONE_MINUTE is `minecraft:play_time`); map them in `vanillaKey`, or online players drop out of boards.
 - A changed field the Moonlands site reads (`site/data.js` in MairwunNx/minecraft) can break the site. Add fields; don't rename or remove them.
@@ -59,6 +62,16 @@ A Paper 26.3 plugin that serves the server's state over REST and a WebSocket: wo
    Plan reports a failing extension method only as a warning and a file in `plugins/Plan/logs/`, which the script doesn't catch: after a change to `plan/`, add `--keep` and check that folder is empty. Player values appear only once a player joins.
 3. Endpoints and the WebSocket need a running server to call: the Docker compose snippet in README.md, then `curl` with the admin token from its `config.yml`. After a release reaches Moonlands, `curl -s https://minecraft.mairwunnx.com/worldapi/api/v1/server` shows its `worldApiVersion`, and the site and `scripts/live-check.mjs` in minecraft-mcp read it.
 
+## Admin panel
+
+- `admin/` is a React app on the same stack as Allay's panel (`~/c/personal/allay/server/admin`): Vite, TypeScript, shadcn/ui and Tailwind, TanStack Router and Query, react-hook-form and zod, Recharts, react-i18next, CodeMirror for configs. Every visible string sits in `src/locales/en.json`.
+- It calls the public API with the session cookie, never a token. Types come from `docs/openapi.json`: `bun run generate` writes `src/api/generated/` (git-ignored), and every build runs it first, so a changed endpoint fails the panel's typecheck. openapi-typescript needs TypeScript 5's API, so it lives in `admin/scripts/openapi/` with its own lockfile.
+- Writes send `X-WorldAPI-Panel: 1`, or WorldAPI answers 403 `csrf`. The page takes its API path from the `worldapi-api` meta tag WorldAPI injects and its assets from the `<base>`, so it works under any prefix (`/worldapi/admin/` on Moonlands). The CSP allows nothing from elsewhere: no CDNs, no inline scripts, fonts bundled, and `z.config({ jitless: true })` keeps zod from probing `eval`.
+- Pages hide what `/auth/me`'s permissions don't allow; WorldAPI checks again on every call.
+- Gradle's `buildPanel` runs `bun install --frozen-lockfile` and `bun run build` into `build/admin-dist`, and `processResources` puts it in the jar. Bun must be on the PATH; `./gradlew build -PskipPanel` builds without the panel, and `/admin` then says so. CI installs Bun with `oven-sh/setup-bun`.
+- `cd admin && bun run dev` serves it with hot reload and passes `/api` and the WebSocket through to a local server on 8110.
+- Checking a change: `cd admin && bun run typecheck`, then `./gradlew build`, a local Paper with the jar, and the panel in a headless browser at 1366 and 360 px wide: no console errors, no CSP reports, nothing scrolls sideways. A test account can go straight into `plugins/WorldAPI/worldapi.db` (`accounts`, the password as `pbkdf2$600000$<salt hex>$<hash hex>`) while the server is stopped; `/worldapi admin` refuses the console on purpose.
+
 ## Autopilot
 
 `.github/workflows/autopilot.yml` runs Claude every Monday at 03:00 UTC: `/update-deps`, then `/update-minecraft`, a fix for whatever they break, a push to `master`, and the “Release” workflow with every store when what the project ships changed. The release's `deploy` job then starts Moonlands' `ship-plugin.yml` with the `FAMILY_ACTIONS_TOKEN` secret, and Claude puts the jar on the server there. The run itself needs the `CLAUDE_CODE_OAUTH_TOKEN` secret. “Autopilot” in `~/c/personal/minecraft/CLAUDE.md` explains the family's runs. A session with the owner still releases only when the owner asks.
@@ -70,6 +83,7 @@ Where the versions live, for `/update-deps` and `/update-minecraft` (both in `.c
 - The game: `io.papermc.paper:paper-api` (twice: `compileOnly` and `testImplementation`), `gameVersions` (Modrinth) and `platformVersions` (Hangar) in `build.gradle.kts`, and `api-version` in `src/main/resources/paper-plugin.yml`.
 - Java: `jvmToolchain` in `build.gradle.kts`; CI's `setup-java` in `.github/workflows/`.
 - Gradle in `gradle/wrapper/gradle-wrapper.properties`; Kotlin and the Gradle plugins in the `plugins` block; libraries, the JDBC drivers and ECJ among them, in `dependencies`.
+- The admin panel: `admin/package.json` and `admin/bun.lock` (`bun update` there); openapi-typescript and its TypeScript 5 in `admin/scripts/openapi/package.json`; Bun itself in `oven-sh/setup-bun` in `.github/workflows/`.
 - Plan: `compileOnly("com.djrapitops:plan-api:…")` from `repo.playeranalytics.net`, never shaded. Use only what the Plan servers run offers: graphs and statistics (`DATA_EXTENSION_GRAPH_API`, `DATA_EXTENSION_STATISTICS_API`) need a Plan newer than 5.8.
 
 ## Docs
