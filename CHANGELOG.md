@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.4.1
+
+- `invulnerable` in entity and player data shows the flag that `PATCH` sets again. Since Paper 26.3 build 205 the old check answers whether damage gets through, which is also true for a player in creative mode.
+- Built against Paper API 26.3 build 205 and Gradle 9.8.1.
+
 ## 2.4.0
 
 - 🐺 **A leaderboard of tamed animals,** `GET /leaderboards/tamed`. The game keeps no such statistic, so WorldAPI counts the pets already in the world once, by their owners, from the loaded mobs and the entity files of every world, and adds every taming after that. A pet that died before that first count left no trace. The database gets two small tables on the first start.

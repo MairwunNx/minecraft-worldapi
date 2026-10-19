@@ -248,7 +248,7 @@ fun entityView(entity: Entity, coordinates: Boolean, inventories: Boolean): Enti
         fireTicks = entity.fireTicks,
         glowing = entity.isGlowing,
         silent = entity.isSilent,
-        invulnerable = entity.isInvulnerable,
+        invulnerable = entity.isMarkedInvulnerable,
         gravity = entity.hasGravity(),
         persistent = entity.isPersistent,
         tags = entity.scoreboardTags.sorted(),

@@ -22,7 +22,7 @@ val ktorVersion = "3.6.0"
 val exposedVersion = "1.5.1"
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:26.3.build.169-beta")
+    compileOnly("io.papermc.paper:paper-api:26.3.build.205-stable")
     // Paper ships the SQLite driver, so it stays out of the jar.
     compileOnly("org.xerial:sqlite-jdbc:3.53.4.0")
     // Paper logs through Log4j; GET /server/logs hooks its root logger.
@@ -47,7 +47,7 @@ dependencies {
     // Compiles scripts on servers that run a JRE without javac.
     implementation("org.eclipse.jdt:ecj:3.46.100")
 
-    testImplementation("io.papermc.paper:paper-api:26.3.build.169-beta")
+    testImplementation("io.papermc.paper:paper-api:26.3.build.205-stable")
     testImplementation("org.xerial:sqlite-jdbc:3.53.4.0")
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
     testImplementation("io.ktor:ktor-client-websockets:$ktorVersion")
