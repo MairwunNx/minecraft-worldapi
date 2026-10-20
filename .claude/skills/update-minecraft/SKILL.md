@@ -93,14 +93,14 @@ Don't push yet.
 
 ### 5. Switch the server
 
-1. Back up first, apart from the deploy's own backup: `gh workflow run backups.yml -f action=now`, then `gh run watch`, then `-f action=list` to see the snapshot. Note its ID for the report.
-2. Push in one commit, “Move to Paper 26.4”, then deploy: `gh workflow run deploy-server.yml -f restart=empty`, and `gh run watch`. With nobody online the server switches right away. With players online it waits, and the server switches by itself, with a fresh backup, once the last one leaves. The owner may ask for `-f restart=always -f countdown=60` to switch now.
+1. Back up first: `gh workflow run backups.yml -f action=now`, then `gh run watch`, then `-f action=list` to see the snapshot. Note its ID for the report.
+2. Push in one commit, “Move to Paper 26.4”. Komodo deploys the push by itself: the server stops with its world saved and starts on the new version a few minutes later.
 
 ### 6. Check the live server
 
 Once it switched:
 
-- The deploy's log shows `This server is running Paper version <version>-<build>`, every plugin enabling, and no `ERROR` line or exception.
+- The server's log (`ssh minecraft docker logs --since 15m minecraft`) shows `This server is running Paper version <version>-<build>`, every plugin enabling, and no `ERROR` line or exception.
 - WorldAPI answers with the new `minecraftVersion`: `curl -s https://minecraft.mairwunnx.com/worldapi/api/v1/server`. The site shows live data.
 - The relay still lets players in: `nc -z -w 5 ru.minecraft.mairwunnx.com 25565`.
 
