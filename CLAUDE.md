@@ -104,6 +104,16 @@ Where the versions live, for `/update-deps` and `/update-minecraft` (both in `.c
 
 Why the build looks the way it does: `paper-plugin.yml` because WorldAPI is Paper-only and gets an isolated class loader and Brigadier commands; dependencies shaded so the jar works offline and can't clash with FAWE, BlueMap, Plan, or TAB; ECJ unrelocated because it finds its message bundles by package name; the SQLite driver left to Paper; JDBC drivers named through class references so the relocation holds.
 
+## Platforms
+
+How the family ships a project to more than one platform. A project that builds only for Paper keeps its jar's present name until it gains a second platform, so links and Moonlands' `jars.txt` keep working.
+
+- **Modules.** One Gradle module per platform, `paper/`, `fabric/`, `neoforge/`, next to a `core/` module with what they share: the rules as plain Kotlin without game imports, data, and assets. Every module builds from one version, and one release ships them all.
+- **Jars.** `<name>-paper-X.Y.Z.jar`, `<name>-fabric-X.Y.Z.jar`, and `<name>-neoforge-X.Y.Z.jar`, each attached again without the version, so `releases/latest/download/<name>-<platform>.jar` always fetches the newest.
+- **Modrinth.** One project for every platform. Each platform is its own version, numbered `X.Y.Z+paper`, `X.Y.Z+fabric`, or `X.Y.Z+neoforge`, with its own loaders and dependencies; a mod's version says it runs on the client and the server.
+- **Hangar.** Paper only, numbered `X.Y.Z`.
+- **Moonlands** runs the Paper jar only.
+
 ## Commits
 
 Short one-line imperative English messages, one logical change per commit: “Send active effects and freezing with player.health”.
