@@ -1,7 +1,8 @@
 # Changelog
 
-## 3.2.1
+## 3.3.0
 
+- 📍 **The spawn point.** `GET /spawn` shows where players join for the first time and respawn without a bed: the world, the point, which way they face, the respawn radius, and spawn protection. `PATCH /spawn` moves it, to another world too, and changes the radius. A world's page in the panel shows it and, with `world:write`, moves it.
 - 📖 **A manual on the wiki.** The docs moved to the [GitHub wiki](https://github.com/MairwunNx/minecraft-worldapi/wiki), step by step. The HTTP exposure warning in the console links to its “Reverse proxy” page.
 
 ## 3.2.0
