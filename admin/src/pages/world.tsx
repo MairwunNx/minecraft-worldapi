@@ -299,6 +299,86 @@ const BorderCard = ({ name, edit }: { name: string; edit: boolean }) => {
   );
 };
 
+/** The respawn point when players spawn in this world; otherwise the world's own point, which teleports use. */
+const pointOf = (name: string, own: World["spawn"], spawn: Schema<"ServerSpawn"> | undefined) =>
+  spawn?.world === name ? spawn : { x: Math.floor(own.x), y: Math.floor(own.y), z: Math.floor(own.z), yaw: own.yaw ?? 0, pitch: own.pitch ?? 0 };
+
+const SpawnCard = ({ world, edit }: { world: World; edit: boolean }) => {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const query = useQuery({ queryKey: ["spawn"], queryFn: () => data(client.GET("/spawn")) });
+  const spawn = query.data;
+  const here = spawn?.world === world.name;
+  const point = pointOf(world.name, world.spawn, spawn);
+  const [form, setForm] = useState({ x: "", y: "", z: "", yaw: "", pitch: "", radius: "" });
+  // The world refetches every 15 s; its spawn keeps its identity until it changes, so typing isn't reset.
+  useEffect(() => {
+    if (!spawn) return;
+    const at = pointOf(world.name, world.spawn, spawn);
+    const tenth = (n: number) => String(Math.round(n * 10) / 10);
+    // The respawn radius is a game rule of each world; moving the respawn takes this world's own.
+    const radius = spawn.world === world.name ? spawn.respawnRadius : (world.gameRules.respawn_radius ?? spawn.respawnRadius);
+    setForm({ x: String(at.x), y: String(at.y), z: String(at.z), yaw: tenth(at.yaw), pitch: tenth(at.pitch), radius: String(radius) });
+  }, [spawn, world.name, world.spawn, world.gameRules]);
+  const save = async (event: React.FormEvent) => {
+    event.preventDefault();
+    try {
+      const body = { world: world.name, x: Number(form.x), y: Number(form.y), z: Number(form.z), yaw: Number(form.yaw), pitch: Number(form.pitch), respawnRadius: Number(form.radius) };
+      queryClient.setQueryData(["spawn"], await data(client.PATCH("/spawn", { body })));
+      toast.success(t("world.spawnSaved"));
+      await queryClient.invalidateQueries({ queryKey: ["world", world.name] });
+    } catch (error) {
+      showError(error);
+    }
+  };
+  return (
+    <Section title={t("world.spawn")}>
+      {query.error ? (
+        <ErrorBox error={query.error} />
+      ) : !spawn ? (
+        <Loading rows={2} />
+      ) : (
+        <>
+          <p className="text-sm text-muted-foreground">{here ? t("world.spawnHere") : t("world.spawnElsewhere", { world: spawn.world })}</p>
+          <Definition
+            items={[
+              [t("world.spawnPoint"), `${point.x} ${point.y} ${point.z}`],
+              [t("world.spawnFacing"), t("world.spawnFacingValue", { yaw: number(point.yaw, 1), pitch: number(point.pitch, 1) })],
+              ...(here
+                ? ([
+                    [t("world.respawnRadius"), t("world.blocks", { count: spawn.respawnRadius, value: number(spawn.respawnRadius) })],
+                    [t("world.spawnProtection"), t("world.blocks", { count: spawn.spawnProtection, value: number(spawn.spawnProtection) })],
+                  ] as Array<[string, string]>)
+                : []),
+            ]}
+          />
+          {edit && (
+            <form onSubmit={save} className="grid grid-cols-3 gap-3 border-t pt-3">
+              {(
+                [
+                  ["x", "X"],
+                  ["y", "Y"],
+                  ["z", "Z"],
+                  ["yaw", t("world.yaw")],
+                  ["pitch", t("world.pitch")],
+                  ["radius", t("world.respawnRadius")],
+                ] as const
+              ).map(([key, label]) => (
+                <FormField key={key} id={`spawn-${key}`} label={label}>
+                  <Input id={`spawn-${key}`} type="number" inputMode="decimal" value={form[key]} onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))} />
+                </FormField>
+              ))}
+              <Button type="submit" size="sm" className="col-span-3 justify-self-start">
+                {here ? t("world.spawnApply") : t("world.spawnMove")}
+              </Button>
+            </form>
+          )}
+        </>
+      )}
+    </Section>
+  );
+};
+
 const StatsCard = ({ name }: { name: string }) => {
   const { t } = useTranslation();
   const query = useQuery({ queryKey: ["world", name, "stats"], queryFn: () => data(client.GET("/worlds/{world}/stats", { params: { path: { world: name } } })), staleTime: 300_000 });
@@ -752,6 +832,7 @@ export const WorldPage = () => {
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <StateCard world={world} edit={edit} />
         <BorderCard name={world.name} edit={edit} />
+        <SpawnCard world={world} edit={edit} />
         <RulesCard name={world.name} edit={edit} />
         <div className="flex min-w-0 flex-col gap-3">
           <StatsCard name={world.name} />
