@@ -94,6 +94,39 @@ data class WorldPatch(
 @Serializable
 data class SpawnPatch(val x: Int, val y: Int, val z: Int, val angle: Float = 0f)
 
+/** Where players appear on their first join and when they respawn without a bed or an anchor. */
+@Serializable
+data class ServerSpawn(
+    /** The world players respawn in: its name, such as `world`. */
+    val world: String,
+    /** Its dimension key, such as `minecraft:overworld`. */
+    val key: String,
+    val x: Int,
+    val y: Int,
+    val z: Int,
+    val yaw: Float,
+    val pitch: Float,
+    /** The `respawn_radius` game rule of that world: players land at a random spot this many blocks around the point. */
+    val respawnRadius: Int,
+    /** `spawn-protection` from server.properties: blocks around the point only operators may change. */
+    val spawnProtection: Int,
+)
+
+/** Every field is optional; `x`, `y`, and `z` come together. A world alone moves the respawn there, to that world's own spawn. */
+@Serializable
+data class ServerSpawnPatch(
+    /** A world name or dimension key; the respawn world now when left out. */
+    val world: String? = null,
+    val x: Int? = null,
+    val y: Int? = null,
+    val z: Int? = null,
+    /** Which way players face, -180–180; 0 is south. */
+    val yaw: Float? = null,
+    /** -90 (up) to 90 (down). */
+    val pitch: Float? = null,
+    val respawnRadius: Int? = null,
+)
+
 @Serializable
 data class GameRuleView(
     /** Rule key, such as `keep_inventory`. */

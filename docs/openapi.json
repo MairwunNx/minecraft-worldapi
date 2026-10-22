@@ -7427,6 +7427,164 @@
                 }
             }
         },
+        "/spawn": {
+            "get": {
+                "operationId": "getSpawn",
+                "summary": "Where players join for the first time and respawn without a bed",
+                "description": "Permission: `server:read`.",
+                "tags": [
+                    "Worlds"
+                ],
+                "x-scope": "server:read",
+                "security": [
+                    {
+                        "bearer": [
+                            "server:read"
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ServerSpawn"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or unknown token",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The token lacks the permission",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit hit; see Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "The server thread didn't answer in time",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "patchSpawn",
+                "summary": "Move the spawn point, change its world, or its respawn radius",
+                "description": "`x`, `y`, and `z` come together. `world` alone moves the respawn to that world's own spawn; with coordinates, to that spot in it.\n\nPermission: `world:write`.",
+                "tags": [
+                    "Worlds"
+                ],
+                "x-scope": "world:write",
+                "security": [
+                    {
+                        "bearer": [
+                            "world:write"
+                        ]
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ServerSpawnPatch"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ServerSpawn"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or unknown token",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The token lacks the permission",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit hit; see Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "The server thread didn't answer in time",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/tokens": {
             "get": {
                 "operationId": "getTokens",
@@ -16852,6 +17010,107 @@
                     "lines",
                     "buffered"
                 ],
+                "additionalProperties": false
+            },
+            "ServerSpawn": {
+                "type": "object",
+                "properties": {
+                    "world": {
+                        "type": "string"
+                    },
+                    "key": {
+                        "type": "string"
+                    },
+                    "x": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "y": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "z": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "yaw": {
+                        "type": "number"
+                    },
+                    "pitch": {
+                        "type": "number"
+                    },
+                    "respawnRadius": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "spawnProtection": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                },
+                "required": [
+                    "world",
+                    "key",
+                    "x",
+                    "y",
+                    "z",
+                    "yaw",
+                    "pitch",
+                    "respawnRadius",
+                    "spawnProtection"
+                ],
+                "additionalProperties": false
+            },
+            "ServerSpawnPatch": {
+                "type": "object",
+                "properties": {
+                    "world": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "x": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "format": "int32"
+                    },
+                    "y": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "format": "int32"
+                    },
+                    "z": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "format": "int32"
+                    },
+                    "yaw": {
+                        "type": [
+                            "number",
+                            "null"
+                        ]
+                    },
+                    "pitch": {
+                        "type": [
+                            "number",
+                            "null"
+                        ]
+                    },
+                    "respawnRadius": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "format": "int32"
+                    }
+                },
                 "additionalProperties": false
             },
             "SessionView": {

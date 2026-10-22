@@ -2,13 +2,17 @@ package com.mairwunnx.worldapi.routes
 
 import com.mairwunnx.worldapi.api.Scope
 import com.mairwunnx.worldapi.api.badRequest
+import com.mairwunnx.worldapi.api.notFound
 import com.mairwunnx.worldapi.api.endpoints
+import com.mairwunnx.worldapi.bukkit.findWorld
 import com.mairwunnx.worldapi.bukkit.view
 import com.mairwunnx.worldapi.bukkit.world
 import com.mairwunnx.worldapi.model.Border
 import com.mairwunnx.worldapi.model.BorderPatch
 import com.mairwunnx.worldapi.model.GameRuleView
 import com.mairwunnx.worldapi.model.Position
+import com.mairwunnx.worldapi.model.ServerSpawn
+import com.mairwunnx.worldapi.model.ServerSpawnPatch
 import com.mairwunnx.worldapi.model.Weather
 import com.mairwunnx.worldapi.model.WorldPatch
 import com.mairwunnx.worldapi.model.WorldSummary
@@ -19,6 +23,9 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.intOrNull
 import org.bukkit.Difficulty
 import org.bukkit.GameRule
+import org.bukkit.GameRules
+import org.bukkit.Location
+import org.bukkit.Server
 import org.bukkit.World
 
 val worldRoutes = endpoints("Worlds", Scope.SERVER_READ) {
@@ -39,6 +46,28 @@ val worldRoutes = endpoints("Worlds", Scope.SERVER_READ) {
             auditTarget = world.name
             patch.apply(world)
             worldView(world, admin)
+        }
+    }
+
+    get("/spawn", "Where players join for the first time and respawn without a bed") {
+        main { serverSpawn(api.server) }
+    }
+
+    patch<ServerSpawnPatch, ServerSpawn>(
+        "/spawn", "Move the spawn point, change its world, or its respawn radius", Scope.WORLD_WRITE,
+        description = "`x`, `y`, and `z` come together. `world` alone moves the respawn to that world's own spawn; with coordinates, to that spot in it.",
+    ) { patch ->
+        main {
+            val server = api.server
+            val world = patch.world?.let { server.findWorld(it) ?: notFound("world_not_found", "No world \"$it\"") } ?: server.respawnWorld
+            checkSpawn(patch, world.minHeight, world.maxHeight)
+            if (world != server.respawnWorld) server.respawnWorld = world
+            val now = world.spawnLocation
+            if (patch.x != null || patch.yaw != null || patch.pitch != null) {
+                world.setSpawnLocation(Location(world, (patch.x ?: now.blockX).toDouble(), (patch.y ?: now.blockY).toDouble(), (patch.z ?: now.blockZ).toDouble(), patch.yaw ?: now.yaw, patch.pitch ?: now.pitch))
+            }
+            patch.respawnRadius?.let { world.setGameRule(GameRules.RESPAWN_RADIUS, it) }
+            serverSpawn(server).also { auditTarget = "${it.world} ${it.x} ${it.y} ${it.z}" }
         }
     }
 
@@ -85,6 +114,30 @@ val worldRoutes = endpoints("Worlds", Scope.SERVER_READ) {
             border(world)
         }
     }
+}
+
+private fun serverSpawn(server: Server): ServerSpawn {
+    val world = server.respawnWorld
+    val spawn = world.spawnLocation
+    return ServerSpawn(
+        world = world.name,
+        key = world.key.asString(),
+        x = spawn.blockX, y = spawn.blockY, z = spawn.blockZ,
+        yaw = spawn.yaw, pitch = spawn.pitch,
+        respawnRadius = world.getGameRuleValue(GameRules.RESPAWN_RADIUS) ?: 0,
+        spawnProtection = server.spawnRadius,
+    )
+}
+
+/** Checks a spawn change against the world's height before anything moves. */
+internal fun checkSpawn(patch: ServerSpawnPatch, minHeight: Int, maxHeight: Int) {
+    val coordinates = listOf(patch.x, patch.y, patch.z)
+    if (coordinates.any { it != null } && coordinates.any { it == null }) badRequest("x, y, and z come together")
+    patch.y?.let { if (it !in minHeight until maxHeight) badRequest("y must be between $minHeight and ${maxHeight - 1} in this world") }
+    listOfNotNull(patch.x, patch.z).forEach { if (it !in -29_999_984..29_999_984) badRequest("x and z must lie within the world's 29999984 blocks") }
+    patch.yaw?.let { if (!it.isFinite() || it !in -180f..180f) badRequest("yaw must be between -180 and 180") }
+    patch.pitch?.let { if (!it.isFinite() || it !in -90f..90f) badRequest("pitch must be between -90 and 90") }
+    patch.respawnRadius?.let { if (it < 0) badRequest("respawnRadius can't be negative") }
 }
 
 private val moonPhases = listOf("full_moon", "waning_gibbous", "third_quarter", "waning_crescent", "new_moon", "waxing_crescent", "first_quarter", "waxing_gibbous")

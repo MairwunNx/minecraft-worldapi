@@ -1,15 +1,19 @@
 package com.mairwunnx.worldapi
 
+import com.mairwunnx.worldapi.api.ApiException
 import com.mairwunnx.worldapi.model.ChunkSummary
 import com.mairwunnx.worldapi.model.RecipeIngredient
 import com.mairwunnx.worldapi.model.RecipeView
+import com.mairwunnx.worldapi.model.ServerSpawnPatch
 import com.mairwunnx.worldapi.routes.ChunkSort
 import com.mairwunnx.worldapi.routes.canSleep
+import com.mairwunnx.worldapi.routes.checkSpawn
 import com.mairwunnx.worldapi.routes.matches
 import com.mairwunnx.worldapi.routes.ticksUntilNight
 import com.mairwunnx.worldapi.routes.topTypes
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -55,5 +59,20 @@ class WorldTest {
         assertTrue(matches(torch, "minecraft:torch", "minecraft:stick"))
         assertFalse(matches(torch, "minecraft:stick", null))
         assertFalse(matches(torch, "minecraft:torch", "minecraft:diamond"))
+    }
+
+    @Test
+    fun `a spawn change is checked before anything moves`() {
+        checkSpawn(ServerSpawnPatch(x = 10, y = 64, z = -3, yaw = 90f), minHeight = -64, maxHeight = 320)
+        checkSpawn(ServerSpawnPatch(world = "world_nether"), minHeight = 0, maxHeight = 256)
+        checkSpawn(ServerSpawnPatch(respawnRadius = 0), minHeight = -64, maxHeight = 320)
+        listOf(
+            ServerSpawnPatch(x = 10, z = 3),
+            ServerSpawnPatch(x = 0, y = 320, z = 0),
+            ServerSpawnPatch(x = 30_000_000, y = 64, z = 0),
+            ServerSpawnPatch(yaw = 270f),
+            ServerSpawnPatch(pitch = Float.NaN),
+            ServerSpawnPatch(respawnRadius = -1),
+        ).forEach { assertFailsWith<ApiException>(it.toString()) { checkSpawn(it, minHeight = -64, maxHeight = 320) } }
     }
 }
