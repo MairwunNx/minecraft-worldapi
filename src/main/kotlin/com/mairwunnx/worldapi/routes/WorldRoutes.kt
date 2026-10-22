@@ -244,7 +244,8 @@ private fun WorldPatch.apply(world: World) {
     }
     difficulty?.let { world.difficulty = it }
     pvp?.let { world.pvp = it }
-    spawn?.let { world.setSpawnLocation(it.x, it.y, it.z, it.angle) }
+    // The four-number setter zeroes the pitch; keep the one the point has.
+    spawn?.let { world.setSpawnLocation(Location(world, it.x.toDouble(), it.y.toDouble(), it.z.toDouble(), it.angle, world.spawnLocation.pitch)) }
 }
 
 private fun rule(name: String): GameRule<*> =
