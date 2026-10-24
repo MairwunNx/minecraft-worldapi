@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ArrowDownToLine, Pause, Play, SendHorizontal, Trash2 } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -162,10 +162,30 @@ export const ConsolePage = () => {
   );
 };
 
-/** One command at a time; ↑ and ↓ walk through this visit's commands, like a terminal. */
+/**
+ * One command at a time; ↑ and ↓ walk through this visit's commands, like a terminal. While the first word is typed,
+ * the server's commands that fit show below; once it's typed, the command's usage does.
+ */
 const CommandBox = ({ onRun, onUpdate }: { onRun: (entry: Entry) => void; onUpdate: (entry: Entry) => void }) => {
   const { t } = useTranslation();
   const [command, setCommand] = useState("");
+  const input = useRef<HTMLInputElement>(null);
+  const label = command.trimStart().replace(/^\//, "").split(" ")[0].toLowerCase();
+  const typing = !command.trimStart().replace(/^\//, "").includes(" ");
+  const found = useQuery({
+    queryKey: ["commands", label],
+    queryFn: () => data(client.GET("/server/commands", { params: { query: { query: label, limit: 6 } } })),
+    // Running commands is enough to read them (server:console), so no check of its own.
+    enabled: label.length >= 2,
+    placeholderData: keepPreviousData,
+    staleTime: 60_000,
+  });
+  const hits = label.length >= 2 ? (found.data?.results[0]?.commands ?? []) : [];
+  const exact = hits.find((hit) => hit.name === label || hit.aliases?.includes(label));
+  const pick = (name: string) => {
+    setCommand(`${name} `);
+    input.current?.focus();
+  };
   const [busy, setBusy] = useState(false);
   const past = useRef<string[]>([]);
   const cursor = useRef(-1);
@@ -189,33 +209,54 @@ const CommandBox = ({ onRun, onUpdate }: { onRun: (entry: Entry) => void; onUpda
     }
   };
   return (
-    <form
-      className="flex gap-2"
-      onSubmit={(event) => {
-        event.preventDefault();
-        void run();
-      }}
-    >
-      <Input
-        className="min-w-0 flex-1 font-mono"
-        placeholder={t("console.command")}
-        aria-label={t("console.command")}
-        autoComplete="off"
-        spellCheck={false}
-        value={command}
-        onChange={(event) => setCommand(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+    <div className="flex flex-col gap-2">
+      <form
+        className="flex gap-2"
+        onSubmit={(event) => {
           event.preventDefault();
-          const next = event.key === "ArrowUp" ? Math.min(past.current.length - 1, cursor.current + 1) : Math.max(-1, cursor.current - 1);
-          cursor.current = next;
-          setCommand(next < 0 ? "" : past.current[next]);
+          void run();
         }}
-      />
-      <Button type="submit" disabled={busy || !command.trim()}>
-        <SendHorizontal className="size-4" aria-hidden />
-        <span className="hidden sm:inline">{t("console.run")}</span>
-      </Button>
-    </form>
+      >
+        <Input
+          ref={input}
+          className="min-w-0 flex-1 font-mono"
+          placeholder={t("console.command")}
+          aria-label={t("console.command")}
+          autoComplete="off"
+          spellCheck={false}
+          value={command}
+          onChange={(event) => setCommand(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+            event.preventDefault();
+            const next = event.key === "ArrowUp" ? Math.min(past.current.length - 1, cursor.current + 1) : Math.max(-1, cursor.current - 1);
+            cursor.current = next;
+            setCommand(next < 0 ? "" : past.current[next]);
+          }}
+        />
+        <Button type="submit" disabled={busy || !command.trim()}>
+          <SendHorizontal className="size-4" aria-hidden />
+          <span className="hidden sm:inline">{t("console.run")}</span>
+        </Button>
+      </form>
+      {typing && hits.length > 0 && (
+        <ul className="flex flex-col divide-y rounded-lg border bg-card text-xs" aria-label={t("console.suggestions")}>
+          {hits.map((hit) => (
+            <li key={hit.name}>
+              <button type="button" className="flex w-full min-w-0 flex-wrap items-baseline gap-x-2 px-3 py-1.5 text-left hover:bg-muted" onClick={() => pick(hit.name)}>
+                <span className="font-mono font-medium">{hit.name}</span>
+                {hit.source && <span className="text-muted-foreground">{hit.source}</span>}
+                {hit.description && <span className="min-w-0 basis-full truncate text-muted-foreground sm:basis-auto">{hit.description}</span>}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {!typing && exact?.usage && (
+        <p className="min-w-0 truncate px-1 font-mono text-xs text-muted-foreground" title={exact.usage}>
+          {exact.usage}
+        </p>
+      )}
+    </div>
   );
 };

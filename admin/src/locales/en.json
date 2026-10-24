@@ -358,7 +358,8 @@
     "run": "Run",
     "running": "Running…",
     "noOutput": "Done, without output.",
-    "failed": "The command failed."
+    "failed": "The command failed.",
+    "suggestions": "Commands that fit"
   },
   "chat": {
     "title": "Chat",
@@ -427,6 +428,13 @@
     "by": "By {{authors}}",
     "moreFiles_one": "and {{count}} more file",
     "moreFiles_other": "and {{count}} more files",
+    "shares": "Shares {{namespace}}",
+    "resources_one": "{{count}} resource",
+    "resources_other": "{{count}} resources",
+    "topics_one": "{{count}} topic",
+    "topics_other": "{{count}} topics",
+    "commands_one": "{{count}} command",
+    "commands_other": "{{count}} commands",
     "datapacks": "Datapacks",
     "enabled": "On",
     "off": "Off"
