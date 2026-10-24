@@ -41,10 +41,13 @@ data class Echo(val name: String, val count: Int = 1)
 class HttpTest {
     private val read = "read-token-0123456789"
     private val world = "world-token-0123456789"
+    private val empty = "empty-token-0123456789"
 
     private val config = WorldApiConfig(
         auth = Auth(
-            tokens = listOf(Token("site", read, listOf("viewer")), Token("builder", world, listOf("world:write"))),
+            tokens = listOf(
+                Token("site", read, listOf("viewer")), Token("builder", world, listOf("world:write")), Token("nothing", empty, emptyList()),
+            ),
             anonymous = Anonymous(endpoints = listOf("/public", "/ws")),
         ),
         rateLimit = RateLimits(anonymous = RateLimit(60, 3)),
@@ -165,5 +168,15 @@ class HttpTest {
         val paths = Json.parseToJsonElement(doc.bodyAsText()).jsonObject["paths"]!!.jsonObject
         assertTrue("/echo" in paths && "/ws" in paths)
         assertTrue("api-reference" in client.get("/api/v1/docs") { bearerAuth(read) }.bodyAsText())
+    }
+
+    @Test
+    fun `a token without permissions gets nothing, not everything`() = test {
+        val body = """{"name":"stone"}"""
+        val write = client.post("/api/v1/echo") { bearerAuth(empty); contentType(ContentType.Application.Json); setBody(body) }
+        assertEquals(HttpStatusCode.Forbidden, write.status)
+        assertEquals("missing_scope", code(write.bodyAsText()))
+        assertEquals(HttpStatusCode.Forbidden, client.get("/api/v1/private") { bearerAuth(empty) }.status)
+        assertEquals(HttpStatusCode.Forbidden, client.patch("/api/v1/admin") { bearerAuth(empty); setBody(body) }.status)
     }
 }

@@ -148,6 +148,22 @@ class PanelTest {
         assertEquals(HttpStatusCode.NotFound, client.get("/admin/assets/nope.js").status)
     }
 
+    @Test
+    fun `an account whose group is gone gets nothing`() = test { fake ->
+        // A group removed from config.yml after the account was made resolves to no permissions at all.
+        val session = signUp(fake, "Ghost", "retired")
+        assertEquals(HttpStatusCode.Forbidden, client.get("/api/v1/tokens") { signedIn(session) }.status)
+        val token = client.post("/api/v1/tokens") { signedIn(session); json("""{"name":"z","scopes":["owner"]}""") }
+        assertEquals(HttpStatusCode.Forbidden, token.status)
+    }
+
+    @Test
+    fun `a token needs at least one permission`() = test { fake ->
+        val admin = signUp(fake, "Helper", "admin")
+        val empty = client.post("/api/v1/tokens") { signedIn(admin); json("""{"name":"empty","scopes":[]}""") }
+        assertEquals(HttpStatusCode.BadRequest, empty.status)
+    }
+
     private suspend fun ApplicationTestBuilder.signUp(fake: TestApi, name: String, group: String): String {
         val code = fake.api.accounts.issueCode(name, null, listOf(group), "test")
         val response = client.post("/api/v1/auth/setup") { json("""{"code":"$code","password":"a long password"}""") }

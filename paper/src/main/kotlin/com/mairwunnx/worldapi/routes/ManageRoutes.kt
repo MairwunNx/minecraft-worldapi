@@ -46,6 +46,7 @@ val manageRoutes = endpoints("Access control", Scope.TOKENS_MANAGE) {
         if (config.auth.tokens.any { it.name == request.name } || api.tokens.tokens.any { it.name == request.name }) conflict("token_exists", "A token named ${request.name} exists")
         val days = request.expiresInDays ?: 0
         if (days !in 0..3_650) badRequest("expiresInDays must be between 0 and 3650")
+        if (request.scopes.isEmpty()) badRequest("Give at least one group or permission")
         checkGrant(request.scopes)
         val expires = days.takeIf { it > 0 }?.let { Instant.now().plus(Duration.ofDays(it.toLong())) }
         auditTarget = request.name

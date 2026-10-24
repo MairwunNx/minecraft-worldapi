@@ -213,7 +213,9 @@ class HttpServer(
             allowMissingToken -> Principal.anonymous(clientAddress(call)).copy(scopes = emptySet())
             else -> throw ApiException(HttpStatusCode.Unauthorized, "token_required", "This endpoint needs a token")
         }
-        if (principal.scopes.isNotEmpty() && !principal.has(scope) && orScopes.none(principal::has)) {
+        // Only a WebSocket waiting for its first message passes without permissions; a token or account with none gets nothing.
+        val waitsForToken = allowMissingToken && principal.anonymous && principal.scopes.isEmpty()
+        if (!waitsForToken && !principal.has(scope) && orScopes.none(principal::has)) {
             throw ApiException(HttpStatusCode.Forbidden, "missing_scope", "The token \"${principal.name}\" lacks the ${scope.id} scope")
         }
         val limits = api.config.rateLimit
