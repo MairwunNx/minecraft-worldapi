@@ -1,0 +1,27 @@
+license = "MIT"
+issueTrackerURL = "https://github.com/MairwunNx/minecraft-worldapi/issues"
+
+[[mods]]
+modId = "worldapi"
+version = "${version}"
+displayName = "WorldAPI"
+displayURL = "https://github.com/MairwunNx/minecraft-worldapi"
+logoFile = "worldapi.png"
+authors = "MairwunNx"
+description = '''
+A REST and WebSocket API for your Minecraft server: worlds, players, statistics, events, and admin actions, with an admin panel.
+'''
+
+[[dependencies.worldapi]]
+modId = "neoforge"
+type = "required"
+versionRange = "[${neoforge},)"
+ordering = "NONE"
+side = "SERVER"
+
+[[dependencies.worldapi]]
+modId = "minecraft"
+type = "required"
+versionRange = "[${minecraft}]"
+ordering = "NONE"
+side = "SERVER"

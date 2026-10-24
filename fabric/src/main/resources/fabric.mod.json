@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "worldapi",
+  "version": "${version}",
+  "name": "WorldAPI",
+  "description": "A REST and WebSocket API for your Minecraft server: worlds, players, statistics, events, and admin actions, with an admin panel.",
+  "authors": ["MairwunNx"],
+  "contact": {
+    "homepage": "https://modrinth.com/plugin/worldapi",
+    "sources": "https://github.com/MairwunNx/minecraft-worldapi",
+    "issues": "https://github.com/MairwunNx/minecraft-worldapi/issues"
+  },
+  "license": "MIT",
+  "icon": "assets/worldapi/icon.png",
+  "environment": "server",
+  "entrypoints": {
+    "server": [{ "adapter": "kotlin", "value": "com.mairwunnx.worldapi.fabric.WorldApiMod" }]
+  },
+  "depends": {
+    "fabricloader": ">=${loader}",
+    "fabric-api": "*",
+    "fabric-language-kotlin": ">=${kotlin}",
+    "minecraft": "~${minecraft}",
+    "java": ">=25"
+  }
+}
