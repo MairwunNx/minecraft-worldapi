@@ -1,5 +1,19 @@
 # Changelog
 
+## 4.0.1
+
+A security release. Update soon if anyone but you holds a token or a panel account.
+
+### Security
+
+- 🔒 **A token or account without permissions got every permission.** A token with an empty list, an issued token whose group you later removed from `config.yml`, or a panel account with such a group passed every permission check, `code` and `files:write` among them. Anyone with `tokens:manage` could make such a token. Now it gets nothing, and `POST /tokens` asks for at least one group or permission.
+- 🔒 **A token named `anonymous` counted as an anonymous visitor**, with a visitor's view and rate limit. A token is now always a token, whatever its name.
+- 🔒 **The docs page pins its script.** `/docs` loaded the newest Scalar from a CDN on the panel's own origin, so a bad release there could have acted with a signed-in admin's session. It now loads one version, checked against its hash, under a Content-Security-Policy.
+- 🔒 **WebSocket clients have a message limit.** One connection could send subscriptions without end, each building a snapshot on the server thread, or try one token after another. A connection now sends up to 30 messages at once and 120 a minute; past that it gets `rate_limited`.
+- 🔒 **Anonymous clients lose coordinates at any depth.** Location keys inside an object or a list of an event, as a plugin's event may carry them, are stripped too, not only those at the top.
+- 🔒 **A grep can't hang a thread.** `GET /files/read` with `regex=true` stops after 5 seconds with 400 `grep_timeout`, so a pattern that backtracks forever can't keep a thread busy.
+- 🔒 **Smaller things.** Sign-in bodies are read up to 4 KiB, not in full first. A failed sign-in keeps the name in the audit log only when it could be an account name, since anyone on the internet types it and AI agents read that log. `X-Forwarded-Prefix` counts only as a plain path for the OpenAPI document, which keeps a few copies at most. Anonymous clients no longer see a plugin's error message, only that it failed. The list of item keys without an icon stays bounded. `config.yml` refuses a token that is still a `${VARIABLE}` placeholder. The panel's sign-in sends you back only to a page on its own site.
+
 ## 4.0.0
 
 WorldAPI 4.0 keeps one way for other plugins to share their data: the expansion API. Nothing changes for clients, sites, or the MCP server; only plugins that still use the older bridge need an update.
