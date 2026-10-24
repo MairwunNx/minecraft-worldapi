@@ -20,6 +20,8 @@ kotlin.sourceSets.named("gametest") {
 neoForge {
     neoFormVersion = "26.3-1"
     addModdingDependenciesTo(gametest)
+    // ParityTest loads the routes, whose classes name the game's.
+    addModdingDependenciesTo(sourceSets.test.get())
 }
 
 dependencies {
