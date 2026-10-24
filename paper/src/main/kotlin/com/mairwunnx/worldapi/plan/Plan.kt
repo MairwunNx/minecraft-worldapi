@@ -15,7 +15,7 @@ import com.djrapitops.plan.extension.icon.Color
 import com.djrapitops.plan.extension.icon.Family
 import com.djrapitops.plan.extension.icon.Icon
 import com.djrapitops.plan.extension.table.Table
-import com.mairwunnx.worldapi.core.WorldApi
+import com.mairwunnx.worldapi.core.PaperApi
 import com.mairwunnx.worldapi.tokens.IssuedToken
 import kotlinx.coroutines.runBlocking
 import org.bukkit.plugin.Plugin
@@ -27,7 +27,7 @@ import java.time.Instant
  */
 object Plan {
     /** Registers the section, again after every Plan reload. Returns a handle that unregisters it, or null without Plan. */
-    fun start(plugin: Plugin, api: WorldApi, webSocketClients: () -> Int, endpoints: Int): AutoCloseable? {
+    fun start(plugin: Plugin, api: PaperApi, webSocketClients: () -> Int, endpoints: Int): AutoCloseable? {
         if (!plugin.server.pluginManager.isPluginEnabled("Plan")) return null
         return Hook.start(plugin, Extension(api, webSocketClients, endpoints))
     }
@@ -56,7 +56,7 @@ object Plan {
      */
     @PluginInfo(name = "WorldAPI", iconName = "plug", iconFamily = Family.SOLID, color = Color.TEAL)
     class Extension(
-        private val api: WorldApi,
+        private val api: PaperApi,
         // Named apart from the methods below: Plan calls the methods, and a clash would make them call themselves.
         private val countClients: () -> Int,
         private val endpointCount: Int,

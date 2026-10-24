@@ -1,6 +1,6 @@
 package com.mairwunnx.worldapi.bukkit
 
-import com.mairwunnx.worldapi.api.ApiCall
+import com.mairwunnx.worldapi.api.PaperCall
 import com.mairwunnx.worldapi.api.conflict
 import com.mairwunnx.worldapi.api.notFound
 import com.mairwunnx.worldapi.model.PlayerRef
@@ -22,16 +22,16 @@ fun Server.findKnown(id: String): OfflinePlayer? {
     return player?.takeIf { it.isOnline || it.hasPlayedBefore() }
 }
 
-fun ApiCall.knownPlayer(id: String = path("player")): OfflinePlayer =
+fun PaperCall.knownPlayer(id: String = path("player")): OfflinePlayer =
     api.server.findKnown(id) ?: notFound("player_not_found", "No player \"$id\" has played here")
 
 /** Whether this client must not see [player]: vanished, and the client isn't admin. Server thread only. */
-fun ApiCall.hides(player: Player) = !seesVanished && player.isVanished()
+fun PaperCall.hides(player: Player) = !seesVanished && player.isVanished()
 
 /** An online player this client may see, by UUID or exact name; a vanished one counts as offline. */
-fun ApiCall.visibleOnline(id: String): Player? = api.server.findOnline(id)?.takeUnless(::hides)
+fun PaperCall.visibleOnline(id: String): Player? = api.server.findOnline(id)?.takeUnless(::hides)
 
-fun ApiCall.onlinePlayer(id: String = path("player")): Player {
+fun PaperCall.onlinePlayer(id: String = path("player")): Player {
     visibleOnline(id)?.let { return it }
     if (api.server.findKnown(id) != null) conflict("player_offline", "$id isn't online")
     notFound("player_not_found", "No player \"$id\" has played here")

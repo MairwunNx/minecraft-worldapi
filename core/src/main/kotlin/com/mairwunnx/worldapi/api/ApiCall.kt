@@ -3,8 +3,8 @@ package com.mairwunnx.worldapi.api
 import com.mairwunnx.worldapi.core.WorldApi
 import io.ktor.server.application.ApplicationCall
 
-/** What a handler gets: the request, the caller, and the services behind the API. */
-class ApiCall(val call: ApplicationCall, val endpoint: Endpoint, val api: WorldApi, val principal: Principal) {
+/** What a handler gets: the request, the caller, and the services behind the API, typed as its platform has them. */
+class ApiCall<out A : WorldApi>(val call: ApplicationCall, val endpoint: Endpoint<*>, val api: A, val principal: Principal) {
     val config get() = api.config
 
     /** Shown in the audit log; handlers set it to what they changed, such as a player name. */

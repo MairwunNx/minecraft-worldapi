@@ -40,7 +40,7 @@ val extensionRoutes = endpoints("Extensions", Scope.SERVER_READ) {
         val visibility = Visibility(principal, config)
         api.extensions.all.map { namespace ->
             ExtensionInfo(
-                namespace.name, namespace.plugin.name, namespace.plugin.pluginMeta.version, namespace.description,
+                namespace.name, namespace.plugin.name, namespace.plugin.version, namespace.description,
                 namespace.resources.filter { !principal.anonymous || (it.public && !visibility.hidden(namespace.name, "${namespace.name}/${it.path}")) }
                     .map { ExtensionResourceInfo(it.path, it.description, it.public) },
                 namespace.topics.filter(visibility::allows).map { topic -> topic.extension!!.let { ExtensionTopicInfo(topic.id, it.description, it.public, topic.recorded) } },

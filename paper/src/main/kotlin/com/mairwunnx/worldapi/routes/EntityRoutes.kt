@@ -1,10 +1,9 @@
 package com.mairwunnx.worldapi.routes
 
-import com.mairwunnx.worldapi.api.ApiCall
+import com.mairwunnx.worldapi.api.PaperCall
 import com.mairwunnx.worldapi.api.Scope
 import com.mairwunnx.worldapi.api.badRequest
 import com.mairwunnx.worldapi.api.boolean
-import com.mairwunnx.worldapi.api.endpoints
 import com.mairwunnx.worldapi.api.integer
 import com.mairwunnx.worldapi.api.number
 import com.mairwunnx.worldapi.api.orNotFound
@@ -247,7 +246,7 @@ internal fun removable(entity: Entity, includeNamed: Boolean): Boolean = when {
     else -> true
 }
 
-private fun ApiCall.entity(): Entity {
+private fun PaperCall.entity(): Entity {
     val id = path("uuid")
     val uuid = uuidOrNull(id) ?: badRequest("\"$id\" isn't a UUID")
     // A vanished player is as absent here as anywhere else.
@@ -257,7 +256,7 @@ private fun ApiCall.entity(): Entity {
 private class Area(val x: Double, val y: Double, val z: Double, val radius: Double)
 
 /** x, y, z, and radius from the query, all or none; radius defaults to 32 and stays within limits.maxEntityRadius. */
-private fun ApiCall.area(): Area? {
+private fun PaperCall.area(): Area? {
     val center = listOf(double("x"), double("y"), double("z"))
     val radius = double("radius")
     if (center.any { it != null } && center.any { it == null }) badRequest("Give all of x, y, and z, or none")

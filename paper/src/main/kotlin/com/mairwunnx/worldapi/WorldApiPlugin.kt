@@ -2,14 +2,14 @@ package com.mairwunnx.worldapi
 
 import com.mairwunnx.worldapi.api.Scope
 import com.mairwunnx.worldapi.api.HttpServer
-import com.mairwunnx.worldapi.bukkit.Vanished
+import com.mairwunnx.worldapi.events.Vanished
 import com.mairwunnx.worldapi.command.TokenCommands
 import com.mairwunnx.worldapi.command.WorldApiCommand
 import com.mairwunnx.worldapi.config.ConfigFile
 import com.mairwunnx.worldapi.config.WorldApiConfig
 import com.mairwunnx.worldapi.core.BukkitMainThread
 import com.mairwunnx.worldapi.core.ConsoleAppender
-import com.mairwunnx.worldapi.core.WorldApi
+import com.mairwunnx.worldapi.core.PaperApi
 import com.mairwunnx.worldapi.events.ApiEvent
 import com.mairwunnx.worldapi.events.EventBus
 import com.mairwunnx.worldapi.events.Listeners
@@ -21,6 +21,8 @@ import com.mairwunnx.worldapi.expansion.WorldApiExpansions
 import com.mairwunnx.worldapi.extensions.ExpansionPlugins
 import com.mairwunnx.worldapi.extensions.Expansions
 import com.mairwunnx.worldapi.extensions.Extensions
+import com.mairwunnx.worldapi.extensions.owner
+import com.mairwunnx.worldapi.bukkit.refresh
 import com.mairwunnx.worldapi.plan.Plan
 import com.mairwunnx.worldapi.script.ScriptManager
 import com.mairwunnx.worldapi.stats.Experience
@@ -50,9 +52,9 @@ class WorldApiPlugin : JavaPlugin() {
     private val config = AtomicReference<WorldApiConfig>()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private lateinit var store: Store
-    private lateinit var api: WorldApi
+    private lateinit var api: PaperApi
     private lateinit var hub: WebSocketHub
-    private var http: HttpServer? = null
+    private var http: HttpServer<PaperApi>? = null
     private var stopConsole: (() -> Unit)? = null
     private var plan: AutoCloseable? = null
 
@@ -88,7 +90,7 @@ class WorldApiPlugin : JavaPlugin() {
         } catch (error: Exception) {
             logger.severe("tokens.yml is invalid, so in-game tokens don't work until it's fixed: ${error.message}")
         }
-        api = WorldApi(server, main, history, bus, Statistics(server, main), Experience(store), scripts, tokens, config, pluginMeta.version, vanished, Extensions(bus, logger), Tamed(store), com.mairwunnx.worldapi.admin.AdminAccounts(store),
+        api = PaperApi(server, main, history, bus, Statistics(server, main), Experience(store), scripts, tokens, config, pluginMeta.version, vanished, Extensions(bus, main, logger), Tamed(store), com.mairwunnx.worldapi.admin.AdminAccounts(store),
             com.mairwunnx.worldapi.admin.Icons(dataFolder.toPath().resolve("cache"), { server.minecraftVersion }, logger),
             com.mairwunnx.worldapi.files.ServerFiles(java.nio.file.Path.of(""), dataFolder.toPath(), dataFolder.toPath().resolve("backups")))
         warnLegacy(loaded)
@@ -113,7 +115,7 @@ class WorldApiPlugin : JavaPlugin() {
         server.pluginManager.registerEvents(taming, this)
         // The expansion API: an expansion belongs to the plugin whose class loader loaded it.
         val expansions = Expansions(api.extensions, logger) { expansion ->
-            server.pluginManager.plugins.firstOrNull { it.javaClass.classLoader === expansion.javaClass.classLoader } ?: this
+            (server.pluginManager.plugins.firstOrNull { it.javaClass.classLoader === expansion.javaClass.classLoader } ?: this).owner
         }
         WorldApiExpansions.bind(expansions)
         val expansionPlugins = ExpansionPlugins(this, expansions, logger)

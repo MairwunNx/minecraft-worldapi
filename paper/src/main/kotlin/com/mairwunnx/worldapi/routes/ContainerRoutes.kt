@@ -1,10 +1,9 @@
 package com.mairwunnx.worldapi.routes
 
-import com.mairwunnx.worldapi.api.ApiCall
+import com.mairwunnx.worldapi.api.PaperCall
 import com.mairwunnx.worldapi.api.ApiException
 import com.mairwunnx.worldapi.api.Scope
 import com.mairwunnx.worldapi.api.badRequest
-import com.mairwunnx.worldapi.api.endpoints
 import com.mairwunnx.worldapi.api.integer
 import com.mairwunnx.worldapi.api.notFound
 import com.mairwunnx.worldapi.api.page
@@ -140,7 +139,7 @@ val containerRoutes = endpoints("Containers", Scope.SERVER_READ) {
 }
 
 /** Item keys and `#tags` as one set of materials. */
-private fun ApiCall.items(text: String): Set<Material> {
+private fun PaperCall.items(text: String): Set<Material> {
     val types = text.split(',').map { it.trim() }.filter { it.isNotEmpty() }.flatMap { name ->
         if (name.startsWith("#")) {
             api.server.getTag(Tag.REGISTRY_ITEMS, key(name.removePrefix("#"), "tag"), Material::class.java)?.values
@@ -196,7 +195,7 @@ private fun containersNear(world: World, x: Int, y: Int, z: Int, radius: Int, wa
 private fun containerAt(world: World, x: Int, y: Int, z: Int): Inventory =
     (world.getBlockAt(x, y, z).getState(false) as? Container)?.inventory ?: notFound("not_a_container", "The block at $x $y $z holds no items")
 
-private fun ApiCall.slot(inventory: Inventory): Int {
+private fun PaperCall.slot(inventory: Inventory): Int {
     val slot = path("slot").toIntOrNull() ?: badRequest("slot must be a number")
     if (slot !in 0 until inventory.size) badRequest("slot must be between 0 and ${inventory.size - 1}")
     return slot

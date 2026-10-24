@@ -1,9 +1,8 @@
 package com.mairwunnx.worldapi.routes
 
-import com.mairwunnx.worldapi.api.ApiCall
+import com.mairwunnx.worldapi.api.PaperCall
 import com.mairwunnx.worldapi.api.Scope
 import com.mairwunnx.worldapi.api.badRequest
-import com.mairwunnx.worldapi.api.endpoints
 import com.mairwunnx.worldapi.api.page
 import com.mairwunnx.worldapi.api.pageParams
 import com.mairwunnx.worldapi.api.string
@@ -176,7 +175,7 @@ internal enum class ChunkSort(val id: String, val order: Comparator<ChunkSummary
     }
 }
 
-internal fun ApiCall.coordinates(): Triple<Int, Int, Int> {
+internal fun PaperCall.coordinates(): Triple<Int, Int, Int> {
     fun int(name: String) = path(name).toIntOrNull() ?: badRequest("$name must be an integer")
     val x = int("x")
     val y = int("y")
@@ -185,7 +184,7 @@ internal fun ApiCall.coordinates(): Triple<Int, Int, Int> {
     return Triple(x, y, z)
 }
 
-private fun ApiCall.chunkCoordinates(): Pair<Int, Int> {
+private fun PaperCall.chunkCoordinates(): Pair<Int, Int> {
     val x = path("chunkX").toIntOrNull() ?: badRequest("chunkX must be an integer")
     val z = path("chunkZ").toIntOrNull() ?: badRequest("chunkZ must be an integer")
     return x to z

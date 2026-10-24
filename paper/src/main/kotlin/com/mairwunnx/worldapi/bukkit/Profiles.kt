@@ -1,6 +1,6 @@
 package com.mairwunnx.worldapi.bukkit
 
-import com.mairwunnx.worldapi.api.ApiCall
+import com.mairwunnx.worldapi.api.PaperCall
 import com.mairwunnx.worldapi.api.notFound
 import com.destroystokyo.paper.profile.PlayerProfile
 import kotlinx.coroutines.Dispatchers
@@ -10,7 +10,7 @@ import kotlinx.coroutines.withContext
  * A complete profile for a name or UUID. Players who joined before resolve from the server's
  * cache; anyone else costs a Mojang lookup, which runs off the server thread.
  */
-suspend fun ApiCall.profile(id: String): PlayerProfile {
+suspend fun PaperCall.profile(id: String): PlayerProfile {
     val server = api.server
     val known = main { server.findKnown(id)?.playerProfile }
     if (known?.id != null && known.name != null) return known

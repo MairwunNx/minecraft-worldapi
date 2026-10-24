@@ -1,6 +1,6 @@
 package com.mairwunnx.worldapi
 
-import com.mairwunnx.worldapi.bukkit.Vanished
+import com.mairwunnx.worldapi.events.Vanished
 import com.mairwunnx.worldapi.events.ApiEvent
 import com.mairwunnx.worldapi.events.EventBus
 import com.mairwunnx.worldapi.events.Topic

@@ -28,14 +28,14 @@ fun fakePlugin(): org.bukkit.plugin.Plugin =
         }
     } as org.bukkit.plugin.Plugin
 
-/** A WorldApi on fakes, with a real SQLite store in a temp folder. */
+/** A PaperApi on fakes, with a real SQLite store in a temp folder. */
 class TestApi(config: com.mairwunnx.worldapi.config.WorldApiConfig) : AutoCloseable {
     val ref = java.util.concurrent.atomic.AtomicReference(config)
     val store = sqliteStore(java.nio.file.Files.createTempFile("worldapi", ".db"))
     val history = com.mairwunnx.worldapi.store.History(store)
     val bus = com.mairwunnx.worldapi.events.EventBus(history) { ref.get().events.chat }
     val tokens = com.mairwunnx.worldapi.tokens.TokenStore(java.nio.file.Files.createTempDirectory("worldapi").resolve("tokens.yml"))
-    val api = com.mairwunnx.worldapi.core.WorldApi(
+    val api = com.mairwunnx.worldapi.core.PaperApi(
         fakeServer(), com.mairwunnx.worldapi.core.MainThread.Immediate, history, bus,
         com.mairwunnx.worldapi.stats.Statistics(fakeServer(), com.mairwunnx.worldapi.core.MainThread.Immediate),
         com.mairwunnx.worldapi.stats.Experience(store),

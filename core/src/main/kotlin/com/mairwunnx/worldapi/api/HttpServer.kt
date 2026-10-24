@@ -41,14 +41,14 @@ import java.util.logging.Logger
 import kotlin.time.Duration.Companion.seconds
 
 /** Embedded Ktor server: every endpoint, the OpenAPI document, the docs page, and the WebSocket. */
-class HttpServer(
-    private val api: WorldApi,
-    private val endpoints: List<Endpoint>,
+class HttpServer<A : WorldApi>(
+    private val api: A,
+    private val endpoints: List<Endpoint<A>>,
     private val hub: WebSocketHub,
     private val logger: Logger,
 ) {
-    internal val limiter = RateLimiter()
-    internal val exposure = Exposure(logger)
+    val limiter = RateLimiter()
+    val exposure = Exposure(logger)
 
     // Settings the Ktor engine reads once; a change to these needs a restart (see changesNeedRestart).
     private val config = api.config
@@ -103,7 +103,7 @@ class HttpServer(
         install(StatusPages) {
             exception<ApiException> { call, error -> call.error(error.status, error.code, error.message) }
             exception<SerializationException> { call, error -> call.error(HttpStatusCode.BadRequest, "invalid_body", error.message ?: "Invalid JSON") }
-            // Bukkit rejects bad arguments with IllegalArgumentException; its message tells the caller what was wrong.
+            // Bukkit and the game reject bad arguments with IllegalArgumentException; its message tells the caller what was wrong.
             exception<IllegalArgumentException> { call, error -> call.error(HttpStatusCode.BadRequest, "invalid_request", error.message ?: "Invalid request") }
             exception<Throwable> { call, error ->
                 logger.log(Level.WARNING, "${call.request.httpMethod.value} ${call.request.path()} failed", error)
@@ -147,7 +147,7 @@ class HttpServer(
         }
     }
 
-    private fun Route.install(endpoint: Endpoint) {
+    private fun Route.install(endpoint: Endpoint<A>) {
         route(endpoint.path, endpoint.method) {
             handle {
                 val principal = guard(call, read = !endpoint.writes, scope = endpoint.scope, orScopes = endpoint.orScopes)
@@ -198,7 +198,7 @@ class HttpServer(
      * read the paths in auth.anonymous.endpoints. A WebSocket client may also send its token in
      * the first message, so a missing token isn't fatal there.
      */
-    internal suspend fun guard(call: ApplicationCall, read: Boolean, scope: Scope = Scope.SERVER_READ, allowMissingToken: Boolean = false, orScopes: List<Scope> = emptyList()): Principal {
+    suspend fun guard(call: ApplicationCall, read: Boolean, scope: Scope = Scope.SERVER_READ, allowMissingToken: Boolean = false, orScopes: List<Scope> = emptyList()): Principal {
         exposure.check(call, api.config.http.trustedProxies)
         val header = call.request.headers[HttpHeaders.Authorization]
         val token = Authenticator.bearer(header)
@@ -241,7 +241,7 @@ class HttpServer(
      * a trusted proxy; then the rightmost address that isn't a trusted proxy wins, because
      * everything left of it could be made up by the client.
      */
-    internal fun clientAddress(call: ApplicationCall): String {
+    fun clientAddress(call: ApplicationCall): String {
         val peer = call.request.origin.remoteAddress
         val settings = api.config.http
         if (!settings.trustForwardedFor) return peer
@@ -252,7 +252,7 @@ class HttpServer(
         return chain.lastOrNull { !trusted(it) } ?: chain.firstOrNull() ?: peer
     }
 
-    private fun audit(call: ApiCall, status: HttpStatusCode) {
+    private fun audit(call: ApiCall<A>, status: HttpStatusCode) {
         val target = call.auditTarget ?: call.call.request.path().removePrefix(base)
         val method = call.endpoint.method.value
         logger.info("audit: ${call.principal.name} $method ${call.endpoint.path} target=$target -> ${status.value}")
@@ -265,7 +265,7 @@ class HttpServer(
             old.http.copy(trustForwardedFor = false) != new.http.copy(trustForwardedFor = false) ||
                 old.cors != new.cors || old.websocket.heartbeatSeconds != new.websocket.heartbeatSeconds
 
-        fun document(endpoints: List<Endpoint>, version: String, serverUrl: String): JsonObject =
+        fun document(endpoints: List<Endpoint<*>>, version: String, serverUrl: String): JsonObject =
             OpenApi("WorldAPI", version).document(endpoints, serverUrl, mapOf("/ws" to WebSocketHub.openApiPath()))
 
         // A new version needs its hash: curl -sL <the script's URL> | openssl dgst -sha384 -binary | openssl base64 -A

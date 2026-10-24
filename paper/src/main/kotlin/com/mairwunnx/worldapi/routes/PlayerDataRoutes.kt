@@ -4,7 +4,6 @@ import com.mairwunnx.worldapi.api.Page
 import com.mairwunnx.worldapi.api.Scope
 import com.mairwunnx.worldapi.api.badRequest
 import com.mairwunnx.worldapi.api.boolean
-import com.mairwunnx.worldapi.api.endpoints
 import com.mairwunnx.worldapi.api.notFound
 import com.mairwunnx.worldapi.api.pageParams
 import com.mairwunnx.worldapi.api.string
@@ -160,7 +159,7 @@ val playerDataRoutes = endpoints("Player data", Scope.PLAYERS_READ) {
     }
 }
 
-private fun com.mairwunnx.worldapi.api.ApiCall.advancement(id: String): Advancement =
+private fun com.mairwunnx.worldapi.api.PaperCall.advancement(id: String): Advancement =
     api.server.getAdvancement(key(id, "advancement")) ?: notFound("advancement_not_found", "No advancement \"$id\"")
 
 private fun included(advancement: Advancement, recipes: Boolean) = recipes || !advancement.key.key.startsWith("recipes/")
@@ -193,7 +192,7 @@ internal fun liveAdvancements(player: Player, recipes: Boolean): List<Advancemen
 }
 
 /** Offline players: the advancements file has criteria with dates, the server has titles. */
-internal fun com.mairwunnx.worldapi.api.ApiCall.fileAdvancements(text: String, recipes: Boolean): List<AdvancementView> {
+internal fun com.mairwunnx.worldapi.api.PaperCall.fileAdvancements(text: String, recipes: Boolean): List<AdvancementView> {
     val saved = if (text.isBlank()) emptyMap() else kotlinx.serialization.json.Json.parseToJsonElement(text).let { it as kotlinx.serialization.json.JsonObject }
     val list = mutableListOf<AdvancementView>()
     api.server.advancementIterator().forEach { advancement ->

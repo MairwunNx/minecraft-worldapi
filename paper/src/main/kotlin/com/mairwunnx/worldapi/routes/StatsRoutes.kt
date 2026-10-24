@@ -2,7 +2,6 @@ package com.mairwunnx.worldapi.routes
 
 import com.mairwunnx.worldapi.bukkit.hides
 import com.mairwunnx.worldapi.api.Scope
-import com.mairwunnx.worldapi.api.endpoints
 import com.mairwunnx.worldapi.api.integer
 import com.mairwunnx.worldapi.api.notFound
 import com.mairwunnx.worldapi.bukkit.iso

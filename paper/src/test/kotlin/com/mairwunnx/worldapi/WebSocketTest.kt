@@ -40,7 +40,7 @@ class WebSocketTest {
     )
 
     private fun test(block: suspend DefaultClientWebSocketSession.(WebSocketHub) -> Unit) = TestApi(config).use { fake ->
-        lateinit var server: HttpServer
+        lateinit var server: HttpServer<com.mairwunnx.worldapi.core.PaperApi>
         val hub = WebSocketHub(fake.ref::get, { server.authenticate(it) }) { topic, _ ->
             if (topic == Topic.WORLD_TIME) listOf(ApiEvent(topic, buildJsonObject { put("dayTime", 6000) }, world = "world", subject = "world")) else emptyList()
         }

@@ -42,7 +42,7 @@ class OpenApi(private val title: String, private val version: String) {
     private val schemas = sortedMapOf<String, JsonElement>()
     private val names = mutableMapOf<String, SerialDescriptor>()
 
-    fun document(endpoints: List<Endpoint>, serverUrl: String, extraPaths: Map<String, JsonObject> = emptyMap()): JsonObject {
+    fun document(endpoints: List<Endpoint<*>>, serverUrl: String, extraPaths: Map<String, JsonObject> = emptyMap()): JsonObject {
         val paths = sortedMapOf<String, MutableMap<String, JsonElement>>()
         for (endpoint in endpoints) {
             paths.getOrPut(endpoint.documentedPath) { linkedMapOf() }[endpoint.method.value.lowercase()] = operation(endpoint)
@@ -73,7 +73,7 @@ class OpenApi(private val title: String, private val version: String) {
         }
     }
 
-    private fun operation(endpoint: Endpoint) = buildJsonObject {
+    private fun operation(endpoint: Endpoint<*>) = buildJsonObject {
         put("operationId", operationId(endpoint))
         put("summary", endpoint.summary)
         val any = listOf(endpoint.scope) + endpoint.orScopes
@@ -225,7 +225,7 @@ class OpenApi(private val title: String, private val version: String) {
     }
 
     companion object {
-        fun operationId(endpoint: Endpoint): String {
+        fun operationId(endpoint: Endpoint<*>): String {
             val words = endpoint.documentedPath.split('/').filter { it.isNotEmpty() }.map {
                 it.removePrefix("{").removeSuffix("}").split('-', '_', '.').joinToString("") { part -> part.replaceFirstChar(Char::uppercase) }
             }

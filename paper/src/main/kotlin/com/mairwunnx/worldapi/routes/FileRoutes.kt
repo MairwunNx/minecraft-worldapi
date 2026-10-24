@@ -1,10 +1,9 @@
 package com.mairwunnx.worldapi.routes
 
-import com.mairwunnx.worldapi.api.ApiCall
+import com.mairwunnx.worldapi.api.PaperCall
 import com.mairwunnx.worldapi.api.Scope
 import com.mairwunnx.worldapi.api.badRequest
 import com.mairwunnx.worldapi.api.boolean
-import com.mairwunnx.worldapi.api.endpoints
 import com.mairwunnx.worldapi.api.integer
 import com.mairwunnx.worldapi.api.string
 import com.mairwunnx.worldapi.files.ConfigValues
@@ -173,7 +172,7 @@ val fileRoutes = endpoints("Files", Scope.FILES_READ) {
 }
 
 /** Logs need logs:read and the rest files:read; listing the server folder itself needs either. */
-private fun ApiCall.requireAccess(files: ServerFiles, path: String) {
+private fun PaperCall.requireAccess(files: ServerFiles, path: String) {
     val clean = path.trim().replace('\\', '/').trim('/')
     val logs = clean == "logs" || clean.startsWith("logs/")
     when {
@@ -184,7 +183,7 @@ private fun ApiCall.requireAccess(files: ServerFiles, path: String) {
     files.resolve(path, Access.READ)
 }
 
-private suspend fun ApiCall.save(files: ServerFiles, file: Path, before: String, after: String, expected: String?, action: String): FileWritten {
+private suspend fun PaperCall.save(files: ServerFiles, file: Path, before: String, after: String, expected: String?, action: String): FileWritten {
     val relative = files.relative(file)
     // ops.json makes operators, who run every command: the same as PATCH /server/ops.
     if (relative == "ops.json") require(Scope.SERVER_CONSOLE)
@@ -200,7 +199,7 @@ private suspend fun ApiCall.save(files: ServerFiles, file: Path, before: String,
  * ops.json and the like: the server applies the new list itself and saves the file, so nothing it
  * holds in memory gets lost. The answer shows the file as the server wrote it.
  */
-private suspend fun ApiCall.applyList(files: ServerFiles, file: Path, before: String, after: String, expected: String?, action: String): FileWritten {
+private suspend fun PaperCall.applyList(files: ServerFiles, file: Path, before: String, after: String, expected: String?, action: String): FileWritten {
     val current = files.sha256(file)
     if (expected != null && !expected.equals(current ?: "", ignoreCase = true)) {
         com.mairwunnx.worldapi.api.conflict("file_changed", "${files.relative(file)} changed since you read it (sha256 ${current ?: "none"}); read it again")

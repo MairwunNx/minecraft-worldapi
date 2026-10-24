@@ -1,6 +1,6 @@
 package com.mairwunnx.worldapi.routes
 
-import com.mairwunnx.worldapi.api.ApiCall
+import com.mairwunnx.worldapi.api.PaperCall
 import com.mairwunnx.worldapi.api.ApiException
 import com.mairwunnx.worldapi.api.ApiJson
 import com.mairwunnx.worldapi.api.badRequest
@@ -37,7 +37,7 @@ val PLAYER_PARTS = listOf("inventory", "enderchest", "effects", "deaths", "sessi
 private const val RECENT = 5
 
 /** Parses `include=a,b`, refusing names outside [allowed] so a typo isn't silently ignored. */
-fun ApiCall.includes(allowed: List<String>): Set<String> {
+fun PaperCall.includes(allowed: List<String>): Set<String> {
     val parts = query("include")?.split(',')?.map { it.trim().lowercase() }?.filter { it.isNotEmpty() }?.toSet() ?: return emptySet()
     (parts - allowed.toSet()).takeIf { it.isNotEmpty() }?.let { badRequest("include takes ${allowed.joinToString()}; unknown: ${it.joinToString()}") }
     return parts
@@ -47,7 +47,7 @@ fun ApiCall.includes(allowed: List<String>): Set<String> {
  * Adds the parts asked for to a player's view. [online] is null for an offline (or vanished)
  * player: their inventory and ender chest then come from their playerdata file.
  */
-suspend fun ApiCall.withParts(view: PlayerView, player: OfflinePlayer, online: Player?, parts: Set<String>): PlayerView {
+suspend fun PaperCall.withParts(view: PlayerView, player: OfflinePlayer, online: Player?, parts: Set<String>): PlayerView {
     if (parts.isEmpty()) return view
     if ((parts.contains("inventory") || parts.contains("enderchest")) && !seesInventories) {
         throw ApiException(HttpStatusCode.Forbidden, "private", "Inventories are hidden from anonymous clients")
@@ -96,7 +96,7 @@ suspend fun ApiCall.withParts(view: PlayerView, player: OfflinePlayer, online: P
  * A player's inventory and ender chest: live while [online] isn't null, otherwise from their
  * playerdata file, or nulls when there is none.
  */
-suspend fun ApiCall.inventories(player: OfflinePlayer, online: Player?): Pair<InventoryView?, ContainerView?> = main {
+suspend fun PaperCall.inventories(player: OfflinePlayer, online: Player?): Pair<InventoryView?, ContainerView?> = main {
     if (online != null) {
         inventoryView(online) to online.enderChest.let { ContainerView(it.size, it.views()) }
     } else {

@@ -1,6 +1,6 @@
 package com.mairwunnx.worldapi.bukkit
 
-import com.mairwunnx.worldapi.api.ApiCall
+import com.mairwunnx.worldapi.api.PaperCall
 import com.mairwunnx.worldapi.api.badRequest
 import com.mairwunnx.worldapi.api.notFound
 import com.mairwunnx.worldapi.model.LocationView
@@ -26,7 +26,7 @@ fun Location.position() = Position(x.short(), y.short(), z.short())
 fun Server.findWorld(id: String): World? =
     getWorld(id) ?: NamespacedKey.fromString(id.lowercase())?.let { getWorld(it) }
 
-fun ApiCall.world(id: String = path("world")): World =
+fun PaperCall.world(id: String = path("world")): World =
     api.server.findWorld(id) ?: notFound("world_not_found", "No world \"$id\"")
 
 /** Turns a location in a request into a Bukkit location; a missing world means [fallback]. */

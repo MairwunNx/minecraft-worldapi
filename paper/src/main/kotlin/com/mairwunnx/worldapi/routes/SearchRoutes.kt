@@ -4,7 +4,6 @@ import com.mairwunnx.worldapi.api.Scope
 import com.mairwunnx.worldapi.api.ApiException
 import com.mairwunnx.worldapi.api.badRequest
 import com.mairwunnx.worldapi.api.boolean
-import com.mairwunnx.worldapi.api.endpoints
 import com.mairwunnx.worldapi.api.integer
 import com.mairwunnx.worldapi.api.string
 import com.mairwunnx.worldapi.bukkit.key
@@ -122,7 +121,7 @@ val searchRoutes = endpoints("Worlds", Scope.SERVER_READ) {
 private val LOCATE_KINDS = listOf("block", "biome", "structure")
 
 /** Block keys and `#tags`, as one set of block types. Air can't be searched for. */
-private fun com.mairwunnx.worldapi.api.ApiCall.materials(text: String): Set<Material> {
+private fun com.mairwunnx.worldapi.api.PaperCall.materials(text: String): Set<Material> {
     val types = text.split(',').map { it.trim() }.filter { it.isNotEmpty() }.flatMap { name ->
         if (name.startsWith("#")) {
             api.server.getTag(Tag.REGISTRY_BLOCKS, key(name.removePrefix("#"), "tag"), Material::class.java)?.values

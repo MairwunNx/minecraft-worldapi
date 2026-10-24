@@ -91,7 +91,7 @@ object Panel {
             ?.let { it.equals(host, ignoreCase = true) || it.substringBefore(':').equals(host.substringBefore(':'), ignoreCase = true) } == true
     }
 
-    fun authRoutes(route: Route, http: HttpServer, api: WorldApi) = with(route) {
+    fun authRoutes(route: Route, http: HttpServer<*>, api: WorldApi) = with(route) {
         get("/auth/status") {
             http.exposure.check(call, api.config.http.trustedProxies)
             val reason = http.exposure.insecure(call, api.config.http.trustedProxies)
@@ -107,7 +107,7 @@ object Panel {
                 else -> "token"
             }
             call.json(Me.serializer(), Me(account?.name ?: principal.name, kind, principal.scopes.sortedBy { it.ordinal }.map { it.id }, account?.groups.orEmpty(),
-                account?.playerUuid?.let { uuid -> api.main.call { api.server.getOfflinePlayer(java.util.UUID.fromString(uuid)).name } }))
+                account?.playerUuid?.let { uuid -> api.playerName(java.util.UUID.fromString(uuid)) }))
         }
 
         post("/auth/login") {
@@ -234,7 +234,7 @@ object Panel {
     }
 
     /** Sign-in attempts per address, far below the API's own limits: passwords are guessable, tokens aren't. */
-    private fun limit(http: HttpServer, call: ApplicationCall) {
+    private fun limit(http: HttpServer<*>, call: ApplicationCall) {
         val wait = http.limiter.acquire("signin:${http.clientAddress(call)}", signInLimit)
         if (wait > 0) {
             call.response.header(HttpHeaders.RetryAfter, wait.toString())
@@ -264,4 +264,4 @@ object Panel {
 }
 
 /** A principal hands out, in tokens and accounts, only permissions it has itself. */
-internal fun Principal.canGrant(scopes: Set<Scope>) = scopes.all(::has)
+fun Principal.canGrant(scopes: Set<Scope>) = scopes.all(::has)

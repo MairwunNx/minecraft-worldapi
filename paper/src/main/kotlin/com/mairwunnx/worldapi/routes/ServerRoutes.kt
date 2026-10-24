@@ -4,7 +4,6 @@ import com.mairwunnx.worldapi.api.ApiException
 import io.ktor.http.HttpStatusCode
 import com.mairwunnx.worldapi.api.Scope
 import com.mairwunnx.worldapi.api.badRequest
-import com.mairwunnx.worldapi.api.endpoints
 import com.mairwunnx.worldapi.api.integer
 import com.mairwunnx.worldapi.api.string
 import com.mairwunnx.worldapi.commands.CommandCatalog

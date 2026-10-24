@@ -1,6 +1,7 @@
 package com.mairwunnx.worldapi.events
 
-import com.mairwunnx.worldapi.bukkit.Vanished
+import com.mairwunnx.worldapi.events.Vanished
+import com.mairwunnx.worldapi.bukkit.check
 import com.mairwunnx.worldapi.bukkit.isVanished
 import com.mairwunnx.worldapi.bukkit.plain
 import com.mairwunnx.worldapi.bukkit.uuidOrNull
@@ -81,7 +82,7 @@ class Listeners(
     private fun publish(event: ApiEvent) {
         if (!bus.wanted(event.topic)) return
         // Vanish plugins share no event: look at the player now, while on the server thread. Chat arrives off it.
-        if (server.isPrimaryThread) event.player?.uuid?.let(::uuidOrNull)?.let(server::getPlayer)?.let(vanished::check)
+        if (server.isPrimaryThread) event.player?.uuid?.let(::uuidOrNull)?.let(server::getPlayer)?.let { vanished.check(it) }
         bus.publish(event)
     }
 

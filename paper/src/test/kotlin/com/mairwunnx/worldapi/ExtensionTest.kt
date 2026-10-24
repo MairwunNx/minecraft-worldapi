@@ -8,6 +8,7 @@ import com.mairwunnx.worldapi.events.Topic
 import com.mairwunnx.worldapi.events.Visibility
 import com.mairwunnx.worldapi.extensions.Extensions
 import com.mairwunnx.worldapi.extensions.JsonValues
+import com.mairwunnx.worldapi.extensions.owner
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -25,7 +26,7 @@ import kotlin.test.assertTrue
 
 class ExtensionTest {
     private val fake = TestApi(WorldApiConfig())
-    private val extensions = Extensions(fake.bus, Logger.getAnonymousLogger())
+    private val extensions = Extensions(fake.bus, com.mairwunnx.worldapi.core.MainThread.Immediate, Logger.getAnonymousLogger())
     private val plugin = fakePlugin()
 
     @AfterTest
@@ -36,7 +37,7 @@ class ExtensionTest {
 
     private fun register(owner: org.bukkit.plugin.Plugin = plugin) = extensions.register(
         Extensions.Namespace(
-            "mobosses", owner, "Bosses",
+            "mobosses", owner.owner, "Bosses",
             listOf(
                 Extensions.Resource("hunters", "", public = true, mainThread = false) { _, _, _ -> listOf(mapOf("name" to "Steve")) },
                 Extensions.Resource("players/{player}", "", public = true, mainThread = false) { path, _, _ -> mapOf("name" to path["player"]) },

@@ -1,6 +1,5 @@
 package com.mairwunnx.worldapi.events
 
-import com.mairwunnx.worldapi.bukkit.Vanished
 import com.mairwunnx.worldapi.model.EventView
 import com.mairwunnx.worldapi.model.PlayerRef
 import com.mairwunnx.worldapi.store.History

@@ -2,7 +2,6 @@ package com.mairwunnx.worldapi.routes
 
 import com.mairwunnx.worldapi.api.Scope
 import com.mairwunnx.worldapi.api.badRequest
-import com.mairwunnx.worldapi.api.endpoints
 import com.mairwunnx.worldapi.api.page
 import com.mairwunnx.worldapi.api.pageParams
 import com.mairwunnx.worldapi.api.string

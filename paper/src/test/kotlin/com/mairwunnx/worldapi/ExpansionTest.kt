@@ -12,6 +12,7 @@ import com.mairwunnx.worldapi.expansion.Resource
 import com.mairwunnx.worldapi.expansion.WorldApiExpansion
 import com.mairwunnx.worldapi.expansion.WorldApiExpansions
 import com.mairwunnx.worldapi.extensions.Expansions
+import com.mairwunnx.worldapi.extensions.owner
 import com.mairwunnx.worldapi.routes.extensionRoutes
 import com.mairwunnx.worldapi.ws.WebSocketHub
 import io.ktor.client.request.bearerAuth
@@ -50,7 +51,7 @@ class ExpansionTest {
     private val bosses = fakePlugin()
     private val other = fakePlugin()
     private val owners = mutableMapOf<WorldApiExpansion, Plugin>()
-    private val host = Expansions(fake.api.extensions, logger) { owners[it] ?: bosses }
+    private val host = Expansions(fake.api.extensions, logger) { (owners[it] ?: bosses).owner }
 
     @AfterTest
     fun close() {
@@ -86,7 +87,7 @@ class ExpansionTest {
         WorldApiExpansions.register(Bosses())
         WorldApiExpansions.bind(host)
         val namespace = assertNotNull(fake.api.extensions.namespace("mobosses"))
-        assertTrue(namespace.plugin === bosses)
+        assertTrue(namespace.plugin.key === bosses)
         assertEquals("Bosses", namespace.description)
         assertEquals(listOf("hunters", "players/{player}", "bosses"), namespace.resources.map { it.path })
         assertEquals(listOf(true, true, false), namespace.resources.map { it.public })
@@ -116,7 +117,7 @@ class ExpansionTest {
         WorldApiExpansions.bind(host)
         WorldApiExpansions.register(Bosses(id = "taken").also { owners[it] = other })
         WorldApiExpansions.register(Bosses(id = "taken"))
-        assertTrue(fake.api.extensions.namespace("taken")!!.plugin === other)
+        assertTrue(fake.api.extensions.namespace("taken")!!.plugin.key === other)
         assertTrue("belongs to" in warnings.single())
     }
 
@@ -124,9 +125,9 @@ class ExpansionTest {
     fun `a stopped plugin's expansions leave WorldAPI and the API's list`() {
         WorldApiExpansions.bind(host)
         WorldApiExpansions.register(Bosses())
-        host.stopped(other)
+        host.stopped(other.owner)
         assertNotNull(fake.api.extensions.namespace("mobosses"))
-        host.stopped(bosses)
+        host.stopped(bosses.owner)
         assertNull(fake.api.extensions.namespace("mobosses"))
         assertNull(Topic.of("ext.mobosses.boss.killed"))
         assertTrue(WorldApiExpansions.registered().isEmpty())

@@ -1,11 +1,11 @@
 package com.mairwunnx.worldapi.routes
 
-import com.mairwunnx.worldapi.api.ApiCall
+import com.mairwunnx.worldapi.api.PaperCall
 import com.mairwunnx.worldapi.api.ApiException
 import com.mairwunnx.worldapi.api.EndpointGroup
+import com.mairwunnx.worldapi.core.PaperApi
 import com.mairwunnx.worldapi.api.Scope
 import com.mairwunnx.worldapi.api.badRequest
-import com.mairwunnx.worldapi.api.endpoints
 import com.mairwunnx.worldapi.api.notFound
 import com.mairwunnx.worldapi.bukkit.hides
 import com.mairwunnx.worldapi.bukkit.knownPlayer
@@ -48,7 +48,7 @@ val inventoryRoutes = endpoints("Inventories", Scope.PLAYERS_READ) {
     for (kind in listOf("inventory", "enderchest")) containerWrites(kind)
 }
 
-private fun EndpointGroup.containerWrites(kind: String) {
+private fun EndpointGroup<PaperApi>.containerWrites(kind: String) {
     val title = if (kind == "inventory") "inventory" else "ender chest"
 
     patch<ItemInput, ItemView>("/players/{player}/$kind/slots/{slot}", "Put an item in a $title slot", Scope.PLAYERS_WRITE, description = WRITE) { input ->
@@ -114,13 +114,13 @@ private fun EndpointGroup.containerWrites(kind: String) {
 
 private fun container(player: Player, kind: String): Inventory = if (kind == "inventory") player.inventory else player.enderChest
 
-private fun ApiCall.slot(inventory: Inventory): Int {
+private fun PaperCall.slot(inventory: Inventory): Int {
     val slot = path("slot").toIntOrNull() ?: badRequest("slot must be a number")
     if (slot !in 0 until inventory.size) badRequest("slot must be between 0 and ${inventory.size - 1}")
     return slot
 }
 
-private fun ApiCall.requireInventories() {
+private fun PaperCall.requireInventories() {
     if (!seesInventories) throw ApiException(HttpStatusCode.Forbidden, "private", "Inventories are hidden from anonymous clients")
 }
 
