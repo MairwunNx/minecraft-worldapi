@@ -15,6 +15,7 @@ import com.mairwunnx.worldapi.store.Audit
 import com.mairwunnx.worldapi.ws.WebSocketHub
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.patch
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -187,6 +188,13 @@ class HttpTest {
         assertEquals(HttpStatusCode.OK, me.status)
         // Anonymous clients share the IP's bucket; this token has its own and keeps going after it.
         repeat(5) { assertEquals(HttpStatusCode.OK, client.get("/api/v1/public") { bearerAuth("named-anonymous-0123456789") }.status) }
+    }
+
+    @Test
+    fun `the OpenAPI document ignores odd prefixes`() = test {
+        val doc = client.get("/api/v1/openapi.json") { bearerAuth(read); header("X-Forwarded-Prefix", "\"><script>") }
+        val servers = Json.parseToJsonElement(doc.bodyAsText()).jsonObject["servers"].toString()
+        assertTrue("script" !in servers, servers)
     }
 
     @Test

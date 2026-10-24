@@ -200,12 +200,16 @@ object Panel {
             }
             val index = resource("admin/index.html")?.decodeToString()
                 ?: return@get call.respondText("The admin panel isn't in this build of WorldAPI", status = HttpStatusCode.NotFound)
-            val prefix = call.request.header("X-Forwarded-Prefix")?.trimEnd('/').orEmpty().takeIf { it.isEmpty() || SAFE_PREFIX.matches(it) }.orEmpty()
+            val prefix = prefix(call)
             val page = index.replace("<head>", "<head>\n    <base href=\"$prefix/admin/\">\n    <meta name=\"worldapi-api\" content=\"$prefix$base\">")
             call.response.header(HttpHeaders.CacheControl, "no-cache")
             call.respondText(page, ContentType.Text.Html)
         }
     }
+
+    /** The path a proxy serves WorldAPI under, from X-Forwarded-Prefix; empty when it's missing or holds anything but a plain path. */
+    fun prefix(call: ApplicationCall): String =
+        call.request.header("X-Forwarded-Prefix")?.trimEnd('/').orEmpty().takeIf { it.isEmpty() || SAFE_PREFIX.matches(it) }.orEmpty()
 
     private suspend fun signIn(call: ApplicationCall, api: WorldApi, account: AdminAccounts.Account) {
         val token = api.accounts.startSession(account.name, call.request.local.remoteAddress, call.request.header(HttpHeaders.UserAgent))

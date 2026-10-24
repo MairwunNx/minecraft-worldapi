@@ -117,8 +117,7 @@ class HttpServer(
                 endpoints.forEach { install(it) }
                 get("/openapi.json") {
                     guard(call, read = true)
-                    val prefix = call.request.headers["X-Forwarded-Prefix"]?.trimEnd('/') ?: ""
-                    call.respondText(openApiText(prefix + base), ContentType.Application.Json)
+                    call.respondText(openApiText(Panel.prefix(call) + base), ContentType.Application.Json)
                 }
                 get("/docs") {
                     guard(call, read = true)
@@ -141,6 +140,8 @@ class HttpServer(
     private val openApiCache = mutableMapOf<String, String>()
 
     private fun openApiText(serverUrl: String) = synchronized(openApiCache) {
+        // A client picks the prefix; a few are plenty, and more would only fill memory.
+        if (serverUrl !in openApiCache && openApiCache.size >= 8) openApiCache.clear()
         openApiCache.getOrPut(serverUrl) {
             ApiJson.encodeToString(JsonObject.serializer(), document(endpoints, api.version, serverUrl))
         }
