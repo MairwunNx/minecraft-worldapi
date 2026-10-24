@@ -83,8 +83,8 @@ abstract class WorldApi(
     /** How `/files/set` changes YAML on this platform. */
     abstract val yaml: ConfigValues.Yaml
 
-    /** Each plugin's or mod's config folder, by its name. */
-    abstract suspend fun configFolders(): Map<String, java.nio.file.Path>
+    /** Where each plugin's or mod's configs live, by its name: folders to look through, or single files. */
+    abstract suspend fun configFolders(): Map<String, List<java.nio.file.Path>>
 
     /** Applies [text] as the new content of one of [listFiles] through the server; answers what changed, for the audit log. */
     abstract suspend fun applyList(file: String, text: String): String

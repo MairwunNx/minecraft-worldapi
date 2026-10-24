@@ -60,7 +60,7 @@ class PaperApi(
 
     override val yaml = com.mairwunnx.worldapi.files.BukkitYaml
 
-    override suspend fun configFolders() = main.call { server.pluginManager.plugins.associate { it.name to it.dataFolder.toPath() } }
+    override suspend fun configFolders() = main.call { server.pluginManager.plugins.associate { it.name to listOf(it.dataFolder.toPath()) } }
 
     override suspend fun applyList(file: String, text: String) = main.call { com.mairwunnx.worldapi.files.ServerLists.apply(server, file, text) }
 

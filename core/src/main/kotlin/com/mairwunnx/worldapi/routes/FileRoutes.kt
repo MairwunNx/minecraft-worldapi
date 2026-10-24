@@ -152,10 +152,12 @@ val fileRoutes = endpoints("Files", Scope.FILES_READ) {
         withContext(Dispatchers.IO) {
             ConfigFiles(
                 server = api.serverConfigs.filter { Files.isRegularFile(files.root.resolve(it)) },
-                plugins = plugins.filterValues { Files.isDirectory(it) && !files.denied(it) }.mapValues { (_, folder) ->
-                    Files.walk(folder, 3).use { stream ->
-                        stream.filter { Files.isRegularFile(it) && files.allows(it, Access.READ) && !it.toString().endsWith(".log") }.limit(50).map(files::relative).sorted().toList()
-                    }
+                plugins = plugins.mapValues { (_, roots) ->
+                    roots.filter { Files.exists(it) && !files.denied(it) }.flatMap { root ->
+                        Files.walk(root, 3).use { stream ->
+                            stream.filter { Files.isRegularFile(it) && files.allows(it, Access.READ) && !it.toString().endsWith(".log") }.limit(50).map(files::relative).toList()
+                        }
+                    }.distinct().sorted().take(50)
                 }.filterValues { it.isNotEmpty() }.toSortedMap(String.CASE_INSENSITIVE_ORDER),
             )
         }
