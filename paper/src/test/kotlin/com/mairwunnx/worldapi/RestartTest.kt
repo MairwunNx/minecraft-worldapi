@@ -29,7 +29,7 @@ class RestartTest {
         if (method.returnType == Integer.TYPE) 0 else null
     } as Server
 
-    private fun restart() = Restart(server, MainThread.Immediate, CoroutineScope(SupervisorJob() + Dispatchers.Default), secondMillis = 20)
+    private fun restart() = com.mairwunnx.worldapi.core.paperRestart(server, MainThread.Immediate, CoroutineScope(SupervisorJob() + Dispatchers.Default), secondMillis = 20)
 
     @Test
     fun `a countdown warns, saves, and stops the server`() = runBlocking {

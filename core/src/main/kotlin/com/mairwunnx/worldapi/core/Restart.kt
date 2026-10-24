@@ -6,20 +6,19 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.format.NamedTextColor
-import org.bukkit.Server
 import java.time.Instant
 
 /**
  * A restart or stop with a countdown in chat: it warns players at set marks, saves everything, and stops
  * the server. Whatever runs the server (Docker's restart policy, a start script loop) brings it
- * back. One restart at a time; scheduling another replaces it.
+ * back. One restart at a time; scheduling another replaces it. The platform says how: [broadcast] a gold line to
+ * everyone, and [shutdown] saves and stops, both on the server thread.
  */
 class Restart(
-    private val server: Server,
     private val main: MainThread,
     private val scope: CoroutineScope,
+    private val broadcast: (String) -> Unit,
+    private val shutdown: () -> Unit,
     private val secondMillis: Long = 1_000,
 ) {
     private class Pending(val job: Job, val at: Instant, val message: String?, val stop: Boolean)
@@ -41,10 +40,8 @@ class Restart(
             while (true) {
                 try {
                     main.call {
-                        server.broadcast(Component.text(if (stop) "Server stopping now" else "Server restarting now", NamedTextColor.GOLD))
-                        server.savePlayers()
-                        server.worlds.forEach { it.save() }
-                        server.shutdown()
+                        broadcast(if (stop) "Server stopping now" else "Server restarting now")
+                        shutdown()
                     }
                     break
                 } catch (_: ApiException) {
@@ -79,7 +76,7 @@ class Restart(
     /** A warning lost to a busy tick isn't worth stopping the countdown for. */
     private suspend fun say(text: String) {
         try {
-            main.call { server.broadcast(Component.text(text, NamedTextColor.GOLD)) }
+            main.call { broadcast(text) }
         } catch (_: ApiException) {
         }
     }
@@ -87,7 +84,7 @@ class Restart(
     companion object {
         private val MARKS = setOf(3600, 1800, 900, 600, 300, 120, 60, 30, 10, 5, 4, 3, 2, 1)
 
-        internal fun duration(seconds: Int): String = when {
+        fun duration(seconds: Int): String = when {
             seconds >= 60 && seconds % 60 == 0 -> (seconds / 60).let { if (it == 1) "1 minute" else "$it minutes" }
             seconds == 1 -> "1 second"
             else -> "$seconds seconds"

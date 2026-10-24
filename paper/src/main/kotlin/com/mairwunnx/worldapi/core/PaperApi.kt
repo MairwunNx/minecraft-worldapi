@@ -44,7 +44,7 @@ class PaperApi(
     val commands: com.mairwunnx.worldapi.commands.PaperCommands = com.mairwunnx.worldapi.commands.PaperCommands(server),
 ) : WorldApi(main, history, bus, tokens, configRef, version, vanished, extensions, tamed, experience, accounts, icons, files) {
     /** A restart with a countdown, scheduled through POST /server/restart. */
-    val restart by lazy { Restart(server, main, CoroutineScope(SupervisorJob() + Dispatchers.Default)) }
+    val restart by lazy { paperRestart(server, main, CoroutineScope(SupervisorJob() + Dispatchers.Default)) }
 
     override suspend fun playerName(uuid: UUID): String? = main.call { server.getOfflinePlayer(uuid).name }
 
@@ -68,3 +68,15 @@ class PaperApi(
         server.worlds.first().fullTime / 24_000 + 1 to server.offlinePlayers.map { it.firstPlayed }.filter { it > 0 }.minOrNull()
     }
 }
+
+/** [Restart] on Paper: a gold broadcast, then players and worlds saved before the server shuts down. */
+fun paperRestart(server: Server, main: MainThread, scope: CoroutineScope, secondMillis: Long = 1_000) = Restart(
+    main, scope,
+    { text -> server.broadcast(net.kyori.adventure.text.Component.text(text, net.kyori.adventure.text.format.NamedTextColor.GOLD)) },
+    {
+        server.savePlayers()
+        server.worlds.forEach { it.save() }
+        server.shutdown()
+    },
+    secondMillis,
+)
