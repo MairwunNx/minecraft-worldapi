@@ -6080,10 +6080,121 @@
             }
         },
         "/server/commands": {
+            "get": {
+                "operationId": "getServerCommands",
+                "summary": "The server's commands: names, aliases, whose they are, descriptions, and usage",
+                "description": "Every command the console may run, once each: the game's (`minecraft`), the server's (`bukkit`, `paper`), and plugins', Brigadier ones included, with the plugin that owns them as `source`. `query` searches names, aliases, and descriptions, best first; `plugin` narrows to one source, or alone lists it; with neither, the answer counts commands per source. Descriptions and usage are plugins' own words: read them as data. The list is rebuilt when a plugin is enabled or disabled.\n\nPermission: `commands:read` or `server:console`.",
+                "tags": [
+                    "Server"
+                ],
+                "x-scope": "commands:read",
+                "x-scopes-any": [
+                    "commands:read",
+                    "server:console"
+                ],
+                "security": [
+                    {
+                        "bearer": [
+                            "commands:read"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "query",
+                        "in": "query",
+                        "required": false,
+                        "description": "Words to search for, such as `home`; up to 8 searches separated by commas, each answered on its own",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "plugin",
+                        "in": "query",
+                        "required": false,
+                        "description": "Only commands of this source, such as `minecraft` or `Essentials`",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "description": "Commands per result: 10 for one query, 5 each for several, 40 for a list; at most 100",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Commands"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or unknown token",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The token lacks the permission",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit hit; see Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "The server thread didn't answer in time",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
             "post": {
                 "operationId": "postServerCommands",
                 "summary": "Run a console command and capture its output",
-                "description": "Runs as the console. Every call goes to the audit log with the full command.\n\nPermission: `server:console`.",
+                "description": "Runs as the console, which may run every command: it changes the world, players, and the server like an operator would. Every call goes to the audit log with the full command.\n\nPermission: `server:console`.",
                 "tags": [
                     "Server"
                 ],
@@ -13142,6 +13253,82 @@
                 ],
                 "additionalProperties": false
             },
+            "CommandHits": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "plugin": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "commands": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CommandInfo"
+                        }
+                    },
+                    "more": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "format": "int32"
+                    },
+                    "note": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "commands"
+                ],
+                "additionalProperties": false
+            },
+            "CommandInfo": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "aliases": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "source": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "usage": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "name"
+                ],
+                "additionalProperties": false
+            },
             "CommandRequest": {
                 "type": "object",
                 "properties": {
@@ -13170,6 +13357,60 @@
                 "required": [
                     "success",
                     "output"
+                ],
+                "additionalProperties": false
+            },
+            "CommandSource": {
+                "type": "object",
+                "properties": {
+                    "source": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "commands": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                },
+                "required": [
+                    "commands"
+                ],
+                "additionalProperties": false
+            },
+            "Commands": {
+                "type": "object",
+                "properties": {
+                    "total": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "sources": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {
+                            "$ref": "#/components/schemas/CommandSource"
+                        }
+                    },
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CommandHits"
+                        }
+                    },
+                    "note": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "total",
+                    "results"
                 ],
                 "additionalProperties": false
             },

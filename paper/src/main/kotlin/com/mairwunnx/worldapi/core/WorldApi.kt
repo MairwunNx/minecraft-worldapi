@@ -48,6 +48,8 @@ class WorldApi(
     val icons: com.mairwunnx.worldapi.admin.Icons? = null,
     /** The server folder, for /files. */
     val files: ServerFiles = ServerFiles(Path.of(""), Path.of("plugins", "WorldAPI"), Path.of("plugins", "WorldAPI", "backups")),
+    /** The server's commands for GET /server/commands, rebuilt when plugins come and go. */
+    val commands: com.mairwunnx.worldapi.commands.PaperCommands = com.mairwunnx.worldapi.commands.PaperCommands(server),
 ) {
     val config: WorldApiConfig get() = configRef.get()
 

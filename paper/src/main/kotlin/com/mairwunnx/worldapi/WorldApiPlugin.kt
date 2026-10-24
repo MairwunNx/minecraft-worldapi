@@ -108,6 +108,7 @@ class WorldApiPlugin : JavaPlugin() {
         val windows = Windows(bus) { config.get().websocket.blockWindowSeconds }
         val listeners = Listeners(this, bus, history, api.experience, windows, vanished) { config.get().events.chat }
         server.pluginManager.registerEvents(listeners, this)
+        server.pluginManager.registerEvents(api.commands, this)
         val taming = Taming(this, api.tamed, logger)
         server.pluginManager.registerEvents(taming, this)
         // The expansion API: an expansion belongs to the plugin whose class loader loaded it.
