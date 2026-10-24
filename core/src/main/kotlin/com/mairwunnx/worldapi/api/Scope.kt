@@ -21,6 +21,7 @@ enum class Scope(val id: String, val description: String) {
     PLAYERS_WRITE("players:write", "Player state, inventories, teleports, effects, and messages"),
     PLAYERS_MODERATE("players:moderate", "Kicks, bans, the whitelist, operators, vanished players, and IP addresses"),
     SERVER_CONSOLE("server:console", "Console commands"),
+    COMMANDS_READ("commands:read", "The server's commands: names, aliases, plugins, descriptions, and usage"),
     SERVER_CONTROL("server:control", "Saving, restarting, and stopping the server, and world seeds"),
     FILES_READ("files:read", "Server and plugin configs"),
     FILES_WRITE("files:write", "Changing server and plugin configs; only the owner group has it unless you add it"),
@@ -48,7 +49,7 @@ enum class Scope(val id: String, val description: String) {
         /** The groups a fresh config.yml has. */
         val defaultGroups: Map<String, List<String>> = linkedMapOf(
             "viewer" to listOf("server:read", "players:read", "players:private", "events:read", "chat:read"),
-            "moderator" to listOf("viewer", "logs:read", "players:write", "players:moderate"),
+            "moderator" to listOf("viewer", "logs:read", "commands:read", "players:write", "players:moderate"),
             "admin" to (entries - setOf(FILES_WRITE, CODE)).map { it.id },
             "owner" to entries.map { it.id },
         )

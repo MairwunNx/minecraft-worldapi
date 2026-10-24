@@ -34,6 +34,7 @@ auth:
   #   players:write     player state, inventories, teleports, effects, messages
   #   players:moderate  kicks, bans, whitelist, operators, vanished players, IP addresses
   #   server:console    console commands
+  #   commands:read     the server's commands: names, plugins, descriptions, usage
   #   server:control    save, restart, stop, world seeds
   #   files:read        server and plugin configs
   #   files:write       changing server and plugin configs
@@ -53,9 +54,9 @@ auth:
   # admin panel accounts list them by name. admin has everything but files:write and code.
   groups:
     viewer: ["server:read", "players:read", "players:private", "events:read", "chat:read"]
-    moderator: [viewer, "logs:read", "players:write", "players:moderate"]
-    admin: ["server:read", "players:read", "players:private", "events:read", "chat:read", "logs:read", "system:read", "world:write", "players:write", "players:moderate", "server:console", "server:control", "files:read", "tokens:manage"]
-    owner: ["server:read", "players:read", "players:private", "events:read", "chat:read", "logs:read", "system:read", "world:write", "players:write", "players:moderate", "server:console", "server:control", "files:read", "files:write", "tokens:manage", code]
+    moderator: [viewer, "logs:read", "commands:read", "players:write", "players:moderate"]
+    admin: ["server:read", "players:read", "players:private", "events:read", "chat:read", "logs:read", "system:read", "world:write", "players:write", "players:moderate", "server:console", "commands:read", "server:control", "files:read", "tokens:manage"]
+    owner: ["server:read", "players:read", "players:private", "events:read", "chat:read", "logs:read", "system:read", "world:write", "players:write", "players:moderate", "server:console", "commands:read", "server:control", "files:read", "files:write", "tokens:manage", code]
 
   # Clients without a token may read these paths (under basePath). "*" matches one path segment,
   # "**" any number. Anonymous clients can never write, whatever this list says.
