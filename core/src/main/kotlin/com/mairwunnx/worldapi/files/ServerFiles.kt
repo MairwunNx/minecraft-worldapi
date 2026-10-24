@@ -31,9 +31,17 @@ import kotlin.io.path.name
  * The server folder as `/files` sees it: which paths a client may read or write, and the reading
  * and writing itself. Paths are relative to [root] with forward slashes. Nothing outside the root
  * is reachable, a symlink pointing out of it included, and WorldAPI's own folder, which holds the
- * tokens and the database, never is.
+ * tokens and the database, never is; nor are [alsoOwn], where a platform keeps WorldAPI's files in
+ * more than one place. With [reach], only those folders, relative to the root, and the folders on the
+ * way to them are: a singleplayer game's folder holds other worlds and the launcher's files.
  */
-class ServerFiles(root: Path, private val ownFolder: Path, private val backups: Path) {
+class ServerFiles(
+    root: Path,
+    private val ownFolder: Path,
+    private val backups: Path,
+    private val alsoOwn: List<Path> = emptyList(),
+    private val reach: List<String>? = null,
+) {
     val root: Path = root.toAbsolutePath().normalize()
     private val realRoot: Path = runCatching { this.root.toRealPath() }.getOrDefault(this.root)
 
@@ -60,10 +68,18 @@ class ServerFiles(root: Path, private val ownFolder: Path, private val backups: 
     fun denied(path: Path): Boolean {
         val normal = path.toAbsolutePath().normalize()
         if (normal.startsWith(ownFolder.toAbsolutePath().normalize()) || normal.startsWith(backups.toAbsolutePath().normalize())) return true
+        if (alsoOwn.any { normal.startsWith(it.toAbsolutePath().normalize()) }) return true
         val parts = root.relativize(normal).map { it.toString() }
+        if (reach != null && normal != root && !reached(parts)) return true
         if (parts.any { it.startsWith(".") && it != "." }) return true
         val name = normal.name.lowercase()
         return name in SECRET_NAMES || SECRET_EXTENSIONS.any { name.endsWith(it) }
+    }
+
+    /** Whether a path lies inside one of [reach], or on the way to one. */
+    private fun reached(parts: List<String>): Boolean = reach!!.any { allowed ->
+        val wanted = allowed.trim('/').split('/')
+        parts.size >= wanted.size && parts.take(wanted.size) == wanted || parts.size < wanted.size && wanted.take(parts.size) == parts
     }
 
     /** Whether a file's kind may be read, or written; folders are always listable unless [denied]. */

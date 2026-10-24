@@ -30,6 +30,28 @@ class FilesTest {
     private fun status(block: () -> Unit) = assertFailsWith<ApiException> { block() }.status.value
 
     @Test
+    fun `a singleplayer game shares only its world's save, config, and logs`() {
+        val game = Files.createTempDirectory("game")
+        val save = game.resolve("saves/My World").createDirectories()
+        game.resolve("saves/Other").createDirectories()
+        val data = save.resolve("worldapi").createDirectories()
+        val config = game.resolve("config/worldapi").createDirectories()
+        Files.writeString(game.resolve("options.txt"), "fov:70")
+        Files.writeString(save.resolve("level.json"), "{}")
+        Files.writeString(game.resolve("config/sodium.json"), "{}")
+        val single = ServerFiles(game, config, config.resolve("backups"), listOf(data), listOf("saves/My World", "config", "logs"))
+        assertEquals(save.resolve("level.json"), single.resolve("saves/My World/level.json", Access.READ))
+        assertEquals(game.resolve("config/sodium.json"), single.resolve("config/sodium.json", Access.READ))
+        assertEquals(403, status { single.resolve("options.txt", Access.READ) })
+        assertEquals(403, status { single.resolve("saves/Other/level.dat", Access.READ) })
+        assertEquals(403, status { single.resolve("saves/My World/worldapi/tokens.yml", Access.READ) })
+        assertEquals(403, status { single.resolve("config/worldapi/config.yml", Access.READ) })
+        // The folders on the way list only what leads somewhere shared.
+        assertEquals(listOf("My World"), single.list(game.resolve("saves"), 100).first.map { it.name })
+        assertEquals(listOf("config", "saves"), single.list(game, 100).first.map { it.name })
+    }
+
+    @Test
     fun `paths stay inside the server folder`() {
         assertEquals(400, status { files.resolve("../etc/passwd", Access.READ) })
         assertEquals(400, status { files.resolve("plugins/../../x.yml", Access.READ) })
