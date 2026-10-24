@@ -2,6 +2,7 @@ package com.mairwunnx.worldapi.core
 
 import com.mairwunnx.worldapi.admin.AdminAccounts
 import com.mairwunnx.worldapi.admin.Icons
+import com.mairwunnx.worldapi.bukkit.isVanished
 import com.mairwunnx.worldapi.config.WorldApiConfig
 import com.mairwunnx.worldapi.events.EventBus
 import com.mairwunnx.worldapi.events.Vanished
@@ -27,9 +28,9 @@ class PaperApi(
     main: MainThread,
     history: History,
     bus: EventBus,
-    val statistics: Statistics,
-    val experience: Experience,
-    val scripts: ScriptManager,
+    override val statistics: Statistics,
+    experience: Experience,
+    override val scripts: ScriptManager,
     tokens: TokenStore,
     configRef: AtomicReference<WorldApiConfig>,
     version: String,
@@ -41,9 +42,15 @@ class PaperApi(
     files: ServerFiles = ServerFiles(Path.of(""), Path.of("plugins", "WorldAPI"), Path.of("plugins", "WorldAPI", "backups")),
     /** The server's commands for GET /server/commands, rebuilt when plugins come and go. */
     val commands: com.mairwunnx.worldapi.commands.PaperCommands = com.mairwunnx.worldapi.commands.PaperCommands(server),
-) : WorldApi(main, history, bus, tokens, configRef, version, vanished, extensions, tamed, accounts, icons, files) {
+) : WorldApi(main, history, bus, tokens, configRef, version, vanished, extensions, tamed, experience, accounts, icons, files) {
     /** A restart with a countdown, scheduled through POST /server/restart. */
     val restart by lazy { Restart(server, main, CoroutineScope(SupervisorJob() + Dispatchers.Default)) }
 
     override suspend fun playerName(uuid: UUID): String? = main.call { server.getOfflinePlayer(uuid).name }
+
+    override suspend fun online() = main.call { server.onlinePlayers.map { it.uniqueId to it.isVanished() } }
+
+    override suspend fun calendar() = main.call {
+        server.worlds.first().fullTime / 24_000 + 1 to server.offlinePlayers.map { it.firstPlayed }.filter { it > 0 }.minOrNull()
+    }
 }

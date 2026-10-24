@@ -1,6 +1,7 @@
 package com.mairwunnx.worldapi.routes
 
 import com.mairwunnx.worldapi.api.Scope
+import com.mairwunnx.worldapi.api.endpoints
 import com.mairwunnx.worldapi.api.Page
 import com.mairwunnx.worldapi.api.badRequest
 import com.mairwunnx.worldapi.api.pageParams
@@ -56,6 +57,6 @@ val eventRoutes = endpoints("Events", Scope.EVENTS_READ) {
     }
 }
 
-private fun com.mairwunnx.worldapi.api.PaperCall.time(name: String): Long? = query(name)?.let { text ->
+private fun com.mairwunnx.worldapi.api.ApiCall<*>.time(name: String): Long? = query(name)?.let { text ->
     text.toLongOrNull() ?: runCatching { Instant.parse(text).toEpochMilli() }.getOrElse { badRequest("$name must be an ISO-8601 time or epoch milliseconds") }
 }

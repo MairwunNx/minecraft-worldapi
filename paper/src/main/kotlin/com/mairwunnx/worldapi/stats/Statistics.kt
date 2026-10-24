@@ -20,15 +20,12 @@ import java.io.File
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
-/** One player's statistics and finished advancements, live when they are online. */
-data class PlayerStats(val uuid: UUID, val name: String, val online: Boolean, val stats: StatMap, val advancements: Int)
-
 /**
  * Reads statistics. Online players come from the server's live counters, so numbers move as
  * people play instead of waiting for the next autosave; offline players come from the stats
  * files, cached until the file changes.
  */
-class Statistics(private val server: Server, private val main: MainThread) {
+class Statistics(private val server: Server, private val main: MainThread) : StatsSource {
     private class Cached<T>(val modified: Long, val value: T)
 
     private val files = ConcurrentHashMap<String, Cached<*>>()
@@ -55,11 +52,7 @@ class Statistics(private val server: Server, private val main: MainThread) {
         return online ?: withContext(Dispatchers.IO) { advancementsFromFile(player.uniqueId) }
     }
 
-    /**
-     * Everyone who has a stats file or is online. [refs] limits the live read to the statistics
-     * a caller needs; a leaderboard asks for one or two, not all eight thousand.
-     */
-    suspend fun everyone(refs: List<StatRef>?, withAdvancements: Boolean): List<PlayerStats> {
+    override suspend fun everyone(refs: List<StatRef>?, withAdvancements: Boolean): List<PlayerStats> {
         val online = main.call {
             server.onlinePlayers.map { player ->
                 PlayerStats(

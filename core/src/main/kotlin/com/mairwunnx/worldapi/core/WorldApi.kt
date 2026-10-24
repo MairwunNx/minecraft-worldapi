@@ -11,6 +11,9 @@ import com.mairwunnx.worldapi.events.Vanished
 import com.mairwunnx.worldapi.extensions.Extensions
 import com.mairwunnx.worldapi.files.ServerFiles
 import com.mairwunnx.worldapi.model.LogLine
+import com.mairwunnx.worldapi.script.Scripts
+import com.mairwunnx.worldapi.stats.Experience
+import com.mairwunnx.worldapi.stats.StatsSource
 import com.mairwunnx.worldapi.stats.Tamed
 import com.mairwunnx.worldapi.store.History
 import com.mairwunnx.worldapi.tokens.TokenStore
@@ -35,6 +38,8 @@ abstract class WorldApi(
     val extensions: Extensions,
     /** Animals each player has tamed, which WorldAPI counts itself. */
     val tamed: Tamed,
+    /** Experience each player gained, which WorldAPI counts itself. */
+    val experience: Experience,
     /** Admin panel accounts and sessions. */
     val accounts: AdminAccounts,
     /** Item icons for the panel, from the game's own textures. */
@@ -53,6 +58,18 @@ abstract class WorldApi(
         }
     }
 
+    /** Everyone's statistics, for leaderboards and aggregates. */
+    abstract val statistics: StatsSource
+
+    /** Java scripts, or null on a platform that doesn't run them. */
+    abstract val scripts: Scripts?
+
     /** A player's name from the server's records, or null when it never saw them. */
     abstract suspend fun playerName(uuid: UUID): String?
+
+    /** Who is online now, each with whether a vanish plugin or mod hides them right now. */
+    abstract suspend fun online(): List<Pair<UUID, Boolean>>
+
+    /** The overworld's day, counted from 1, and when the first player first joined, from the server's own records. */
+    abstract suspend fun calendar(): Pair<Long, Long?>
 }

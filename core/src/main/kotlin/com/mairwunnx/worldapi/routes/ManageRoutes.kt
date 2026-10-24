@@ -2,10 +2,11 @@ package com.mairwunnx.worldapi.routes
 
 import com.mairwunnx.worldapi.admin.AdminAccounts
 import com.mairwunnx.worldapi.admin.canGrant
-import com.mairwunnx.worldapi.api.PaperCall
+import com.mairwunnx.worldapi.api.ApiCall
 import com.mairwunnx.worldapi.api.ApiException
 import com.mairwunnx.worldapi.api.Page
 import com.mairwunnx.worldapi.api.Scope
+import com.mairwunnx.worldapi.api.endpoints
 import com.mairwunnx.worldapi.api.badRequest
 import com.mairwunnx.worldapi.api.conflict
 import com.mairwunnx.worldapi.api.notFound
@@ -141,7 +142,7 @@ private val TOKEN_NAME = Regex("[A-Za-z0-9_-]{1,32}")
 
 private fun ids(scopes: Set<Scope>) = scopes.sortedBy { it.ordinal }.map { it.id }
 
-private fun PaperCall.checkGrant(names: List<String>) {
+private fun ApiCall<*>.checkGrant(names: List<String>) {
     val unknown = names.filterNot(config.auth.resolver::contains)
     if (unknown.isNotEmpty()) badRequest("Unknown permissions or groups: ${unknown.joinToString()}")
     val wanted = config.auth.resolver.resolve(names)

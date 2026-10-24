@@ -1,5 +1,6 @@
 package com.mairwunnx.worldapi.script
 
+import com.mairwunnx.worldapi.script.Scripts
 import com.mairwunnx.worldapi.api.ApiException
 import com.mairwunnx.worldapi.api.badRequest
 import com.mairwunnx.worldapi.api.conflict
@@ -53,7 +54,7 @@ class ScriptManager(
     private val bus: EventBus,
     private val config: () -> WorldApiConfig,
     private val logger: Logger,
-) {
+) : Scripts {
     private class Loaded(
         val id: String,
         val source: String,
@@ -92,7 +93,7 @@ class ScriptManager(
         if (!config().scripts.enabled) throw ApiException(HttpStatusCode.Forbidden, "scripts_disabled", "Scripts are off; set scripts.enabled in config.yml")
     }
 
-    suspend fun run(source: String, async: Boolean): ScriptRunResult {
+    override suspend fun run(source: String, async: Boolean): ScriptRunResult {
         requireEnabled()
         val started = System.nanoTime()
         val output = mutableListOf<String>()
@@ -124,7 +125,7 @@ class ScriptManager(
         }
     }
 
-    suspend fun load(id: String, source: String, persistent: Boolean, replace: Boolean): ScriptView {
+    override suspend fun load(id: String, source: String, persistent: Boolean, replace: Boolean): ScriptView {
         requireEnabled()
         if (!Regex("[a-z0-9_-]{1,40}").matches(id)) badRequest("id must be 1–40 lowercase letters, digits, dashes, or underscores")
         if (scripts.containsKey(id)) {
@@ -193,7 +194,7 @@ class ScriptManager(
         return loader to instance
     }
 
-    suspend fun unload(id: String, forget: Boolean = true) {
+    override suspend fun unload(id: String, forget: Boolean) {
         val loaded = scripts.remove(id) ?: notFound("script_not_found", "No script \"$id\"")
         stop(loaded)
         if (forget) withContext(Dispatchers.IO) { Files.deleteIfExists(folder.resolve("$id.java")) }
@@ -207,11 +208,11 @@ class ScriptManager(
         withContext(Dispatchers.IO) { runCatching { loaded.directory.deleteRecursively() } }
     }
 
-    fun list(): List<ScriptView> = scripts.values.sortedBy { it.id }.map { view(it, withSource = false) }
+    override fun list(): List<ScriptView> = scripts.values.sortedBy { it.id }.map { view(it, withSource = false) }
 
-    fun get(id: String): ScriptView = view(scripts[id] ?: notFound("script_not_found", "No script \"$id\""), withSource = true)
+    override fun get(id: String): ScriptView = view(scripts[id] ?: notFound("script_not_found", "No script \"$id\""), withSource = true)
 
-    fun logs(id: String, limit: Int): List<ScriptLogLine> = (scripts[id] ?: notFound("script_not_found", "No script \"$id\"")).log.tail(limit)
+    override fun logs(id: String, limit: Int): List<ScriptLogLine> = (scripts[id] ?: notFound("script_not_found", "No script \"$id\"")).log.tail(limit)
 
     /** Loads saved scripts after a restart; a broken one is logged and skipped. */
     suspend fun loadSaved() {

@@ -1,10 +1,10 @@
 package com.mairwunnx.worldapi.routes
 
-import com.mairwunnx.worldapi.bukkit.hides
+import com.mairwunnx.worldapi.api.ApiCall
 import com.mairwunnx.worldapi.api.Scope
+import com.mairwunnx.worldapi.api.endpoints
 import com.mairwunnx.worldapi.api.integer
 import com.mairwunnx.worldapi.api.notFound
-import com.mairwunnx.worldapi.bukkit.iso
 import com.mairwunnx.worldapi.model.Aggregates
 import com.mairwunnx.worldapi.model.BoardInfo
 import com.mairwunnx.worldapi.model.Leaderboard
@@ -35,17 +35,17 @@ val statsRoutes = endpoints("Leaderboards", Scope.PLAYERS_READ) {
         val board = Board.of(id) ?: notFound("unknown_statistic", "No leaderboard or statistic \"$id\"")
         val limit = limit
         val entries = if (board.tamed) {
-            val online = main { api.server.onlinePlayers.filterNot(::hides).map { it.uniqueId }.toSet() }
+            val online = visibleOnline()
             val ranked = rank(api.tamed.totals().map { it to it.tamed.toDouble() }) { it.name }
             ranked.map { LeaderboardEntry(it.place, PlayerRef(it.item.uuid.toString(), it.item.name), it.value, it.item.uuid in online) }
         } else if (board.experience) {
-            val online = main { api.server.onlinePlayers.filterNot(::hides).map { it.uniqueId }.toSet() }
+            val online = visibleOnline()
             val ranked = rank(api.experience.totals().map { it to it.points.toDouble() }) { it.name }
             ranked.map { LeaderboardEntry(it.place, PlayerRef(it.item.uuid.toString(), it.item.name), it.value, it.item.uuid in online) }
         } else {
             val everyone = api.statistics.everyone(board.refs.takeIf { !board.advancements }, withAdvancements = board.advancements)
             val ranked = rank(everyone.map { it to board.score(it.stats, it.advancements) }) { it.name }
-            val hidden = main { api.server.onlinePlayers.filter(::hides).map { it.uniqueId }.toSet() }
+            val hidden = hiddenOnline()
             ranked.map { LeaderboardEntry(it.place, PlayerRef(it.item.uuid.toString(), it.item.name), it.value, it.item.online && it.item.uuid !in hidden) }
         }
         Leaderboard(board.id, board.title, board.unit, entries.size, entries.take(limit), Instant.now().toString())
@@ -60,10 +60,7 @@ val statsRoutes = endpoints("Leaderboards", Scope.PLAYERS_READ) {
             player.stats["minecraft:killed"]?.forEach { (k, v) -> killed.merge(k, v, Long::plus) }
         }
         val firstJoin = api.history.firstEventAt("player.join")
-        val (day, firstPlayed) = main {
-            val overworld = api.server.worlds.first()
-            overworld.fullTime / 24_000 + 1 to api.server.offlinePlayers.map { it.firstPlayed }.filter { it > 0 }.minOrNull()
-        }
+        val (day, firstPlayed) = api.calendar()
         Aggregates(
             players = everyone.size,
             hours = round(everyone.sumOf { playTime.read(it.stats) } / 72_000.0 * 10) / 10,
@@ -79,3 +76,10 @@ val statsRoutes = endpoints("Leaderboards", Scope.PLAYERS_READ) {
         )
     }
 }
+
+/** Online players this caller may see: vanished ones only for moderators. */
+private suspend fun ApiCall<*>.visibleOnline() = api.online().filter { (_, vanished) -> seesVanished || !vanished }.map { it.first }.toSet()
+
+private suspend fun ApiCall<*>.hiddenOnline() = api.online().filter { (_, vanished) -> !seesVanished && vanished }.map { it.first }.toSet()
+
+private fun iso(millis: Long): String? = if (millis > 0) Instant.ofEpochMilli(millis).toString() else null

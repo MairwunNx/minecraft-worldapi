@@ -1,6 +1,11 @@
 package com.mairwunnx.worldapi.routes
 
+import com.mairwunnx.worldapi.api.ApiCall
+import com.mairwunnx.worldapi.api.ApiException
 import com.mairwunnx.worldapi.api.Scope
+import com.mairwunnx.worldapi.api.endpoints
+import com.mairwunnx.worldapi.script.Scripts
+import io.ktor.http.HttpStatusCode
 import com.mairwunnx.worldapi.api.badRequest
 import com.mairwunnx.worldapi.api.boolean
 import com.mairwunnx.worldapi.api.integer
@@ -21,11 +26,11 @@ val scriptRoutes = endpoints("Scripts", Scope.SERVER_READ) {
     ) { request ->
         if (request.thread !in setOf("main", "async")) badRequest("thread must be main or async")
         auditDetail = request.source
-        api.scripts.run(request.source, async = request.thread == "async")
+        scripts().run(request.source, async = request.thread == "async")
     }
 
     get("/scripts", "Loaded scripts", scope = Scope.CODE) {
-        api.scripts.list()
+        scripts().list()
     }
 
     post<ScriptLoadRequest, ScriptView>(
@@ -35,16 +40,16 @@ val scriptRoutes = endpoints("Scripts", Scope.SERVER_READ) {
     ) { request ->
         auditTarget = request.id
         auditDetail = request.source
-        api.scripts.load(request.id, request.source, request.persistent, request.replace)
+        scripts().load(request.id, request.source, request.persistent, request.replace)
     }
 
     get("/scripts/{id}", "One script with its source", scope = Scope.CODE) {
-        api.scripts.get(path("id"))
+        scripts().get(path("id"))
     }
 
     get("/scripts/{id}/logs", "The latest lines a script logged", scope = Scope.CODE, query = listOf(integer("limit", "How many lines; 100 by default"))) {
         val limit = (int("limit") ?: 100).coerceIn(1, 10_000)
-        api.scripts.logs(path("id"), limit)
+        scripts().logs(path("id"), limit)
     }
 
     delete(
@@ -53,7 +58,10 @@ val scriptRoutes = endpoints("Scripts", Scope.SERVER_READ) {
         query = listOf(boolean("keepSaved", "Keep the saved copy of a persistent script")),
     ) {
         auditTarget = path("id")
-        api.scripts.unload(path("id"), forget = bool("keepSaved") != true)
+        scripts().unload(path("id"), forget = bool("keepSaved") != true)
     }
 }
 
+/** The platform's scripts, or 501 where it runs none. */
+private fun ApiCall<*>.scripts(): Scripts =
+    api.scripts ?: throw ApiException(HttpStatusCode.NotImplemented, "not_supported", "Java scripts run on Paper only; this server doesn't run them")
