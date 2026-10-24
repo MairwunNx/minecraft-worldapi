@@ -112,13 +112,14 @@ class PaperCommands(private val server: Server) : Listener {
             val own = command.name.lowercase()
             val name = own.takeIf { it in plain } ?: plain.firstOrNull() ?: namespaced.firstOrNull() ?: return@mapNotNull null
             val source = (command as? PluginIdentifiableCommand)?.plugin?.name ?: namespaced.firstOrNull()?.substringBefore(':')
+                ?: "bukkit".takeIf { command.javaClass.name.startsWith("org.bukkit.") }
             val description = command.description.takeUnless { it == MOJANG }?.let(CommandCatalog::text)
             val node = node(command)
             // A Brigadier command's usage comes from its tree below; Paper's wrapper only repeats a name.
             val usage = if (node != null) null else command.usage.replace("<command>", name).let(CommandCatalog::text)?.takeUnless { it == "/$name" || it == name }
             Found(CommandInfo(name, (plain - name).sorted(), source, description, usage), command, node)
         }
-        val merged = merged(found.map { Triple(it.info, it.command, it.node) })
+        val merged = unnamed(merged(found.map { Triple(it.info, it.command, it.node) }))
         val usages = usages(merged.mapNotNull { it.third })
         return CommandCatalog(merged.map { (info, _, node) ->
             val usage = node?.let { usages[it] }?.let { "/${info.name}" + it.substringAfter(' ', "").let { rest -> if (rest.isEmpty()) "" else " $rest" } }
@@ -145,6 +146,28 @@ class PaperCommands(private val server: Server) : Listener {
         return entries.filter { it !in gone }.map { entry ->
             val more = folded[entry] ?: return@map entry
             entry.copy(first = entry.first.copy(aliases = (entry.first.aliases + more).distinct().sorted()))
+        }
+    }
+
+    /**
+     * A command the map knows by its plain name without an owner, and again as `namespace:name` (Paper's bundled
+     * spark): one command, whose source is the namespace.
+     */
+    private fun unnamed(entries: List<Triple<CommandInfo, Command, Any?>>): List<Triple<CommandInfo, Command, Any?>> {
+        val plain = entries.filter { it.first.source == null && ':' !in it.first.name }.associateBy { it.first.name }
+        val joined = HashMap<String, Triple<CommandInfo, Command, Any?>>()
+        val gone = HashSet<Triple<CommandInfo, Command, Any?>>()
+        for (entry in entries) {
+            val name = entry.first.name
+            if (':' !in name) continue
+            val owner = plain[name.substringAfter(':')]?.takeIf { it.first.name !in joined } ?: continue
+            joined[owner.first.name] = entry
+            gone += entry
+        }
+        return entries.filter { it !in gone }.map { entry ->
+            val other = joined[entry.first.name] ?: return@map entry
+            val info = entry.first
+            entry.copy(first = info.copy(source = other.first.source, description = info.description ?: other.first.description, usage = info.usage ?: other.first.usage), third = entry.third ?: other.third)
         }
     }
 
