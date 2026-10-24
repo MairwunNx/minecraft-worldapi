@@ -10,33 +10,29 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.longOrNull
-import org.bukkit.configuration.file.YamlConfiguration
 
 /**
- * Sets values in a config by dotted path, keeping what a person wrote around them: YAML through
- * Bukkit's own YamlConfiguration with comments kept, `.properties` line by line, JSON as a tree.
- * A null value removes the key.
+ * Sets values in a config by dotted path, keeping what a person wrote around them: YAML through the
+ * platform's [Yaml] with comments kept, `.properties` line by line, JSON as a tree. A null value
+ * removes the key.
  */
 object ConfigValues {
     private val pretty = Json { prettyPrint = true; prettyPrintIndent = "  " }
 
-    fun set(fileName: String, text: String, values: Map<String, JsonElement>): String {
+    /** Sets dotted keys in a YAML document, comments kept; each platform has its own. */
+    fun interface Yaml {
+        fun set(text: String, values: Map<String, JsonElement>): String
+    }
+
+    fun set(fileName: String, text: String, values: Map<String, JsonElement>, yaml: Yaml): String {
         if (values.isEmpty()) badRequest("values is empty")
         values.keys.forEach { if (it.isBlank() || it.startsWith('.') || it.endsWith('.') || ".." in it) badRequest("\"$it\" isn't a dotted path") }
         return when (fileName.substringAfterLast('.').lowercase()) {
-            "yml", "yaml" -> yaml(text, values)
+            "yml", "yaml" -> yaml.set(text, values)
             "properties" -> properties(text, values)
             "json" -> json(text, values)
             else -> badRequest("Setting values works for YAML, .properties, and JSON; edit $fileName with /files/edit", "unsupported_format")
         }
-    }
-
-    private fun yaml(text: String, values: Map<String, JsonElement>): String {
-        val config = YamlConfiguration()
-        config.options().parseComments(true)
-        runCatching { config.loadFromString(text) }.onFailure { badRequest("The file isn't valid YAML: ${it.message}", "invalid_file") }
-        values.forEach { (path, value) -> config.set(path, java(value)) }
-        return config.saveToString()
     }
 
     /** Replaces `key=value` lines in place and appends new keys, so comments and order stay. */
@@ -82,18 +78,6 @@ object ConfigValues {
         return JsonObject(map)
     }
 
-    /** JSON to what YamlConfiguration stores: whole numbers stay integers, objects become sections. */
-    private fun java(value: JsonElement): Any? = when (value) {
-        is JsonNull -> null
-        is JsonPrimitive -> when {
-            value.isString -> value.content
-            value.booleanOrNull != null -> value.booleanOrNull
-            value.longOrNull != null -> value.longOrNull!!.let { if (it in Int.MIN_VALUE..Int.MAX_VALUE) it.toInt() else it }
-            else -> value.doubleOrNull
-        }
-        is JsonArray -> value.map(::java)
-        is JsonObject -> value.mapValues { java(it.value) }
-    }
 
     /** Applies exact text replacements in order; each must match once unless [Edit.replaceAll]. */
     fun edit(text: String, edits: List<Edit>): String {

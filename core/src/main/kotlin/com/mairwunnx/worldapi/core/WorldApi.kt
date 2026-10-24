@@ -9,6 +9,7 @@ import com.mairwunnx.worldapi.events.EventBus
 import com.mairwunnx.worldapi.events.Topic
 import com.mairwunnx.worldapi.events.Vanished
 import com.mairwunnx.worldapi.extensions.Extensions
+import com.mairwunnx.worldapi.files.ConfigValues
 import com.mairwunnx.worldapi.files.ServerFiles
 import com.mairwunnx.worldapi.model.LogLine
 import com.mairwunnx.worldapi.script.Scripts
@@ -69,6 +70,24 @@ abstract class WorldApi(
 
     /** Who is online now, each with whether a vanish plugin or mod hides them right now. */
     abstract suspend fun online(): List<Pair<UUID, Boolean>>
+
+    /** The server's own configs, relative to its folder, in the order a person would look for them. */
+    abstract val serverConfigs: List<String>
+
+    /** What a saved config needs before it counts: a restart, or the owner's reload. */
+    abstract val configNote: String
+
+    /** Lists the server keeps in memory and saves over any edit, so writes go through it ([applyList]). */
+    open val listFiles: Set<String> = setOf("ops.json", "whitelist.json", "banned-players.json", "banned-ips.json")
+
+    /** How `/files/set` changes YAML on this platform. */
+    abstract val yaml: ConfigValues.Yaml
+
+    /** Each plugin's or mod's config folder, by its name. */
+    abstract suspend fun configFolders(): Map<String, java.nio.file.Path>
+
+    /** Applies [text] as the new content of one of [listFiles] through the server; answers what changed, for the audit log. */
+    abstract suspend fun applyList(file: String, text: String): String
 
     /** The overworld's day, counted from 1, and when the first player first joined, from the server's own records. */
     abstract suspend fun calendar(): Pair<Long, Long?>

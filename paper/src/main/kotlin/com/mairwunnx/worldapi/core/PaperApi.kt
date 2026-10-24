@@ -50,6 +50,20 @@ class PaperApi(
 
     override suspend fun online() = main.call { server.onlinePlayers.map { it.uniqueId to it.isVanished() } }
 
+    override val serverConfigs = listOf(
+        "server.properties", "bukkit.yml", "spigot.yml", "config/paper-global.yml", "config/paper-world-defaults.yml",
+        "commands.yml", "help.yml", "permissions.yml", "ops.json", "whitelist.json", "banned-players.json", "banned-ips.json",
+    )
+
+    override val configNote = "Saved. The server reads server.properties, bukkit.yml, spigot.yml, and Paper's configs at start; " +
+        "a plugin reads its config at start or on its own reload command. Restart, or reload that plugin, for the change to take effect."
+
+    override val yaml = com.mairwunnx.worldapi.files.BukkitYaml
+
+    override suspend fun configFolders() = main.call { server.pluginManager.plugins.associate { it.name to it.dataFolder.toPath() } }
+
+    override suspend fun applyList(file: String, text: String) = main.call { com.mairwunnx.worldapi.files.ServerLists.apply(server, file, text) }
+
     override suspend fun calendar() = main.call {
         server.worlds.first().fullTime / 24_000 + 1 to server.offlinePlayers.map { it.firstPlayed }.filter { it > 0 }.minOrNull()
     }

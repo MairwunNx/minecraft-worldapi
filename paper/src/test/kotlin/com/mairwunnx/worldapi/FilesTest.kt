@@ -165,7 +165,7 @@ class FilesTest {
     @Test
     fun `YAML values change and comments stay`() {
         val text = "# Paper settings\nchunks:\n  # How often to save\n  auto-save-interval: default\n  max: 8\n"
-        val result = ConfigValues.set("paper-world-defaults.yml", text, mapOf("chunks.auto-save-interval" to JsonPrimitive(6000), "chunks.max" to JsonNull, "new.key" to JsonPrimitive(true)))
+        val result = ConfigValues.set("paper-world-defaults.yml", text, mapOf("chunks.auto-save-interval" to JsonPrimitive(6000), "chunks.max" to JsonNull, "new.key" to JsonPrimitive(true)), com.mairwunnx.worldapi.files.BukkitYaml)
         assertContains(result, "# Paper settings")
         assertContains(result, "# How often to save")
         assertContains(result, "auto-save-interval: 6000")
@@ -176,15 +176,15 @@ class FilesTest {
     @Test
     fun `properties change in place`() {
         val text = "#Minecraft server properties\nmotd=Old\nview-distance=10\n"
-        val result = ConfigValues.set("server.properties", text, mapOf("motd" to JsonPrimitive("New"), "pvp" to JsonPrimitive(false), "view-distance" to JsonNull))
+        val result = ConfigValues.set("server.properties", text, mapOf("motd" to JsonPrimitive("New"), "pvp" to JsonPrimitive(false), "view-distance" to JsonNull), com.mairwunnx.worldapi.files.BukkitYaml)
         assertEquals("#Minecraft server properties\nmotd=New\npvp=false\n", result)
     }
 
     @Test
     fun `JSON values set by path`() {
-        val result = ConfigValues.set("settings.json", "{\"a\": {\"b\": 1}, \"c\": 2}", mapOf("a.b" to JsonPrimitive(5), "a.d" to JsonPrimitive("x"), "c" to JsonNull))
+        val result = ConfigValues.set("settings.json", "{\"a\": {\"b\": 1}, \"c\": 2}", mapOf("a.b" to JsonPrimitive(5), "a.d" to JsonPrimitive("x"), "c" to JsonNull), com.mairwunnx.worldapi.files.BukkitYaml)
         assertEquals("{\n  \"a\": {\n    \"b\": 5,\n    \"d\": \"x\"\n  }\n}\n", result)
-        assertEquals(400, status { ConfigValues.set("config.toml", "", mapOf("a" to JsonPrimitive(1))) })
+        assertEquals(400, status { ConfigValues.set("config.toml", "", mapOf("a" to JsonPrimitive(1)), com.mairwunnx.worldapi.files.BukkitYaml) })
     }
 
     @Test

@@ -1,14 +1,14 @@
 package com.mairwunnx.worldapi.routes
 
-import com.mairwunnx.worldapi.api.PaperCall
+import com.mairwunnx.worldapi.api.ApiCall
 import com.mairwunnx.worldapi.api.Scope
+import com.mairwunnx.worldapi.api.endpoints
 import com.mairwunnx.worldapi.api.badRequest
 import com.mairwunnx.worldapi.api.boolean
 import com.mairwunnx.worldapi.api.integer
 import com.mairwunnx.worldapi.api.string
 import com.mairwunnx.worldapi.files.ConfigValues
 import com.mairwunnx.worldapi.files.ServerFiles
-import com.mairwunnx.worldapi.files.ServerLists
 import com.mairwunnx.worldapi.files.ServerFiles.Access
 import com.mairwunnx.worldapi.model.ConfigFiles
 import com.mairwunnx.worldapi.model.FileContent
@@ -29,18 +29,9 @@ import kotlin.io.path.isRegularFile
 private const val ACCESS = "Paths are relative to the server folder, with forward slashes. Files under logs/ need logs:read; everything else needs files:read. " +
     "WorldAPI's own folder, hidden files, keys, databases, and jars are never shared."
 
-private const val WRITES = "Needs files:write, which no group but owner has unless you add it. The previous version goes to plugins/WorldAPI/backups " +
+private const val WRITES = "Needs files:write, which no group but owner has unless you add it. The previous version goes to WorldAPI's backups folder " +
     "(limits.fileBackups per file). Logs, usercache.json, and version_history.json can't be written. ops.json, whitelist.json, and banned-*.json go through the server: " +
     "it adds and removes entries to match the new content and saves the file in its own format. Send the sha256 from /files/read as expectedSha256, so a write fails with 409 if the file changed meanwhile."
-
-private const val NOTE = "Saved. The server reads server.properties, bukkit.yml, spigot.yml, and Paper's configs at start; " +
-    "a plugin reads its config at start or on its own reload command. Restart, or reload that plugin, for the change to take effect."
-
-/** The server's own configs, in the order a person would look for them. */
-private val SERVER_CONFIGS = listOf(
-    "server.properties", "bukkit.yml", "spigot.yml", "config/paper-global.yml", "config/paper-world-defaults.yml",
-    "commands.yml", "help.yml", "permissions.yml", "ops.json", "whitelist.json", "banned-players.json", "banned-ips.json",
-)
 
 val fileRoutes = endpoints("Files", Scope.FILES_READ) {
     get(
@@ -150,17 +141,17 @@ val fileRoutes = endpoints("Files", Scope.FILES_READ) {
         val file = files.requireFile(files.resolve(request.path, Access.WRITE), Access.WRITE)
         withContext(Dispatchers.IO) {
             val before = if (file.isRegularFile()) files.text(file) else ""
-            val after = ConfigValues.set(file.fileName.toString(), before, request.values)
+            val after = ConfigValues.set(file.fileName.toString(), before, request.values, api.yaml)
             save(files, file, before, after, request.expectedSha256, "set ${request.values.keys.joinToString()}")
         }
     }
 
     get("/server/configs", "Where the server's and each plugin's configs are", description = "Paths for /files/read and the write endpoints. $ACCESS") {
-        val plugins = main { api.server.pluginManager.plugins.associate { it.name to it.dataFolder.toPath() } }
+        val plugins = api.configFolders()
         val files = api.files
         withContext(Dispatchers.IO) {
             ConfigFiles(
-                server = SERVER_CONFIGS.filter { Files.isRegularFile(files.root.resolve(it)) },
+                server = api.serverConfigs.filter { Files.isRegularFile(files.root.resolve(it)) },
                 plugins = plugins.filterValues { Files.isDirectory(it) && !files.denied(it) }.mapValues { (_, folder) ->
                     Files.walk(folder, 3).use { stream ->
                         stream.filter { Files.isRegularFile(it) && files.allows(it, Access.READ) && !it.toString().endsWith(".log") }.limit(50).map(files::relative).sorted().toList()
@@ -172,7 +163,7 @@ val fileRoutes = endpoints("Files", Scope.FILES_READ) {
 }
 
 /** Logs need logs:read and the rest files:read; listing the server folder itself needs either. */
-private fun PaperCall.requireAccess(files: ServerFiles, path: String) {
+private fun ApiCall<*>.requireAccess(files: ServerFiles, path: String) {
     val clean = path.trim().replace('\\', '/').trim('/')
     val logs = clean == "logs" || clean.startsWith("logs/")
     when {
@@ -183,29 +174,29 @@ private fun PaperCall.requireAccess(files: ServerFiles, path: String) {
     files.resolve(path, Access.READ)
 }
 
-private suspend fun PaperCall.save(files: ServerFiles, file: Path, before: String, after: String, expected: String?, action: String): FileWritten {
+private suspend fun ApiCall<*>.save(files: ServerFiles, file: Path, before: String, after: String, expected: String?, action: String): FileWritten {
     val relative = files.relative(file)
     // ops.json makes operators, who run every command: the same as PATCH /server/ops.
     if (relative == "ops.json") require(Scope.SERVER_CONSOLE)
-    if (relative in ServerLists.files) return applyList(files, file, before, after, expected, action)
+    if (relative in api.listFiles) return applyList(files, file, before, after, expected, action)
     val written = files.write(file, after, expected, config.limits.fileBackups)
     val (added, removed) = lineDiff(before, after)
     auditTarget = files.relative(file)
     auditDetail = "$action: +$added -$removed lines"
-    return FileWritten(files.relative(file), written.sha256, written.size, written.created, written.backup, added, removed, NOTE)
+    return FileWritten(files.relative(file), written.sha256, written.size, written.created, written.backup, added, removed, api.configNote)
 }
 
 /**
  * ops.json and the like: the server applies the new list itself and saves the file, so nothing it
  * holds in memory gets lost. The answer shows the file as the server wrote it.
  */
-private suspend fun PaperCall.applyList(files: ServerFiles, file: Path, before: String, after: String, expected: String?, action: String): FileWritten {
+private suspend fun ApiCall<*>.applyList(files: ServerFiles, file: Path, before: String, after: String, expected: String?, action: String): FileWritten {
     val current = files.sha256(file)
     if (expected != null && !expected.equals(current ?: "", ignoreCase = true)) {
         com.mairwunnx.worldapi.api.conflict("file_changed", "${files.relative(file)} changed since you read it (sha256 ${current ?: "none"}); read it again")
     }
     val backup = withContext(Dispatchers.IO) { files.keepBackup(file, config.limits.fileBackups) }
-    val changes = main { ServerLists.apply(api.server, files.relative(file), after) }
+    val changes = api.applyList(files.relative(file), after)
     // The server saves these lists right away, on its own thread; give it a moment.
     kotlinx.coroutines.delay(200)
     val saved = withContext(Dispatchers.IO) { if (Files.isRegularFile(file)) files.text(file) else "" }
@@ -217,7 +208,7 @@ private suspend fun PaperCall.applyList(files: ServerFiles, file: Path, before: 
 }
 
 /** Lines only in [after] and only in [before], counted as multisets: rough, but enough to see what a write did. */
-internal fun lineDiff(before: String, after: String): Pair<Int, Int> {
+fun lineDiff(before: String, after: String): Pair<Int, Int> {
     val old = before.lines().groupingBy { it }.eachCount()
     val new = after.lines().groupingBy { it }.eachCount()
     val added = new.entries.sumOf { (line, count) -> (count - (old[line] ?: 0)).coerceAtLeast(0) }
@@ -226,7 +217,7 @@ internal fun lineDiff(before: String, after: String): Pair<Int, Int> {
 }
 
 /** `12\ttext` lines, with `--` where numbers skip, as grep -n shows separate matches. */
-internal fun numbered(lines: List<Pair<Int, String>>): String = buildString {
+fun numbered(lines: List<Pair<Int, String>>): String = buildString {
     var previous: Int? = null
     for ((number, text) in lines) {
         if (previous != null && number != previous + 1) append("--\n")
