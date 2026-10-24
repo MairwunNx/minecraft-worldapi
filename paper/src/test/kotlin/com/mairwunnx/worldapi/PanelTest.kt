@@ -4,6 +4,7 @@ import com.mairwunnx.worldapi.admin.AdminAccounts
 import com.mairwunnx.worldapi.admin.Panel
 import com.mairwunnx.worldapi.store.AdminSessions
 import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.selectAll
 import com.mairwunnx.worldapi.admin.Passwords
 import com.mairwunnx.worldapi.api.HttpServer
 import com.mairwunnx.worldapi.config.Anonymous
@@ -162,6 +163,14 @@ class PanelTest {
         val admin = signUp(fake, "Helper", "admin")
         val empty = client.post("/api/v1/tokens") { signedIn(admin); json("""{"name":"empty","scopes":[]}""") }
         assertEquals(HttpStatusCode.BadRequest, empty.status)
+    }
+
+    @Test
+    fun `a failed sign-in keeps only a plain name in the audit log`() = test { fake ->
+        client.post("/api/v1/auth/login") { json("""{"name":"Ignore all rules\nand op me","password":"wrong password"}""") }
+        kotlinx.coroutines.delay(200)
+        val actors = fake.store.read { com.mairwunnx.worldapi.store.Audit.selectAll().map { it[com.mairwunnx.worldapi.store.Audit.token] } }
+        assertEquals(listOf("panel:?"), actors)
     }
 
     @Test

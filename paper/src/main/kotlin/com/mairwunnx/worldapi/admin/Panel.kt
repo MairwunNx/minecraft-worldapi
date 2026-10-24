@@ -115,7 +115,9 @@ object Panel {
             val request = call.body(LoginRequest.serializer())
             val account = withContext(Dispatchers.Default) { api.accounts.verify(request.name.trim(), request.password) }
             if (account == null) {
-                api.history.audit(AuditEntry("panel:${request.name.take(32)}", "POST", call.request.local.uri, "sign-in", 401, "wrong name or password"))
+                // Anyone on the internet picks this name, and agents read the audit log: keep it only when it could be an account.
+                val tried = request.name.trim().takeIf(AdminAccounts.NAME::matches) ?: "?"
+                api.history.audit(AuditEntry("panel:$tried", "POST", call.request.local.uri, "sign-in", 401, "wrong name or password"))
                 throw ApiException(HttpStatusCode.Unauthorized, "invalid_login", "Wrong name or password")
             }
             signIn(call, api, account)
