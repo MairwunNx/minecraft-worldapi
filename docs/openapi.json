@@ -17198,6 +17198,21 @@
                         "items": {
                             "$ref": "#/components/schemas/DatapackView"
                         }
+                    },
+                    "platform": {
+                        "type": "string"
+                    },
+                    "side": {
+                        "type": "string"
+                    },
+                    "lan": {
+                        "type": "boolean"
+                    },
+                    "cheats": {
+                        "type": "boolean"
+                    },
+                    "paused": {
+                        "type": "boolean"
                     }
                 },
                 "required": [
