@@ -11,7 +11,7 @@ import java.util.logging.Logger
  * come and go while the game runs, so they're found once; [WorldApiExpansions] keeps them until a host binds, which the
  * mods will do once they serve the API.
  */
-object Expansions {
+object ExpansionMods {
     @Volatile private var found = false
 
     fun discover(log: Logger) {

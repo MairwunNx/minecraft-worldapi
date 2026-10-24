@@ -1,0 +1,9 @@
+{
+  "required": true,
+  "package": "com.mairwunnx.worldapi.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": ["ChunkMapAccess"],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

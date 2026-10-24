@@ -3,7 +3,7 @@
   "id": "worldapi",
   "version": "${version}",
   "name": "WorldAPI",
-  "description": "A REST and WebSocket API for your Minecraft server: worlds, players, statistics, events, and admin actions, with an admin panel.",
+  "description": "A REST and WebSocket API for your world: players, statistics, events, and admin actions, with an admin panel. On a server, or in singleplayer for an AI agent through minecraft-mcp.",
   "authors": ["MairwunNx"],
   "contact": {
     "homepage": "https://modrinth.com/plugin/worldapi",
@@ -12,15 +12,19 @@
   },
   "license": "MIT",
   "icon": "assets/worldapi/icon.png",
-  "environment": "server",
+  "environment": "*",
   "entrypoints": {
-    "server": [{ "adapter": "kotlin", "value": "com.mairwunnx.worldapi.fabric.WorldApiMod" }]
+    "main": ["com.mairwunnx.worldapi.fabric.WorldApiMod"]
   },
+  "mixins": ["worldapi.mixins.json"],
+  "jars": [{ "file": "META-INF/jars/sqlite-jdbc-${sqlite}.jar" }],
   "depends": {
     "fabricloader": ">=${loader}",
     "fabric-api": "*",
-    "fabric-language-kotlin": ">=${kotlin}",
     "minecraft": "~${minecraft}",
     "java": ">=25"
+  },
+  "suggests": {
+    "luckperms": "*"
   }
 }
