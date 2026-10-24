@@ -144,4 +144,20 @@ class WebSocketTest {
         assertEquals(WebSocketHub.MESSAGE_LIMIT.burst, answers.count { it.op() == "pong" })
         assertEquals("rate_limited", answers.last()["error"]!!.jsonObject["code"]!!.jsonPrimitive.content)
     }
+
+    @Test
+    fun `coordinates nested in a plugin's event are stripped too`() = test { hub ->
+        next()
+        val topic = Topic.extension("smoke", "found", recorded = false, public = true, description = "test")
+        say("""{"op":"subscribe","topics":["${topic.id}"]}""")
+        assertEquals("subscribed", next().op())
+        hub.accept(ApiEvent(topic, buildJsonObject {
+            put("boss", buildJsonObject { put("name", "Ghast"); put("location", buildJsonObject { put("x", 5) }) })
+            put("position", buildJsonObject { put("x", 5) })
+        }))
+        val data = next()["event"]!!.jsonObject["data"]!!.jsonObject
+        assertFalse("position" in data)
+        assertEquals(setOf("name"), data["boss"]!!.jsonObject.keys)
+        Topic.forget("smoke")
+    }
 }

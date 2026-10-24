@@ -4,6 +4,8 @@ import com.mairwunnx.worldapi.api.Principal
 import com.mairwunnx.worldapi.api.Scope
 import com.mairwunnx.worldapi.config.WorldApiConfig
 import com.mairwunnx.worldapi.model.EventView
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
 /** Decides which events a client may see and strips what privacy settings hide. */
@@ -39,6 +41,15 @@ class Visibility(private val principal: Principal, private val config: WorldApiC
 
     fun redact(view: EventView, topic: Topic): EventView {
         if (coordinates || topic.privacy != Topic.Privacy.COORDINATES) return view
-        return view.copy(data = JsonObject(view.data.filterKeys { it !in Topic.locationKeys }))
+        return view.copy(data = strip(view.data))
+    }
+
+    /** Location keys at any depth: a plugin's event may tuck them inside an object or a list. */
+    private fun strip(value: JsonObject): JsonObject = JsonObject(value.filterKeys { it !in Topic.locationKeys }.mapValues { (_, it) -> strip(it) })
+
+    private fun strip(value: JsonElement): JsonElement = when (value) {
+        is JsonObject -> strip(value)
+        is JsonArray -> JsonArray(value.map(::strip))
+        else -> value
     }
 }
