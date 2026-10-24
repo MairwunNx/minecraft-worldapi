@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.0.0
+
+WorldAPI 4.0 keeps one way for other plugins to share their data: the expansion API. Nothing changes for clients, sites, or the MCP server; only plugins that still use the older bridge need an update.
+
+- 💥 **Breaking: the bridge is gone.** The `java.util.function.Function` WorldAPI put in Bukkit's `ServicesManager` for other plugins, with requests as maps, no longer exists. A plugin that still registers through it finds nothing and shares nothing, without an error. Plugins share through the [expansion API](https://github.com/MairwunNx/minecraft-worldapi/wiki/Expansions), `com.mairwunnx:worldapi-expansion` on Maven Central since 3.4.0, under the same namespaces, paths, and topics. Mo’Bosses moved in 2.9.0, so update it to 2.9.0 or newer before WorldAPI, or its data drops out of `/extensions/mobosses` until you do.
+
 ## 3.4.0
 
 - 🧩 **An expansion API for other plugins.** `com.mairwunnx:worldapi-expansion` on Maven Central is a small Java library without dependencies: a plugin lists its resources and event types, WorldAPI serves them at `/extensions/<id>/…` and as `ext.<id>.*` topics, and the plugin publishes its events with one call. Register it from code, or name it in `META-INF/services` and WorldAPI finds it by itself. A resource learns who asks and whether they may see coordinates, so a public resource can leave them out for visitors. The bridge through Bukkit's services keeps working as before. The wiki's [Expansions](https://github.com/MairwunNx/minecraft-worldapi/wiki/Expansions) shows a plugin from start to end.
