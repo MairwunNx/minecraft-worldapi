@@ -52,7 +52,8 @@ class Icons(private val folder: Path, private val version: () -> String, private
         if (!Regex("[a-z0-9_./-]+").matches(id) || id in missing) return null
         cache[id]?.let { return it }
         val icon = runCatching { render(zip, id) }.getOrNull()
-        if (icon == null) missing += id else cache[id] = icon
+        // Clients pick the keys, so the list of misses stays bounded.
+        if (icon == null) { if (missing.size < 10_000) missing += id } else cache[id] = icon
         return icon
     }
 
