@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap
  * health, position): a slow client only needs the newest one, so those coalesce per subject.
  * An event topic is a fact that happened once; those queue up and drop oldest-first.
  * Recorded topics also go to the event history. WorldAPI's own topics are fixed; other plugins add
- * theirs at runtime through the extension bridge, as `ext.<namespace>.<event>`.
+ * theirs at runtime through the expansion API, as `ext.<namespace>.<event>`.
  */
 class Topic private constructor(
     val id: String,

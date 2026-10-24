@@ -137,7 +137,7 @@ data class WebSocket(
     val blockWindowSeconds: Int = 5,
 )
 
-/** Other plugins' data, through the extension bridge. */
+/** Other plugins' data, through the expansion API. */
 @Serializable
 data class Extensions(
     val enabled: Boolean = true,

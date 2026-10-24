@@ -20,9 +20,9 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.logging.Logger
 
 /**
- * The expansion API's host: expansions from `com.mairwunnx.worldapi.expansion` become namespaces in [Extensions], as
- * the bridge's registrations do, so `/extensions`, the topics, and the history treat both alike. A broken expansion is
- * refused with a line in the log and never stops the plugin that brought it.
+ * The expansion API's host: expansions from `com.mairwunnx.worldapi.expansion` become namespaces in [Extensions], which
+ * `/extensions`, the topics, and the history read. A broken expansion is refused with a line in the log and never stops
+ * the plugin that brought it.
  */
 class Expansions(
     private val extensions: Extensions,

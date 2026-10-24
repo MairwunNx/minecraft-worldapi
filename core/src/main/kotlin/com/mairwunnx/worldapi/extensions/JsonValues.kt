@@ -9,7 +9,7 @@ import java.time.temporal.TemporalAccessor
 import java.util.UUID
 
 /**
- * What plugins hand over through the bridge, as JSON: maps, lists and arrays, strings, numbers, and
+ * What expansions hand over, as JSON: maps, lists and arrays, strings, numbers, and
  * booleans, as they'd write JSON themselves. UUIDs, enums, and times become strings; anything else
  * becomes its `toString()`, so a plugin's odd value never breaks a response.
  */

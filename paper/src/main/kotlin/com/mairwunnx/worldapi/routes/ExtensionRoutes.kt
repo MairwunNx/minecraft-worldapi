@@ -34,7 +34,7 @@ data class ExtensionInfo(
 val extensionRoutes = endpoints("Extensions", Scope.SERVER_READ) {
     get<List<ExtensionInfo>>(
         "/extensions", "Other plugins’ data: their namespaces, resources, and event topics",
-        description = "Plugins register these through the extension bridge (see the reference). Anonymous clients see only what the plugin marks public.",
+        description = "Plugins register these through the expansion API (see the reference). Anonymous clients see only what the plugin marks public.",
     ) {
         if (!config.extensions.enabled) return@get emptyList()
         val visibility = Visibility(principal, config)

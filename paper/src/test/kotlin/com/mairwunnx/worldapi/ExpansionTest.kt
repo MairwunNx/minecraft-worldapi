@@ -11,7 +11,6 @@ import com.mairwunnx.worldapi.expansion.ExpansionApi
 import com.mairwunnx.worldapi.expansion.Resource
 import com.mairwunnx.worldapi.expansion.WorldApiExpansion
 import com.mairwunnx.worldapi.expansion.WorldApiExpansions
-import com.mairwunnx.worldapi.extensions.Bridge
 import com.mairwunnx.worldapi.extensions.Expansions
 import com.mairwunnx.worldapi.routes.extensionRoutes
 import com.mairwunnx.worldapi.ws.WebSocketHub
@@ -23,7 +22,6 @@ import io.ktor.server.testing.testApplication
 import org.bukkit.plugin.Plugin
 import java.util.NoSuchElementException
 import java.util.concurrent.CompletableFuture
-import java.util.function.Function
 import java.util.logging.Handler
 import java.util.logging.LogRecord
 import java.util.logging.Logger
@@ -51,8 +49,8 @@ class ExpansionTest {
     }
     private val bosses = fakePlugin()
     private val other = fakePlugin()
-    private val owners = mutableMapOf<String, Plugin>()
-    private val host = Expansions(fake.api.extensions, logger) { owners[it.id()] ?: bosses }
+    private val owners = mutableMapOf<WorldApiExpansion, Plugin>()
+    private val host = Expansions(fake.api.extensions, logger) { owners[it] ?: bosses }
 
     @AfterTest
     fun close() {
@@ -114,15 +112,12 @@ class ExpansionTest {
     }
 
     @Test
-    fun `nobody takes another plugin's namespace, through the bridge or the API`() {
-        Bridge(fake.api.extensions, "test").apply(mapOf("v" to 1, "op" to "register", "plugin" to other, "namespace" to "taken"))
+    fun `nobody takes another plugin's namespace`() {
         WorldApiExpansions.bind(host)
+        WorldApiExpansions.register(Bosses(id = "taken").also { owners[it] = other })
         WorldApiExpansions.register(Bosses(id = "taken"))
         assertTrue(fake.api.extensions.namespace("taken")!!.plugin === other)
         assertTrue("belongs to" in warnings.single())
-        // Unregistering through the API leaves the bridge's namespace alone.
-        WorldApiExpansions.unregister("taken")
-        assertNotNull(fake.api.extensions.namespace("taken"))
     }
 
     @Test
@@ -154,16 +149,5 @@ class ExpansionTest {
         // Private resources need a token, even on a path visitors may read.
         assertEquals(HttpStatusCode.Unauthorized, client.get("/api/v1/extensions/mobosses/bosses").status)
         assertEquals("""{"coordinates":true}""", client.get("/api/v1/extensions/mobosses/bosses") { bearerAuth(read) }.bodyAsText())
-    }
-
-    @Test
-    fun `the bridge still answers with plain maps`() = testApplication {
-        val get = Function<Map<String, String>, Any?> { mapOf("player" to it["player"], "limit" to it["limit"]) }
-        Bridge(fake.api.extensions, "test").apply(
-            mapOf("v" to 1, "op" to "register", "plugin" to other, "namespace" to "taken", "resources" to listOf(mapOf("path" to "players/{player}", "public" to true, "get" to get))),
-        )
-        val hub = WebSocketHub(fake.ref::get, { null }) { _, _ -> emptyList() }
-        application { HttpServer(fake.api, extensionRoutes, hub, Logger.getAnonymousLogger()).configure(this) }
-        assertEquals("""{"player":"Steve","limit":"5"}""", client.get("/api/v1/extensions/taken/players/Steve?limit=5&player=Alex").bodyAsText())
     }
 }

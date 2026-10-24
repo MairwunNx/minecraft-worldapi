@@ -6,7 +6,6 @@ import com.mairwunnx.worldapi.config.Extensions as ExtensionSettings
 import com.mairwunnx.worldapi.config.WorldApiConfig
 import com.mairwunnx.worldapi.events.Topic
 import com.mairwunnx.worldapi.events.Visibility
-import com.mairwunnx.worldapi.extensions.Bridge
 import com.mairwunnx.worldapi.extensions.Extensions
 import com.mairwunnx.worldapi.extensions.JsonValues
 import kotlinx.serialization.json.JsonArray
@@ -14,7 +13,6 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import java.util.UUID
-import java.util.function.Function
 import java.util.logging.Logger
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -28,7 +26,6 @@ import kotlin.test.assertTrue
 class ExtensionTest {
     private val fake = TestApi(WorldApiConfig())
     private val extensions = Extensions(fake.bus, Logger.getAnonymousLogger())
-    private val bridge = Bridge(extensions, "test")
     private val plugin = fakePlugin()
 
     @AfterTest
@@ -37,24 +34,24 @@ class ExtensionTest {
         fake.close()
     }
 
-    private fun register(owner: org.bukkit.plugin.Plugin = plugin) = bridge.apply(
-        mapOf(
-            "v" to 1, "op" to "register", "plugin" to owner, "namespace" to "mobosses", "description" to "Bosses",
-            "resources" to listOf(
-                mapOf("path" to "hunters", "public" to true, "get" to Function<Map<String, String>, Any?> { listOf(mapOf("name" to "Steve")) }),
-                mapOf("path" to "players/{player}", "public" to true, "get" to Function<Map<String, String>, Any?> { mapOf("name" to it["player"]) }),
-                mapOf("path" to "bosses", "get" to Function<Map<String, String>, Any?> { emptyList<Any>() }),
+    private fun register(owner: org.bukkit.plugin.Plugin = plugin) = extensions.register(
+        Extensions.Namespace(
+            "mobosses", owner, "Bosses",
+            listOf(
+                Extensions.Resource("hunters", "", public = true, mainThread = false) { _, _, _ -> listOf(mapOf("name" to "Steve")) },
+                Extensions.Resource("players/{player}", "", public = true, mainThread = false) { path, _, _ -> mapOf("name" to path["player"]) },
+                Extensions.Resource("bosses", "", public = false, mainThread = true) { _, _, _ -> emptyList<Any>() },
             ),
-            "events" to listOf(
-                mapOf("name" to "boss.killed", "public" to true, "recorded" to true),
-                mapOf("name" to "boss.spawned"),
+            listOf(
+                Topic.extension("mobosses", "boss.killed", recorded = true, public = true, description = ""),
+                Topic.extension("mobosses", "boss.spawned", recorded = false, public = false, description = ""),
             ),
         ),
     )
 
     @Test
-    fun `a plugin registers resources and topics with plain java values`() {
-        assertEquals(true, (register() as Map<*, *>)["ok"])
+    fun `a namespace holds its resources and topics`() {
+        register()
         val namespace = assertNotNull(extensions.namespace("mobosses"))
         assertEquals(listOf("hunters", "players/{player}", "bosses"), namespace.resources.map { it.path })
         val killed = assertNotNull(Topic.of("ext.mobosses.boss.killed"))
@@ -65,19 +62,12 @@ class ExtensionTest {
     }
 
     @Test
-    fun `a stopped plugin takes its topics along, and nobody else takes its namespace`() {
+    fun `an unregistered namespace takes its topics along, and nobody else takes it`() {
         register()
         assertFailsWith<IllegalArgumentException> { register(fakePlugin()) }
-        extensions.unregisterAll(plugin)
+        extensions.unregister("mobosses")
         assertNull(extensions.namespace("mobosses"))
         assertNull(Topic.of("ext.mobosses.boss.killed"))
-    }
-
-    @Test
-    fun `requests from a newer contract or with bad names are refused`() {
-        assertFailsWith<IllegalArgumentException> { bridge.apply(mapOf("v" to Bridge.CONTRACT + 1, "op" to "unregister", "namespace" to "mobosses")) }
-        assertFailsWith<IllegalArgumentException> { bridge.apply(mapOf("v" to 1, "op" to "register", "plugin" to plugin, "namespace" to "Mo Bosses")) }
-        assertFailsWith<IllegalArgumentException> { bridge.apply(mapOf("op" to "register")) }
     }
 
     @Test

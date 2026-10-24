@@ -130,7 +130,7 @@ events:
   # Days to keep the event history and the audit log; 0 keeps them forever.
   retentionDays: 0
 
-# Other plugins' data, through the extension bridge: their resources under
+# Other plugins' data, through the expansion API: their resources under
 # /extensions and their topics as ext.<namespace>.<event> (https://github.com/MairwunNx/minecraft-worldapi/wiki/Extensions).
 # A plugin marks what anonymous clients may see; list here what they mustn't
 # anyway: a namespace (mobosses), a resource (mobosses/bosses), or a topic

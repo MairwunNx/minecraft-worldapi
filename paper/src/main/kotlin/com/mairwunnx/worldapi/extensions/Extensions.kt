@@ -12,9 +12,9 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.logging.Logger
 
 /**
- * Other plugins' data. A plugin registers a namespace, through the bridge or the expansion API: resources
- * WorldAPI reads from it when a client asks, and event topics it publishes to. The plugin stays the source of truth: WorldAPI stores none
- * of its data, only the events it marks recorded, in the history like WorldAPI's own.
+ * Other plugins' data. A plugin registers a namespace through the expansion API ([Expansions]): resources WorldAPI
+ * reads from it when a client asks, and event topics it publishes to. The plugin stays the source of truth: WorldAPI
+ * stores none of its data, only the events it marks recorded, in the history like WorldAPI's own.
  */
 class Extensions(private val bus: EventBus, private val logger: Logger) {
     /** One readable path of a namespace, like `players/{player}`, and the function that answers it. */
@@ -60,9 +60,6 @@ class Extensions(private val bus: EventBus, private val logger: Logger) {
         namespaces.remove(name) ?: return
         Topic.forget(name)
     }
-
-    /** Every namespace of a plugin that stopped. */
-    fun unregisterAll(plugin: Plugin) = namespaces.values.filter { it.plugin === plugin }.forEach { unregister(it.name) }
 
     /** A plugin's event, on its way to the history and to WebSocket clients, from the server thread. */
     fun publish(namespace: String, event: String, data: JsonObject, player: PlayerRef?, world: String?) {

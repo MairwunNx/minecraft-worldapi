@@ -18,7 +18,6 @@ import com.mairwunnx.worldapi.events.Snapshots
 import com.mairwunnx.worldapi.events.Topic
 import com.mairwunnx.worldapi.events.Windows
 import com.mairwunnx.worldapi.expansion.WorldApiExpansions
-import com.mairwunnx.worldapi.extensions.Bridge
 import com.mairwunnx.worldapi.extensions.ExpansionPlugins
 import com.mairwunnx.worldapi.extensions.Expansions
 import com.mairwunnx.worldapi.extensions.Extensions
@@ -37,7 +36,6 @@ import com.mairwunnx.worldapi.ws.WebSocketHub
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicReference
-import java.util.function.Function
 import java.util.logging.Level
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -46,10 +44,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import org.bukkit.event.EventHandler
-import org.bukkit.event.Listener
-import org.bukkit.event.server.PluginDisableEvent
-import org.bukkit.plugin.ServicePriority
 import org.bukkit.plugin.java.JavaPlugin
 
 class WorldApiPlugin : JavaPlugin() {
@@ -116,13 +110,6 @@ class WorldApiPlugin : JavaPlugin() {
         server.pluginManager.registerEvents(listeners, this)
         val taming = Taming(this, api.tamed, logger)
         server.pluginManager.registerEvents(taming, this)
-        // Other plugins find the bridge by its type and its plugin, WorldAPI, with nothing of ours on their classpath.
-        @Suppress("UNCHECKED_CAST")
-        server.servicesManager.register(Function::class.java as Class<Function<Map<String, Any?>, Any?>>, Bridge(api.extensions, pluginMeta.version), this, ServicePriority.Normal)
-        server.pluginManager.registerEvents(object : Listener {
-            @EventHandler
-            fun onDisable(event: PluginDisableEvent) = api.extensions.unregisterAll(event.plugin)
-        }, this)
         // The expansion API: an expansion belongs to the plugin whose class loader loaded it.
         val expansions = Expansions(api.extensions, logger) { expansion ->
             server.pluginManager.plugins.firstOrNull { it.javaClass.classLoader === expansion.javaClass.classLoader } ?: this
@@ -168,7 +155,6 @@ class WorldApiPlugin : JavaPlugin() {
         server.onlinePlayers.forEach { api.history.closeSession(it.uniqueId.toString(), Instant.now()) }
         api.scripts.unloadAll()
         WorldApiExpansions.bind(null)
-        server.servicesManager.unregisterAll(this)
         api.restart.close()
         api.icons?.close()
         hub.closeAll(if (server.isStopping) "Server stopping" else "WorldAPI disabled")

@@ -38,7 +38,7 @@ class WorldApi(
     val version: String,
     /** Vanished players, for code off the server thread; on it, `Player.isVanished` reads the plugins' mark directly. */
     val vanished: Vanished = Vanished(),
-    /** Other plugins' namespaces, from the extension bridge. */
+    /** Other plugins' namespaces, from the expansion API. */
     val extensions: Extensions = Extensions(bus, java.util.logging.Logger.getLogger("WorldAPI")),
     /** Animals each player has tamed, which WorldAPI counts itself. */
     val tamed: Tamed,
