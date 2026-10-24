@@ -64,7 +64,6 @@ val playerDataRoutes = endpoints("Player data", Scope.PLAYERS_READ) {
             val player = onlinePlayer()
             auditTarget = player.gameProfile.name()
             player.removeAllEffects()
-            Unit
         }
     }
 
