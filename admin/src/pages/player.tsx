@@ -21,7 +21,7 @@ import { useCan } from "@/lib/session";
 type Player = Schema<"PlayerView">;
 
 /** Kick, ban, operator, whitelist: each asks first, and the page reloads the player after. */
-const Moderation = ({ player }: { player: Player }) => {
+const Moderation = ({ player, canOp }: { player: Player; canOp: boolean }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [reason, setReason] = useState("");
@@ -87,20 +87,23 @@ const Moderation = ({ player }: { player: Player }) => {
           {reasonField}
         </Confirm>
       )}
-      <Confirm
-        label={
-          <>
-            <Crown className="size-4" aria-hidden />
-            {player.op ? t("moderation.deop") : t("moderation.op")}
-          </>
-        }
-        title={player.op ? t("moderation.deopTitle", { name: player.name }) : t("moderation.opTitle", { name: player.name })}
-        text={player.op ? t("moderation.deopText") : t("moderation.opText")}
-        action={player.op ? t("moderation.deop") : t("moderation.op")}
-        onConfirm={() =>
-          run(() => data(client.PATCH("/players/{player}/permissions", { params: { path: { player: player.uuid } }, body: { op: !player.op } })), player.op ? t("moderation.deopped") : t("moderation.opped"))
-        }
-      />
+      {/* An operator runs every command, so only those with the console may make one. */}
+      {canOp && (
+        <Confirm
+          label={
+            <>
+              <Crown className="size-4" aria-hidden />
+              {player.op ? t("moderation.deop") : t("moderation.op")}
+            </>
+          }
+          title={player.op ? t("moderation.deopTitle", { name: player.name }) : t("moderation.opTitle", { name: player.name })}
+          text={player.op ? t("moderation.deopText") : t("moderation.opText")}
+          action={player.op ? t("moderation.deop") : t("moderation.op")}
+          onConfirm={() =>
+            run(() => data(client.PATCH("/players/{player}/permissions", { params: { path: { player: player.uuid } }, body: { op: !player.op } })), player.op ? t("moderation.deopped") : t("moderation.opped"))
+          }
+        />
+      )}
       <Confirm
         label={
           <>
@@ -255,7 +258,7 @@ export const PlayerPage = () => {
             {player.banned && <Badge variant="destructive">{t("player.banned")}</Badge>}
           </span>
         }
-        actions={can("players:moderate") && <Moderation player={player} />}
+        actions={can("players:moderate") && <Moderation player={player} canOp={can("server:console")} />}
       />
       <Tabs value={current} onValueChange={(value) => navigate({ search: { tab: value === "summary" ? undefined : value }, replace: true })}>
         <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
