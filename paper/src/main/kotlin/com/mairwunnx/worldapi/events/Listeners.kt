@@ -290,7 +290,7 @@ class Listeners(
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     fun onCraft(event: CraftItemEvent) {
         val player = event.whoClicked as? Player ?: return
-        windows.craft(player, event.recipe.result.type.key.asString(), event.recipe.result.amount)
+        windows.craft(player.ref(), player.world.name, event.recipe.result.type.key.asString(), event.recipe.result.amount)
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -312,10 +312,10 @@ class Listeners(
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    fun onBreak(event: BlockBreakEvent) = windows.block(Topic.BLOCK_BREAK, event.player, event.block.type.key.asString())
+    fun onBreak(event: BlockBreakEvent) = windows.block(Topic.BLOCK_BREAK, event.player.ref(), event.player.world.name, event.block.type.key.asString())
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    fun onPlace(event: BlockPlaceEvent) = windows.block(Topic.BLOCK_PLACE, event.player, event.block.type.key.asString())
+    fun onPlace(event: BlockPlaceEvent) = windows.block(Topic.BLOCK_PLACE, event.player.ref(), event.player.world.name, event.block.type.key.asString())
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     fun onNightSkip(event: ClockTimeSkipEvent) {

@@ -1,6 +1,5 @@
 package com.mairwunnx.worldapi.events
 
-import com.mairwunnx.worldapi.bukkit.ref
 import com.mairwunnx.worldapi.model.PlayerRef
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -16,9 +15,9 @@ class Windows(private val bus: EventBus, private val windowSeconds: () -> Int) {
     private val counts = mutableMapOf<Key, MutableMap<String, Int>>()
     private var startedAt = System.currentTimeMillis()
 
-    fun block(topic: Topic, player: org.bukkit.entity.Player, type: String) = add(Key(topic, player.ref(), player.world.name), type, 1)
+    fun block(topic: Topic, player: PlayerRef, world: String, type: String) = add(Key(topic, player, world), type, 1)
 
-    fun craft(player: org.bukkit.entity.Player, type: String, amount: Int) = add(Key(Topic.PLAYER_CRAFT, player.ref(), player.world.name), type, amount)
+    fun craft(player: PlayerRef, world: String, type: String, amount: Int) = add(Key(Topic.PLAYER_CRAFT, player, world), type, amount)
 
     fun entityDeath(world: String, type: String) = add(Key(Topic.ENTITY_DEATH, null, world), type, 1)
 
