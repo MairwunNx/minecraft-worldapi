@@ -74,19 +74,19 @@ jobs:
       - name: Publish the GitHub release
         # worldapi.jar too, so releases/latest/download/worldapi.jar always fetches the newest one.
         run: |
-          cp "build/libs/worldapi-$VERSION.jar" build/libs/worldapi.jar
-          gh release create "v$VERSION" --target "$GITHUB_SHA" --title "WorldAPI $VERSION" --notes-file "$NOTES" "build/libs/worldapi-$VERSION.jar" build/libs/worldapi.jar
+          cp "paper/build/libs/worldapi-$VERSION.jar" paper/build/libs/worldapi.jar
+          gh release create "v$VERSION" --target "$GITHUB_SHA" --title "WorldAPI $VERSION" --notes-file "$NOTES" "paper/build/libs/worldapi-$VERSION.jar" paper/build/libs/worldapi.jar
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Publish to Modrinth
         if: inputs.modrinth
         # Minotaur reads the project while it runs, which the configuration cache doesn't allow.
-        run: ./gradlew modrinth -PreleaseVersion="$VERSION" -PchangelogFile="$NOTES" --no-configuration-cache
+        run: ./gradlew :paper:modrinth -PreleaseVersion="$VERSION" -PchangelogFile="$NOTES" --no-configuration-cache
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
       - name: Publish to Hangar
         if: inputs.hangar
-        run: ./gradlew publishPluginPublicationToHangar -PreleaseVersion="$VERSION" -PchangelogFile="$NOTES" --no-configuration-cache
+        run: ./gradlew :paper:publishPluginPublicationToHangar -PreleaseVersion="$VERSION" -PchangelogFile="$NOTES" --no-configuration-cache
         env:
           HANGAR_TOKEN: ${{ secrets.HANGAR_TOKEN }}
 

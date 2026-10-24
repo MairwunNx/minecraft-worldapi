@@ -59,7 +59,7 @@ class OpenApiTest {
     /** The MCP server builds its client from docs/openapi.json; this keeps that file current. */
     @Test
     fun `the committed document is current`() {
-        val file = Path.of("docs/openapi.json")
+        val file = Path.of(System.getProperty("worldapi.openapi") ?: "docs/openapi.json")
         val text = pretty.encodeToString(JsonObject.serializer(), document) + "\n"
         if (System.getenv("WORLDAPI_UPDATE_OPENAPI") == "1") {
             file.parent.toFile().mkdirs()
