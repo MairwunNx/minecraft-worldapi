@@ -32,8 +32,8 @@ auth:
   #   system:read       the host: memory, disk, CPU, container limits
   #   world:write       blocks, containers, entities, time, weather, rules, border
   #   players:write     player state, inventories, teleports, effects, messages
-  #   players:moderate  kicks, bans, whitelist, operators, vanished players, IP addresses
-  #   server:console    console commands
+  #   players:moderate  kicks, bans, whitelist, the operator list, vanished players, IP addresses
+  #   server:console    console commands and making operators; it reaches as far as owner
   #   commands:read     the server's commands: names, plugins, descriptions, usage
   #   server:control    save, restart, stop, world seeds
   #   files:read        server and plugin configs
