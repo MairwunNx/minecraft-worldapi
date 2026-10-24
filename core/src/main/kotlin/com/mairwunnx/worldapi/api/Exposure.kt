@@ -45,7 +45,7 @@ class Exposure(private val logger: Logger, private val quietMillis: Long = 6 * 3
 
         fun local(address: String) = LOCAL.any { it.contains(address) }
 
-        internal fun frame(reason: String): String {
+        fun frame(reason: String): String {
             val lines = listOf(
                 "WorldAPI IS REACHABLE WITHOUT HTTPS",
                 "",

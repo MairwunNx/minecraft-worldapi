@@ -225,7 +225,7 @@ class WorldApiPlugin : JavaPlugin() {
                 api.tokens.tokens.map {
                     val expiry = when {
                         it.expired(now) -> "Expired ${it.expiresAt!!.take(10)}"
-                        it.expiresAt != null -> "Expires ${it.expiresAt.take(10)}"
+                        it.expiresAt != null -> "Expires ${it.expiresAt!!.take(10)}"
                         else -> "Never expires"
                     }
                     com.mairwunnx.worldapi.command.TokenLine(it.name, it.scopes, "$expiry, made by ${it.createdBy}", issued = true)

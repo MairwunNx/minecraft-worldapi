@@ -11,9 +11,10 @@ plugins {
 }
 
 val ktorVersion = "3.6.0"
-val exposedVersion = "1.6.0"
 
 dependencies {
+    // What doesn't touch Bukkit: the HTTP server's pieces, the config, the store, the models. Shaded with its libraries.
+    implementation(project(":core"))
     compileOnly("io.papermc.paper:paper-api:26.3.build.205-stable")
     // Paper ships the SQLite driver, so it stays out of the jar.
     compileOnly("org.xerial:sqlite-jdbc:3.53.4.0")
@@ -21,23 +22,6 @@ dependencies {
     compileOnly("org.apache.logging.log4j:log4j-core:2.26.1")
     // Plan is optional: its section shows on Plan's pages when Plan runs next to WorldAPI.
     compileOnly("com.djrapitops:plan-api:5.9-R1.3")
-
-    implementation("io.ktor:ktor-server-core:$ktorVersion")
-    implementation("io.ktor:ktor-server-cio:$ktorVersion")
-    implementation("io.ktor:ktor-server-websockets:$ktorVersion")
-    implementation("io.ktor:ktor-server-cors:$ktorVersion")
-    implementation("io.ktor:ktor-server-status-pages:$ktorVersion")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
-    implementation("com.charleskorn.kaml:kaml:0.104.0")
-    implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
-    implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
-    implementation("com.zaxxer:HikariCP:7.1.0")
-    implementation("org.postgresql:postgresql:42.7.14")
-    // MariaDB's driver also talks to MySQL; MySQL's own is GPL.
-    implementation("org.mariadb.jdbc:mariadb-java-client:3.5.10")
-    // Compiles scripts on servers that run a JRE without javac.
-    implementation("org.eclipse.jdt:ecj:3.46.100")
 
     testImplementation("io.papermc.paper:paper-api:26.3.build.205-stable")
     testImplementation("org.xerial:sqlite-jdbc:3.53.4.0")

@@ -212,7 +212,7 @@ private fun WorldPatch.apply(world: World) {
     // Validate everything first, so a bad field doesn't leave half the patch applied.
     val difficulty = difficulty?.let { name -> Difficulty.entries.firstOrNull { it.name.equals(name, ignoreCase = true) } ?: badRequest("difficulty must be peaceful, easy, normal, or hard") }
     if (weather != null && weather !in setOf("clear", "rain", "thunder")) badRequest("weather must be clear, rain, or thunder")
-    if (dayTime != null && dayTime !in 0..23_999) badRequest("dayTime must be 0–23999; use fullTime or addTime for more")
+    if (dayTime != null && dayTime!! !in 0..23_999) badRequest("dayTime must be 0–23999; use fullTime or addTime for more")
     listOfNotNull(weatherDurationTicks, thunderDurationTicks, clearWeatherDurationTicks).forEach { if (it < 0) badRequest("Durations can't be negative") }
 
     dayTime?.let { world.time = it }

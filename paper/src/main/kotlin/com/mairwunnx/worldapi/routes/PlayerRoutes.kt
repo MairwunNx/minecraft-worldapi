@@ -126,8 +126,8 @@ val playerRoutes = endpoints("Players", Scope.PLAYERS_READ) {
         val (player, target) = main {
             val player = onlinePlayer()
             val target = when {
-                request.location != null -> request.location.toLocation(api.server)
-                request.player != null -> (visibleOnline(request.player) ?: notFound("player_not_found", "${request.player} isn't online")).location
+                request.location != null -> request.location!!.toLocation(api.server)
+                request.player != null -> (visibleOnline(request.player!!) ?: notFound("player_not_found", "${request.player} isn't online")).location
                 else -> (api.server.findWorld(request.worldSpawn!!) ?: notFound("world_not_found", "No world ${request.worldSpawn}")).spawnLocation
             }
             player to target
@@ -228,11 +228,11 @@ private fun state(player: Player, addresses: Boolean) = PlayerState(
 private fun PlayerPatch.apply(player: Player, maxLength: Int) {
     val mode = gameMode?.let { name -> GameMode.entries.firstOrNull { it.name.equals(name, ignoreCase = true) } ?: badRequest("gameMode must be survival, creative, adventure, or spectator") }
     val maxHealth = player.getAttribute(Attribute.MAX_HEALTH)?.value ?: 20.0
-    if (health != null && health !in 0.0..maxHealth) badRequest("health must be between 0 and $maxHealth")
+    if (health != null && health!! !in 0.0..maxHealth) badRequest("health must be between 0 and $maxHealth")
     if (food != null && food !in 0..20) badRequest("food must be 0–20")
-    if (saturation != null && saturation !in 0f..20f) badRequest("saturation must be 0–20")
-    if (exp != null && exp !in 0f..1f) badRequest("exp is progress to the next level, 0–1")
-    if (level != null && level < 0) badRequest("level can't be negative")
+    if (saturation != null && saturation!! !in 0f..20f) badRequest("saturation must be 0–20")
+    if (exp != null && exp!! !in 0f..1f) badRequest("exp is progress to the next level, 0–1")
+    if (level != null && level!! < 0) badRequest("level can't be negative")
     listOfNotNull(walkSpeed, flySpeed).forEach { if (it !in -1f..1f) badRequest("Speeds go from -1 to 1") }
     val display = displayName?.let { text(it, format, maxLength) }
     val list = listName?.let { text(it, format, maxLength) }

@@ -43,7 +43,7 @@ val extensionRoutes = endpoints("Extensions", Scope.SERVER_READ) {
                 namespace.name, namespace.plugin.name, namespace.plugin.pluginMeta.version, namespace.description,
                 namespace.resources.filter { !principal.anonymous || (it.public && !visibility.hidden(namespace.name, "${namespace.name}/${it.path}")) }
                     .map { ExtensionResourceInfo(it.path, it.description, it.public) },
-                namespace.topics.filter(visibility::allows).map { ExtensionTopicInfo(it.id, it.extension!!.description, it.extension.public, it.recorded) },
+                namespace.topics.filter(visibility::allows).map { topic -> topic.extension!!.let { ExtensionTopicInfo(topic.id, it.description, it.public, topic.recorded) } },
             )
         }.filter { !principal.anonymous || it.resources.isNotEmpty() || it.topics.isNotEmpty() }
     }
