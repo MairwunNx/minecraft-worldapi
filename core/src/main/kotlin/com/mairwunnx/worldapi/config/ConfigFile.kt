@@ -14,6 +14,7 @@ import kotlin.io.path.writeText
 /** Reads config.yml, writing the commented default with a fresh admin token on first start. */
 object ConfigFile {
     private const val TOKEN_PLACEHOLDER = "{generated}"
+    private val UNSET_VARIABLE = Regex("""\$\{[A-Za-z_][A-Za-z0-9_]*}""")
 
     // Strict mode turns a typo in a key into an error instead of a silently ignored setting.
     private val yaml = Yaml(configuration = YamlConfiguration(strictMode = true))
@@ -50,6 +51,10 @@ object ConfigFile {
             }
             config.auth.tokens.filter { it.token.length < 16 || it.token == TOKEN_PLACEHOLDER }.forEach {
                 add("auth.tokens.${it.name}: the token must be at least 16 characters")
+            }
+            // A placeholder nothing replaced, such as ${CFG_TOKEN} with the variable unset, is the same for everyone who reads the docs.
+            config.auth.tokens.filter { UNSET_VARIABLE.containsMatchIn(it.token) }.forEach {
+                add("auth.tokens.${it.name}: the token is a placeholder (${it.token.substringAfter("\${").substringBefore('}')}) that nothing filled in")
             }
             val limits = listOf(config.rateLimit.anonymous, config.rateLimit.tokens) +
                 config.auth.tokens.mapNotNull { it.rateLimit }

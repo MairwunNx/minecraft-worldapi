@@ -6,6 +6,7 @@ import com.mairwunnx.worldapi.config.WorldApiConfig
 import java.nio.file.Files
 import kotlin.io.path.readText
 import kotlin.test.Test
+import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotEquals
@@ -61,6 +62,9 @@ class ConfigTest {
         assertFailsWith<Exception> { ConfigFile.parse("http:\n  port: 70000\n") }
         assertFailsWith<Exception> { ConfigFile.parse("http:\n  basePath: api/\n") }
         assertFailsWith<Exception> { ConfigFile.parse("auth:\n  tokens:\n    - { name: a, token: short, scopes: [read] }\n") }
+        // A placeholder the container's variable never filled in would be a token everyone can read in the docs.
+        val unset = assertFailsWith<Exception> { ConfigFile.parse("auth:\n  tokens:\n    - { name: a, token: \"\${CFG_WORLDAPI_TOKEN}\", scopes: [read] }\n") }
+        assertContains(unset.message!!, "placeholder")
         assertFailsWith<Exception> { ConfigFile.parse("auth:\n  tokens:\n    - { name: a, token: \"$token\", scopes: [root] }\n") }
         assertFailsWith<Exception> {
             ConfigFile.parse("auth:\n  tokens:\n    - { name: a, token: \"$token\", scopes: [read] }\n    - { name: a, token: \"${token}1\", scopes: [read] }\n")
