@@ -131,7 +131,10 @@ val playerDataRoutes = endpoints("Player data", Scope.PLAYERS_READ) {
         }
     }
 
-    patch<PermissionPatch, PermissionView>("/players/{player}/permissions", "Make a player an operator or take it away", Scope.PLAYERS_MODERATE) { patch ->
+    patch<PermissionPatch, PermissionView>(
+        "/players/{player}/permissions", "Make a player an operator or take it away", Scope.SERVER_CONSOLE,
+        description = "Needs `server:console`, not `players:moderate`: an operator may run every command, `/worldapi` among them.",
+    ) { patch ->
         main {
             val player = knownPlayer()
             auditTarget = "${player.name} op=${patch.op}"

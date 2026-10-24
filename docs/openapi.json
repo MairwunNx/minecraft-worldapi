@@ -4630,15 +4630,15 @@
             "patch": {
                 "operationId": "patchPlayersPlayerPermissions",
                 "summary": "Make a player an operator or take it away",
-                "description": "Permission: `players:moderate`.",
+                "description": "Needs `server:console`, not `players:moderate`: an operator may run every command, `/worldapi` among them.\n\nPermission: `server:console`.",
                 "tags": [
                     "Player data"
                 ],
-                "x-scope": "players:moderate",
+                "x-scope": "server:console",
                 "security": [
                     {
                         "bearer": [
-                            "players:moderate"
+                            "server:console"
                         ]
                     }
                 ],
@@ -6539,15 +6539,15 @@
             "patch": {
                 "operationId": "patchServerOps",
                 "summary": "Make players operators or take it away",
-                "description": "Permission: `players:moderate`.",
+                "description": "Needs `server:console`, not `players:moderate`: an operator may run every command, `/worldapi` among them.\n\nPermission: `server:console`.",
                 "tags": [
                     "Access"
                 ],
-                "x-scope": "players:moderate",
+                "x-scope": "server:console",
                 "security": [
                     {
                         "bearer": [
-                            "players:moderate"
+                            "server:console"
                         ]
                     }
                 ],

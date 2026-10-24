@@ -186,6 +186,8 @@ private fun ApiCall.requireAccess(files: ServerFiles, path: String) {
 
 private suspend fun ApiCall.save(files: ServerFiles, file: Path, before: String, after: String, expected: String?, action: String): FileWritten {
     val relative = files.relative(file)
+    // ops.json makes operators, who run every command: the same as PATCH /server/ops.
+    if (relative == "ops.json") require(Scope.SERVER_CONSOLE)
     if (relative in ServerLists.files) return applyList(files, file, before, after, expected, action)
     val written = files.write(file, after, expected, config.limits.fileBackups)
     val (added, removed) = lineDiff(before, after)
