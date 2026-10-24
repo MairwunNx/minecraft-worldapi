@@ -40,6 +40,7 @@ The packages stay the same in every module, so a class moves between `core` and 
 
 - Bukkit calls happen on the server thread through `core/MainThread.kt`; IO, the database, and network never do.
 - Anonymous clients never get coordinates, inventories, addresses, or chat. A new topic or field declares its `Privacy` in `Topic.kt`, and `Visibility` must strip it for anonymous clients. Moonlands opens topics to anonymous visitors in its own config, so check what a new field would show there.
+- A token or account whose permissions resolve to none gets nothing; only the WebSocket waiting for its first message passes `guard` without permissions. Anonymous clients are told by their `ip:` key, never by name.
 - Permissions live in `Scope.kt`; groups in config.yml `auth.groups`, with defaults in `Scope.defaultGroups` that the shipped config.yml must match (a test checks). Only `owner` has `files:write` and `code` by default; keep it so. Anyone grants only what they have (`canGrant`).
 - `/files` never reaches WorldAPI's own folder, hidden files, keys, databases, jars, or a link out of the server folder; logs and files the server keeps in memory stay read-only. A new rule goes into `ServerFiles` with a test in `FilesTest`.
 - Never log or print a token. The token menu shows a new one once, to the player who made it.
