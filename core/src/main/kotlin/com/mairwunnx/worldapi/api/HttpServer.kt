@@ -69,8 +69,14 @@ class HttpServer<A : WorldApi>(
     private val base = config.http.basePath
     private var engine: EmbeddedServer<*, *>? = null
 
-    fun start() {
-        engine = embeddedServer(CIO, host = config.http.host, port = config.http.port) { configure(this) }.also { it.start(wait = false) }
+    /** Whether the server listens on a loopback address only; then it answers only requests that name the loopback. */
+    @Volatile
+    private var loopback = false
+
+    /** Listens on [host] and [port], config.yml's unless the platform picks them, as in singleplayer. */
+    fun start(host: String = config.http.host, port: Int = config.http.port) {
+        loopback = Exposure.loopbackHost(host)
+        engine = embeddedServer(CIO, host = host, port = port) { configure(this) }.also { it.start(wait = false) }
     }
 
     fun stop() {
@@ -111,6 +117,14 @@ class HttpServer<A : WorldApi>(
             }
             status(HttpStatusCode.NotFound) { call, _ -> call.error(HttpStatusCode.NotFound, "not_found", "No such endpoint") }
             status(HttpStatusCode.MethodNotAllowed) { call, _ -> call.error(HttpStatusCode.MethodNotAllowed, "method_not_allowed", "This path doesn't take ${call.request.httpMethod.value}") }
+        }
+        // DNS rebinding: a page on another site can point its own name at 127.0.0.1, so a server that only listens there
+        // trusts only requests that name the loopback, and browsers' requests from pages served elsewhere.
+        intercept(io.ktor.server.application.ApplicationCallPipeline.Plugins) {
+            if (loopback && !Exposure.loopbackRequest(context, config.cors.allowedOrigins)) {
+                context.error(HttpStatusCode.Forbidden, "host_not_allowed", "This server answers only requests to localhost")
+                finish()
+            }
         }
         routing {
             route(base) {

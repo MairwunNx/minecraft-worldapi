@@ -45,6 +45,33 @@ class Exposure(private val logger: Logger, private val quietMillis: Long = 6 * 3
 
         fun local(address: String) = LOCAL.any { it.contains(address) }
 
+        private val LOOPBACK = listOf("127.0.0.0/8", "::1/128").mapNotNull(Cidr::parse)
+
+        /** Whether a bind address or a host name stands for this machine only. */
+        fun loopbackHost(host: String): Boolean {
+            val bare = host.trim().removePrefix("[").removeSuffix("]").lowercase()
+            return bare == "localhost" || bare.endsWith(".localhost") || LOOPBACK.any { it.contains(bare) }
+        }
+
+        /**
+         * Whether a request names the loopback in its Host, and, when a browser sent it from a page, came from a page on
+         * the loopback too or from an origin `cors.allowedOrigins` names.
+         */
+        fun loopbackRequest(call: ApplicationCall, allowedOrigins: List<String>): Boolean {
+            val host = call.request.headers["Host"] ?: return false
+            if (!loopbackHost(hostName(host))) return false
+            val origin = call.request.headers["Origin"]?.takeUnless { it == "null" } ?: return true
+            if ("*" in allowedOrigins || allowedOrigins.any { it.trimEnd('/').equals(origin.trimEnd('/'), ignoreCase = true) }) return true
+            return runCatching { java.net.URI(origin).host }.getOrNull()?.let(::loopbackHost) == true
+        }
+
+        /** The name in a Host header without its port: `127.0.0.1:8110`, `[::1]:8110`, `localhost`. */
+        private fun hostName(header: String): String = when {
+            header.startsWith("[") -> header.substringBefore(']') + "]"
+            header.count { it == ':' } == 1 -> header.substringBefore(':')
+            else -> header
+        }
+
         fun frame(reason: String): String {
             val lines = listOf(
                 "WorldAPI IS REACHABLE WITHOUT HTTPS",
