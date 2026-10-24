@@ -72,7 +72,9 @@ val extensionRoutes = endpoints("Extensions", Scope.SERVER_READ) {
         } catch (error: ApiException) {
             throw error
         } catch (error: Exception) {
-            throw ApiException(HttpStatusCode.BadGateway, "extension_failed", "${namespace.plugin.name} couldn't answer: ${error.message}")
+            // An exception's message can name files, queries, or players; visitors get only that it failed.
+            val why = if (principal.anonymous) "" else ": ${error.message}"
+            throw ApiException(HttpStatusCode.BadGateway, "extension_failed", "${namespace.plugin.name} couldn't answer$why")
         }
         JsonValues.of(value)
     }
