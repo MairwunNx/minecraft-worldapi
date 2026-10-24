@@ -135,4 +135,13 @@ class WebSocketTest {
         say("""{"op":"ping"}""")
         assertEquals("pong", next().op())
     }
+
+    @Test
+    fun `a flood of messages is cut off`() = test {
+        next()
+        repeat(WebSocketHub.MESSAGE_LIMIT.burst + 5) { say("""{"op":"ping"}""") }
+        val answers = List(WebSocketHub.MESSAGE_LIMIT.burst + 5) { next() }
+        assertEquals(WebSocketHub.MESSAGE_LIMIT.burst, answers.count { it.op() == "pong" })
+        assertEquals("rate_limited", answers.last()["error"]!!.jsonObject["code"]!!.jsonPrimitive.content)
+    }
 }

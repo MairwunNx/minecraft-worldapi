@@ -2,6 +2,8 @@ package com.mairwunnx.worldapi.ws
 
 import com.mairwunnx.worldapi.api.ErrorDetail
 import com.mairwunnx.worldapi.api.Principal
+import com.mairwunnx.worldapi.api.RateLimiter
+import com.mairwunnx.worldapi.config.RateLimit
 import com.mairwunnx.worldapi.config.WorldApiConfig
 import com.mairwunnx.worldapi.events.ApiEvent
 import com.mairwunnx.worldapi.events.EventSink
@@ -87,6 +89,7 @@ class WebSocketHub(
         private val states = LinkedHashMap<String, ApiEvent>()
         private var dropped = 0
         private val wake = Channel<Unit>(Channel.CONFLATED)
+        private val messages = RateLimiter()
 
         /** No header token and no anonymous access: the client must send a token before anything else. */
         private val needsAuth get() = principal.scopes.isEmpty()
@@ -139,6 +142,12 @@ class WebSocketHub(
                 }
                 for (frame in session.incoming) {
                     if (frame !is Frame.Text) continue
+                    // Each subscribe builds snapshots on the server thread and each auth checks a token: a flood waits its turn.
+                    val wait = messages.acquire("client", MESSAGE_LIMIT)
+                    if (wait > 0) {
+                        send(ErrorMessage(ErrorDetail("rate_limited", "Too many messages; retry in $wait s")))
+                        continue
+                    }
                     val message = parse(frame.readText()) ?: continue
                     handle(message)
                 }
@@ -229,6 +238,9 @@ class WebSocketHub(
     }
 
     companion object {
+        /** What one connection may send: plenty for a page that subscribes as it opens, too little to keep the server thread busy. */
+        val MESSAGE_LIMIT = RateLimit(requestsPerMinute = 120, burst = 30)
+
         val json = Json {
             classDiscriminator = "op"
             explicitNulls = false
