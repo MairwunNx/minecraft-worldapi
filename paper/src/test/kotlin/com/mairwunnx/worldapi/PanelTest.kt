@@ -164,6 +164,12 @@ class PanelTest {
         assertEquals(HttpStatusCode.BadRequest, empty.status)
     }
 
+    @Test
+    fun `sign-in bodies stop at 4 KiB`() = test {
+        val big = """{"name":"Steve","password":"${"x".repeat(100_000)}"}"""
+        assertEquals(HttpStatusCode.PayloadTooLarge, client.post("/api/v1/auth/login") { json(big) }.status)
+    }
+
     private suspend fun ApplicationTestBuilder.signUp(fake: TestApi, name: String, group: String): String {
         val code = fake.api.accounts.issueCode(name, null, listOf(group), "test")
         val response = client.post("/api/v1/auth/setup") { json("""{"code":"$code","password":"a long password"}""") }

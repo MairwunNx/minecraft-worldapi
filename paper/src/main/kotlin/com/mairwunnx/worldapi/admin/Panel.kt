@@ -17,7 +17,9 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.fromFilePath
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.header
-import io.ktor.server.request.receiveText
+import io.ktor.server.request.receiveChannel
+import io.ktor.utils.io.readRemaining
+import kotlinx.io.readByteArray
 import io.ktor.server.response.header
 import io.ktor.server.response.respondBytes
 import io.ktor.server.response.respondRedirect
@@ -238,11 +240,14 @@ object Panel {
         }
     }
 
+    /** Reads at most 4 KiB, so a huge body is refused before it fills memory. */
     private suspend fun <T> ApplicationCall.body(serializer: KSerializer<T>): T {
-        val text = receiveText()
-        if (text.length > 4_096) throw ApiException(HttpStatusCode.PayloadTooLarge, "body_too_large", "The body is too large")
-        return ApiJson.decodeFromString(serializer, text.ifBlank { "{}" })
+        val bytes = receiveChannel().readRemaining(BODY_LIMIT + 1L).readByteArray()
+        if (bytes.size > BODY_LIMIT) throw ApiException(HttpStatusCode.PayloadTooLarge, "body_too_large", "The body is too large")
+        return ApiJson.decodeFromString(serializer, bytes.decodeToString().ifBlank { "{}" })
     }
+
+    private const val BODY_LIMIT = 4_096
 
     private suspend fun <T> ApplicationCall.json(serializer: KSerializer<T>, value: T) =
         respondText(ApiJson.encodeToString(serializer, value), ContentType.Application.Json)
