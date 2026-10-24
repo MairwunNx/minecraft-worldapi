@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.4.0
+
+- 🧩 **An expansion API for other plugins.** `com.mairwunnx:worldapi-expansion` on Maven Central is a small Java library without dependencies: a plugin lists its resources and event types, WorldAPI serves them at `/extensions/<id>/…` and as `ext.<id>.*` topics, and the plugin publishes its events with one call. Register it from code, or name it in `META-INF/services` and WorldAPI finds it by itself. A resource learns who asks and whether they may see coordinates, so a public resource can leave them out for visitors. The bridge through Bukkit's services keeps working as before. The wiki's [Expansions](https://github.com/MairwunNx/minecraft-worldapi/wiki/Expansions) shows a plugin from start to end.
+- 🏗️ **Ready for more platforms.** The code now sits in modules: `core` without Bukkit, `paper` for the plugin, and frames for Fabric and NeoForge mods, which don't do anything yet and aren't published. The plugin, its endpoints, its config, and its jar's name stay the same.
+
 ## 3.3.0
 
 - 📍 **The spawn point.** `GET /spawn` shows where players join for the first time and respawn without a bed: the world, the point, which way they face, the respawn radius, and spawn protection. `PATCH /spawn` moves it, to another world too, and changes the radius. A world's page in the panel shows it and, with `world:write`, moves it.

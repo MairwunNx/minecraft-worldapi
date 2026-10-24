@@ -26,7 +26,7 @@
 - 🏆 **Живая статистика.** Рейтинги меняются, пока люди играют, а не при следующем автосохранении, и рейтингом может стать любая ванильная статистика.
 - 🗂️ **Конфиги и логи как файлы**: чтение постранично или поиском, правка по ключу и бэкап каждой прежней версии.
 - 🔑 **Безопасно по умолчанию.** Публичный сайт читает без токена и не видит ни координат, ни инвентарей, ни чата. Для остального нужен токен с подходящими правами.
-- 🔌 **Данные других плагинов.** Плагины отдают через WorldAPI свои ресурсы и живые события, не подключая никакой библиотеки.
+- 🔌 **Данные других плагинов.** Плагины отдают через WorldAPI свои ресурсы и живые события: через маленькую Java-библиотеку с Maven Central или вовсе без неё.
 - 🤖 **Готов к ИИ-агентам** через [minecraft-mcp](https://github.com/MairwunNx/minecraft-mcp) и к Grafana через [minecraft-exporter](https://github.com/MairwunNx/minecraft-exporter).
 
 ## Как начать
@@ -41,7 +41,7 @@
 
 **Владельцам серверов:** [Installation](https://github.com/MairwunNx/minecraft-worldapi/wiki/Installation) · [First steps](https://github.com/MairwunNx/minecraft-worldapi/wiki/First-steps) · [Tokens and permissions](https://github.com/MairwunNx/minecraft-worldapi/wiki/Tokens-and-permissions) · [Admin panel](https://github.com/MairwunNx/minecraft-worldapi/wiki/Admin-panel) · [Configuration](https://github.com/MairwunNx/minecraft-worldapi/wiki/Configuration) · [Reverse proxy](https://github.com/MairwunNx/minecraft-worldapi/wiki/Reverse-proxy) · [Security](https://github.com/MairwunNx/minecraft-worldapi/wiki/Security) · [Monitoring](https://github.com/MairwunNx/minecraft-worldapi/wiki/Monitoring) · [MCP](https://github.com/MairwunNx/minecraft-worldapi/wiki/MCP) · [FAQ](https://github.com/MairwunNx/minecraft-worldapi/wiki/FAQ)
 
-**Разработчикам:** [REST API](https://github.com/MairwunNx/minecraft-worldapi/wiki/REST-API) · [WebSocket](https://github.com/MairwunNx/minecraft-worldapi/wiki/WebSocket) · [Extensions](https://github.com/MairwunNx/minecraft-worldapi/wiki/Extensions) · [Java scripts](https://github.com/MairwunNx/minecraft-worldapi/wiki/Java-scripts) · [Building from source](https://github.com/MairwunNx/minecraft-worldapi/wiki/Building-from-source) · [Architecture](https://github.com/MairwunNx/minecraft-worldapi/wiki/Architecture) · [Development](https://github.com/MairwunNx/minecraft-worldapi/wiki/Development) · [Releasing](https://github.com/MairwunNx/minecraft-worldapi/wiki/Releasing)
+**Разработчикам:** [REST API](https://github.com/MairwunNx/minecraft-worldapi/wiki/REST-API) · [WebSocket](https://github.com/MairwunNx/minecraft-worldapi/wiki/WebSocket) · [Extensions](https://github.com/MairwunNx/minecraft-worldapi/wiki/Extensions) · [Expansions](https://github.com/MairwunNx/minecraft-worldapi/wiki/Expansions) · [Java scripts](https://github.com/MairwunNx/minecraft-worldapi/wiki/Java-scripts) · [Building from source](https://github.com/MairwunNx/minecraft-worldapi/wiki/Building-from-source) · [Architecture](https://github.com/MairwunNx/minecraft-worldapi/wiki/Architecture) · [Development](https://github.com/MairwunNx/minecraft-worldapi/wiki/Development) · [Releasing](https://github.com/MairwunNx/minecraft-worldapi/wiki/Releasing)
 
 ## Связанные проекты
 

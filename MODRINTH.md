@@ -10,7 +10,7 @@
 - 🏆 **Live statistics.** Leaderboards move while people play, not at the next autosave, and any vanilla statistic can be one.
 - 🗂️ **Configs and logs as files**, read by page or by search and changed by key, with a backup of every previous version.
 - 🔑 **Safe by default.** A public site reads without a token and never sees coordinates, inventories, or chat; everything else takes a token with the right permissions.
-- 🔌 **Other plugins' data, too.** Plugins share their own resources and live events through WorldAPI with no library to add.
+- 🔌 **Other plugins' data, too.** Plugins share their own resources and live events through WorldAPI, with a small Java library from Maven Central or with none at all.
 - 🤖 **Ready for AI agents** through [minecraft-mcp](https://github.com/MairwunNx/minecraft-mcp), and for Grafana through [minecraft-exporter](https://github.com/MairwunNx/minecraft-exporter).
 
 ## Get started
