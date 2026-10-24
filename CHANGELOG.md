@@ -1,5 +1,19 @@
 # Changelog
 
+## 4.1.1
+
+A security release that takes something away from moderators: making operators now needs `server:console`.
+
+### Security
+
+- 🔒 **Moderators could reach every permission.** `players:moderate`, which the default `moderator` group has, could make any player an operator. An operator may run `/worldapi`, which makes tokens and panel codes with any permission, `code` and `files:write` among them. Making or unmaking operators now needs `server:console`, which only `admin` and `owner` have by default: `PATCH /server/ops`, `PATCH /players/{player}/permissions`, and writing `ops.json` through `/files`.
+- 🔒 **WorldAPI's own permissions stay out of the API.** `POST /server/commands` refuses any command that names a `worldapi.*` node, such as `lp user Steve permission set worldapi.admin true`, with 403 `protected_permission`, whatever the token holds. Change those permissions in game or in your permissions plugin.
+
+### What changes for moderators
+
+- A `moderator` token or account can no longer make or unmake operators; it gets 403 `missing_scope`. Kicks, bans, the whitelist, and reading the operator list stay as they were. Give `server:console` on purpose to anyone who should make operators, knowing it reaches as far as `owner`.
+- The panel shows the operator button on a player's page only to accounts with `server:console`.
+
 ## 4.1.0
 
 - ⌨️ **The server's commands.** `GET /server/commands` lists every command the server has, once each: the game's, the server's, and every plugin's, Brigadier ones included, with its aliases, the plugin that owns it, its description, and its usage, such as `/give <targets> <item> [<count>]`. `query` searches names, aliases, and descriptions, several searches at once; `plugin` lists one plugin's. WorldAPI builds the list once and builds it again when a plugin is enabled or disabled. The MCP server's `search_commands` reads it.
