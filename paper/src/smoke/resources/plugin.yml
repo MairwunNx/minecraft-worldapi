@@ -1,0 +1,6 @@
+name: WorldAPISmoke
+version: "1.0"
+main: com.mairwunnx.worldapi.smoke.SmokePlugin
+api-version: "26.3"
+depend: [WorldAPI]
+description: The smoke test's expansion of WorldAPI; never released.

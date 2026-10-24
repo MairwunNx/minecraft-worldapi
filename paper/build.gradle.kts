@@ -160,3 +160,17 @@ hangarPublish {
         }
     }
 }
+
+// `smoke`: a tiny plugin with two expansions, for the smoke test only (`./gradlew :paper:smokeJar`, then
+// paper_smoke.py --plugin paper/build/libs/worldapi-smoke.jar). It compiles against the API alone, as any expansion does.
+val smoke: SourceSet = sourceSets.create("smoke")
+dependencies {
+    "smokeCompileOnly"("io.papermc.paper:paper-api:26.3.build.205-stable")
+    "smokeCompileOnly"(project(":expansion"))
+}
+tasks.register<Jar>("smokeJar") {
+    description = "Builds the smoke test's expansion plugin."
+    archiveFileName = "worldapi-smoke.jar"
+    destinationDirectory = layout.buildDirectory.dir("libs")
+    from(smoke.output)
+}
