@@ -10,6 +10,12 @@ plugins {
     id("io.papermc.hangar-publish-plugin")
 }
 
+// `worldapi.mods=true` in gradle.properties, once the mods serve the API, gives each platform its own jar and Modrinth
+// version, as “Platforms” in CLAUDE.md says. Until then the plugin keeps the names it always had: worldapi-X.Y.Z.jar,
+// version X.Y.Z, so links and Moonlands' jars.txt keep working.
+val mods = providers.gradleProperty("worldapi.mods").map(String::toBoolean).getOrElse(false)
+val jarName = if (mods) "worldapi-paper" else "worldapi"
+
 val ktorVersion = "3.6.0"
 
 dependencies {
@@ -97,8 +103,7 @@ tasks.processResources {
 }
 
 tasks.shadowJar {
-    // Paper is WorldAPI's only platform so far, so its jar keeps the name it always had: worldapi-X.Y.Z.jar.
-    archiveBaseName = "worldapi"
+    archiveBaseName = jarName
     archiveClassifier = ""
     mergeServiceFiles()
     // Paper already provides SLF4J and routes it into the server log.
@@ -129,8 +134,8 @@ val releaseNotes = (findProperty("changelogFile") as String?)?.let { rootProject
 modrinth {
     token = providers.environmentVariable("MODRINTH_TOKEN")
     projectId = "worldapi"
-    versionNumber = project.version.toString()
-    versionName = "WorldAPI ${project.version}"
+    versionNumber = if (mods) "${project.version}+paper" else project.version.toString()
+    versionName = if (mods) "WorldAPI ${project.version} for Paper" else "WorldAPI ${project.version}"
     versionType = "release"
     uploadFile.set(tasks.shadowJar)
     gameVersions.addAll("26.3")
@@ -154,7 +159,7 @@ hangarPublish {
         platforms {
             register(Platforms.PAPER) {
                 // The jar is over Hangar's 15 MB limit, so Hangar links to the GitHub release instead.
-                url = "https://github.com/MairwunNx/minecraft-worldapi/releases/download/v${project.version}/worldapi-${project.version}.jar"
+                url = "https://github.com/MairwunNx/minecraft-worldapi/releases/download/v${project.version}/$jarName-${project.version}.jar"
                 platformVersions = listOf("26.3")
             }
         }

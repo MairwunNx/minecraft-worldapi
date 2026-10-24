@@ -69,22 +69,48 @@ jobs:
         with:
           bun-version: 1.4.3
       - uses: gradle/actions/setup-gradle@v6
+      - name: Read the platforms
+        # `worldapi.mods` in gradle.properties: off while the mods are only frames, so the release ships Paper alone
+        # under its old names; on, it ships all three platforms. Empty mods must never reach a store.
+        run: echo "MODS=$(sed -n 's/^worldapi\.mods=//p' gradle.properties)" >> "$GITHUB_ENV"
       - name: Build and test
         run: ./gradlew build -PreleaseVersion="$VERSION"
       - name: Publish the GitHub release
+        if: env.MODS != 'true'
         # worldapi.jar too, so releases/latest/download/worldapi.jar always fetches the newest one.
         run: |
           cp "paper/build/libs/worldapi-$VERSION.jar" paper/build/libs/worldapi.jar
           gh release create "v$VERSION" --target "$GITHUB_SHA" --title "WorldAPI $VERSION" --notes-file "$NOTES" "paper/build/libs/worldapi-$VERSION.jar" paper/build/libs/worldapi.jar
         env:
           GH_TOKEN: ${{ github.token }}
+      - name: Publish the GitHub release with the mods
+        if: env.MODS == 'true'
+        # Every jar twice: with its version, and without, so releases/latest/download/worldapi-paper.jar,
+        # worldapi-fabric.jar, and worldapi-neoforge.jar always fetch the newest; worldapi.jar too, the Paper jar's
+        # name before the mods, so links to it keep working.
+        run: |
+          cp "paper/build/libs/worldapi-paper-$VERSION.jar" paper/build/libs/worldapi-paper.jar
+          cp "paper/build/libs/worldapi-paper-$VERSION.jar" paper/build/libs/worldapi.jar
+          cp "fabric/build/libs/worldapi-fabric-$VERSION.jar" fabric/build/libs/worldapi-fabric.jar
+          cp "neoforge/build/libs/worldapi-neoforge-$VERSION.jar" neoforge/build/libs/worldapi-neoforge.jar
+          gh release create "v$VERSION" --target "$GITHUB_SHA" --title "WorldAPI $VERSION" --notes-file "$NOTES" \
+            "paper/build/libs/worldapi-paper-$VERSION.jar" paper/build/libs/worldapi-paper.jar paper/build/libs/worldapi.jar \
+            "fabric/build/libs/worldapi-fabric-$VERSION.jar" fabric/build/libs/worldapi-fabric.jar \
+            "neoforge/build/libs/worldapi-neoforge-$VERSION.jar" neoforge/build/libs/worldapi-neoforge.jar
+        env:
+          GH_TOKEN: ${{ github.token }}
       - name: Publish to Modrinth
         if: inputs.modrinth
-        # Minotaur reads the project while it runs, which the configuration cache doesn't allow.
-        run: ./gradlew :paper:modrinth -PreleaseVersion="$VERSION" -PchangelogFile="$NOTES" --no-configuration-cache
+        # Minotaur reads the project while it runs, which the configuration cache doesn't allow. With the mods on, it
+        # uploads X.Y.Z+paper; the mods go through Modrinth's v3 API as X.Y.Z+fabric and X.Y.Z+neoforge, since Minotaur
+        # can't set the environment Modrinth asks of a mod.
+        run: |
+          ./gradlew :paper:modrinth -PreleaseVersion="$VERSION" -PchangelogFile="$NOTES" --no-configuration-cache
+          if [[ "$MODS" == "true" ]]; then python3 -I scripts/modrinth_mods.py --version "$VERSION" --notes "$NOTES"; fi
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
       - name: Publish to Hangar
+        # Paper only, numbered X.Y.Z, with or without the mods.
         if: inputs.hangar
         run: ./gradlew :paper:publishPluginPublicationToHangar -PreleaseVersion="$VERSION" -PchangelogFile="$NOTES" --no-configuration-cache
         env:
