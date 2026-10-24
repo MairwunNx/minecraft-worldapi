@@ -26,7 +26,8 @@ const useFinish = () => {
   return async (me: Me) => {
     await resetSession(client);
     client.setQueryData(meQuery.queryKey, me);
-    if (next?.startsWith("/") && !next.startsWith("//")) await navigate({ href: next });
+    // Only a path on this site: browsers read "/\host" like "//host", another site.
+    if (next && /^\/(?![/\\])/.test(next)) await navigate({ href: next });
     else await navigate({ to: "/" });
   };
 };
