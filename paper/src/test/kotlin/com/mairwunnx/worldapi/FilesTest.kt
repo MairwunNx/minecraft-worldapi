@@ -103,6 +103,15 @@ class FilesTest {
     }
 
     @Test
+    fun `a grep that backtracks forever gives up`() {
+        val file = root.resolve("evil.txt").apply { writeText("a".repeat(40) + "!") }
+        val started = System.nanoTime()
+        val code = status { files.read(file, 1, 10, null, Regex("(.*a){20}$"), 0, 2000, 10_000, grepNanos = 200_000_000L) }
+        assertEquals(400, code)
+        assertTrue(System.nanoTime() - started < 5_000_000_000L)
+    }
+
+    @Test
     fun `long lines are cut and answers stop at the size limit`() {
         val file = root.resolve("wide.txt").apply { writeText("x".repeat(50) + "\nshort\n" + "y".repeat(30)) }
         val read = files.read(file, 1, 200, null, null, 0, maxLineChars = 10, maxBytes = 40)

@@ -111,8 +111,9 @@ class ServerFiles(root: Path, private val ownFolder: Path, private val backups: 
      * - or with [grep], up to [limit] matching lines from [offset] on, each with [context] lines around it.
      * Lines longer than [maxLineChars] are cut, and the answer stops at about [maxBytes] of text.
      * A gzip file reads as its text. The whole file is scanned, so `totalLines` and `matches` count all of it.
+     * A grep that runs past [grepNanos] stops with 400 `grep_timeout`.
      */
-    fun read(path: Path, offset: Int, limit: Int, tail: Int?, grep: Regex?, context: Int, maxLineChars: Int, maxBytes: Int): Read {
+    fun read(path: Path, offset: Int, limit: Int, tail: Int?, grep: Regex?, context: Int, maxLineChars: Int, maxBytes: Int, grepNanos: Long = GREP_NANOS): Read {
         val gzip = path.name.lowercase().endsWith(".gz")
         if (!gzip) checkText(path)
         val digest = if (gzip) null else MessageDigest.getInstance("SHA-256")
@@ -125,6 +126,7 @@ class ServerFiles(root: Path, private val ownFolder: Path, private val backups: 
         var next: Int? = null
         var after = 0
         val before = ArrayDeque<Pair<Int, String>>()
+        val deadline = System.nanoTime() + grepNanos
         /** Adds a line unless the answer is full; the first line that doesn't fit becomes the next offset. */
         fun take(number: Int, text: String) {
             if (next != null) return
@@ -150,7 +152,7 @@ class ServerFiles(root: Path, private val ownFolder: Path, private val backups: 
                         next == null -> next = total
                     }
                     total < offset -> {}
-                    grep.containsMatchIn(text) -> {
+                    grep.containsMatchIn(Timed(text, deadline)) -> {
                         matches++
                         if (shown < limit) {
                             before.forEach { (n, t) -> take(n, t) }
@@ -197,6 +199,21 @@ class ServerFiles(root: Path, private val ownFolder: Path, private val backups: 
     }
 
     fun sha256(path: Path): String? = if (path.isRegularFile()) HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(path))) else null
+
+    /**
+     * A line that gives up once the deadline passes, so a regular expression that backtracks without end
+     * (`(.*a){20}$` on a long line) can't hold a thread: the regex engine reads every character through [get].
+     */
+    private class Timed(private val text: CharSequence, private val deadline: Long) : CharSequence {
+        private var reads = 0
+        override val length get() = text.length
+        override fun get(index: Int): Char {
+            if (++reads and 0xFFF == 0 && System.nanoTime() > deadline) badRequest("grep took too long; use a simpler pattern", "grep_timeout")
+            return text[index]
+        }
+        override fun subSequence(startIndex: Int, endIndex: Int): CharSequence = Timed(text.subSequence(startIndex, endIndex), deadline)
+        override fun toString() = text.toString()
+    }
 
     // ---- Writing ----
 
@@ -274,6 +291,9 @@ class ServerFiles(root: Path, private val ownFolder: Path, private val backups: 
 
         private val SECRET_NAMES = setOf("tokens.yml", "credentials.json", "secrets.yml", "secrets.yaml")
         private val SECRET_EXTENSIONS = listOf(".key", ".pem", ".p12", ".jks", ".keystore", ".env", ".db", ".sqlite", ".mv.db", ".jar")
+
+        /** How long one grep may search a file. */
+        private const val GREP_NANOS = 5_000_000_000L
 
         private val STAMP = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSS").withZone(ZoneOffset.UTC)
 
