@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.1.0
+
+- ⌨️ **The server's commands.** `GET /server/commands` lists every command the server has, once each: the game's, the server's, and every plugin's, Brigadier ones included, with its aliases, the plugin that owns it, its description, and its usage, such as `/give <targets> <item> [<count>]`. `query` searches names, aliases, and descriptions, several searches at once; `plugin` lists one plugin's. WorldAPI builds the list once and builds it again when a plugin is enabled or disabled. The MCP server's `search_commands` reads it.
+- 🔑 **A permission for it.** `commands:read` reads the catalog without running anything; `server:console` reads it too. The default `moderator`, `admin`, and `owner` groups have it; `viewer` and anonymous visitors don't. If your `config.yml` lists its own groups, add `commands:read` where you want it.
+- 🖥️ **The panel knows the commands.** The console's command line suggests commands as you type and shows the usage of the one you picked. The plugins page shows what each plugin shares through the expansion API and how many commands it has.
+
 ## 4.0.1
 
 A security release. Update soon if anyone but you holds a token or a panel account.
