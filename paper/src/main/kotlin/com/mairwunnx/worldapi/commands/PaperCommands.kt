@@ -18,7 +18,8 @@ import java.lang.reflect.Method
  * [PluginIdentifiableCommand], the game's and the server's own by the namespace they're registered under
  * (`minecraft:tp`, `bukkit:version`), and the commands plugins register through Brigadier, which Paper wraps as
  * commands of their plugin. Built on the server thread and kept until commands change: a plugin comes or goes, the
- * server loads, the map's size moves, and 5 minutes at most, since a plugin may register one whenever.
+ * server loads, the map's size moves, and 5 minutes at most, since a plugin may register one whenever. A disabled
+ * plugin's commands stay in the map but drop out of the catalog.
  * The same reading as Allay's `search_commands`, for the console, which may run every command.
  */
 class PaperCommands(private val server: Server) : Listener {
@@ -107,6 +108,8 @@ class PaperCommands(private val server: Server) : Listener {
         class Found(val info: CommandInfo, val command: Command, val node: Any?)
         val found = groups.values.mapNotNull { labels ->
             val command = labels.first().second
+            // Bukkit keeps a disabled plugin's commands in the map; they only answer that the plugin is off.
+            if ((command as? PluginIdentifiableCommand)?.plugin?.isEnabled == false) return@mapNotNull null
             val plain = labels.map { it.first }.filter { ':' !in it }.distinct()
             val namespaced = labels.map { it.first }.filter { ':' in it }
             val own = command.name.lowercase()
