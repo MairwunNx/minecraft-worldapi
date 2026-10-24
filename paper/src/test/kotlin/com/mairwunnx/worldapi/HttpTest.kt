@@ -188,4 +188,11 @@ class HttpTest {
         // Anonymous clients share the IP's bucket; this token has its own and keeps going after it.
         repeat(5) { assertEquals(HttpStatusCode.OK, client.get("/api/v1/public") { bearerAuth("named-anonymous-0123456789") }.status) }
     }
+
+    @Test
+    fun `the docs page pins its script`() = test {
+        val docs = client.get("/api/v1/docs") { bearerAuth(read) }
+        assertTrue("integrity=\"sha384-" in docs.bodyAsText())
+        assertTrue("frame-ancestors 'none'" in docs.headers["Content-Security-Policy"].orEmpty())
+    }
 }

@@ -122,6 +122,10 @@ class HttpServer(
                 }
                 get("/docs") {
                     guard(call, read = true)
+                    // The page shares an origin with the panel, so its one outside script is pinned to a hash.
+                    call.response.header("Content-Security-Policy", DOCS_CSP)
+                    call.response.header("X-Content-Type-Options", "nosniff")
+                    call.response.header("Referrer-Policy", "same-origin")
                     call.respondText(DOCS_PAGE, ContentType.Text.Html)
                 }
                 webSocket("/ws") {
@@ -263,6 +267,14 @@ class HttpServer(
         fun document(endpoints: List<Endpoint>, version: String, serverUrl: String): JsonObject =
             OpenApi("WorldAPI", version).document(endpoints, serverUrl, mapOf("/ws" to WebSocketHub.openApiPath()))
 
+        // A new version needs its hash: curl -sL <the script's URL> | openssl dgst -sha384 -binary | openssl base64 -A
+        private const val SCALAR_VERSION = "1.73.1"
+        private const val SCALAR_INTEGRITY = "sha384-kYDGzV91Jnn3TbHINV3nt54riK2uMJDfN5Al8dAkz4FssELTBWbD8rgw32sTKfOi"
+
+        private const val DOCS_CSP = "default-src 'self'; script-src https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https:; " +
+            "font-src 'self' data: https:; img-src 'self' data: https:; connect-src 'self'; worker-src 'self' blob:; " +
+            "frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+
         private val DOCS_PAGE = """
             <!doctype html>
             <html lang="en">
@@ -273,7 +285,8 @@ class HttpServer(
             </head>
             <body>
               <script id="api-reference" data-url="openapi.json"></script>
-              <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+              <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference@$SCALAR_VERSION/dist/browser/standalone.js"
+                integrity="$SCALAR_INTEGRITY" crossorigin="anonymous"></script>
             </body>
             </html>
         """.trimIndent()
