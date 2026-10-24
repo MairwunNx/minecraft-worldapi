@@ -41,6 +41,16 @@ data class ServerInfo(
     val loadedChunks: Int,
     val entities: Int,
     val datapacks: List<DatapackView> = emptyList(),
+    /** What WorldAPI runs on: `paper`, `fabric`, or `neoforge`. */
+    val platform: String = "paper",
+    /** `dedicated` for a server, `integrated` for the one under a singleplayer world, opened to LAN or not. */
+    val side: String = "dedicated",
+    /** Whether a singleplayer world is open to LAN; always false on a dedicated server. */
+    val lan: Boolean = false,
+    /** Whether commands are allowed: always on a server; in singleplayer, the world's “Allow cheats”. */
+    val cheats: Boolean = true,
+    /** Whether a singleplayer game is paused, so nothing ticks; always false on a dedicated server. */
+    val paused: Boolean = false,
 )
 
 @Serializable
