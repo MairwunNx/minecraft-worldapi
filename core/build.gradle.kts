@@ -29,6 +29,8 @@ dependencies {
     api("org.eclipse.jdt:ecj:3.46.100")
     // Every platform ships its own SQLite driver (Paper does), so it stays out of the jar.
     compileOnly("org.xerial:sqlite-jdbc:3.53.4.0")
+    // Paper and the game log through Log4j, and both bring it; GET /server/logs hooks its root logger.
+    compileOnly("org.apache.logging.log4j:log4j-core:2.26.1")
 
     testImplementation("org.xerial:sqlite-jdbc:3.53.4.0")
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")

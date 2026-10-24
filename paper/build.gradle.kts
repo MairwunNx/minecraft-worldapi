@@ -24,8 +24,6 @@ dependencies {
     compileOnly("io.papermc.paper:paper-api:26.3.build.205-stable")
     // Paper ships the SQLite driver, so it stays out of the jar.
     compileOnly("org.xerial:sqlite-jdbc:3.53.4.0")
-    // Paper logs through Log4j; GET /server/logs hooks its root logger.
-    compileOnly("org.apache.logging.log4j:log4j-core:2.26.1")
     // Plan is optional: its section shows on Plan's pages when Plan runs next to WorldAPI.
     compileOnly("com.djrapitops:plan-api:5.9-R1.3")
 

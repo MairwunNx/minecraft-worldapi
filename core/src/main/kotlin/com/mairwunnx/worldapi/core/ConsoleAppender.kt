@@ -7,8 +7,8 @@ import org.apache.logging.log4j.core.appender.AbstractAppender
 import org.apache.logging.log4j.core.config.Property
 
 /**
- * Copies every line the server logs into a [ConsoleLog]. Paper logs through Log4j, so hooking its
- * root logger sees the console as an operator does, plugins and chat included.
+ * Copies every line the server logs into a [ConsoleLog]. Paper and the game log through Log4j, so
+ * hooking its root logger sees the console as an operator does, plugins, mods, and chat included.
  */
 class ConsoleAppender private constructor(private val log: ConsoleLog) :
     AbstractAppender("WorldAPI-console", null, null, true, Property.EMPTY_ARRAY) {
