@@ -1,5 +1,6 @@
 package com.mairwunnx.worldapi.extensions
 
+import com.mairwunnx.worldapi.api.ApiCall
 import com.mairwunnx.worldapi.events.ApiEvent
 import com.mairwunnx.worldapi.events.EventBus
 import com.mairwunnx.worldapi.events.Topic
@@ -8,12 +9,11 @@ import kotlinx.serialization.json.JsonObject
 import org.bukkit.Bukkit
 import org.bukkit.plugin.Plugin
 import java.util.concurrent.ConcurrentHashMap
-import java.util.function.Function
 import java.util.logging.Logger
 
 /**
- * Other plugins' data. A plugin registers a namespace: resources WorldAPI reads from it when a client
- * asks, and event topics it publishes to. The plugin stays the source of truth: WorldAPI stores none
+ * Other plugins' data. A plugin registers a namespace, through the bridge or the expansion API: resources
+ * WorldAPI reads from it when a client asks, and event topics it publishes to. The plugin stays the source of truth: WorldAPI stores none
  * of its data, only the events it marks recorded, in the history like WorldAPI's own.
  */
 class Extensions(private val bus: EventBus, private val logger: Logger) {
@@ -24,7 +24,8 @@ class Extensions(private val bus: EventBus, private val logger: Logger) {
         val public: Boolean,
         /** Run the function on the server thread; otherwise it runs on a worker and must be thread-safe. */
         val mainThread: Boolean,
-        val get: Function<Map<String, String>, Any?>,
+        /** Answers with the path's parameters, the query's, and the call they came with. */
+        val read: (path: Map<String, String>, query: Map<String, String>, call: ApiCall) -> Any?,
     ) {
         private val parts = path.trim('/').split('/')
 

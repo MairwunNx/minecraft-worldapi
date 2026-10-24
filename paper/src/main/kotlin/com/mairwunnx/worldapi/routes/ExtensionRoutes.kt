@@ -60,10 +60,10 @@ val extensionRoutes = endpoints("Extensions", Scope.SERVER_READ) {
             ?: notFound("resource_not_found", "$name has no ${requested.joinToString("/")}")
         val hidden = Visibility(principal, config).hidden(name, "$name/${resource.path}")
         if (principal.anonymous && (!resource.public || hidden)) throw ApiException(HttpStatusCode.Unauthorized, "unauthorized", "This needs a token")
-        // Resource-specific parameters pass through as they came; path parameters win over them.
-        val input = call.request.queryParameters.entries().associate { it.key to it.value.firstOrNull().orEmpty() } + params
+        val query = call.request.queryParameters.entries().associate { it.key to it.value.firstOrNull().orEmpty() }
         val value = try {
-            val answer = if (resource.mainThread) main { resource.get.apply(input) } else withContext(Dispatchers.IO) { resource.get.apply(input) }
+            val apiCall = this
+            val answer = if (resource.mainThread) main { resource.read(params, query, apiCall) } else withContext(Dispatchers.IO) { resource.read(params, query, apiCall) }
             if (answer is CompletionStage<*>) withTimeout(TIMEOUT) { answer.await() } else answer
         } catch (error: IllegalArgumentException) {
             throw ApiException(HttpStatusCode.BadRequest, "invalid_request", error.message ?: "Bad request")

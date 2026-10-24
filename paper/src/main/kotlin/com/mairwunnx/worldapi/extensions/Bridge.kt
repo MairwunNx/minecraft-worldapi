@@ -42,7 +42,10 @@ class Bridge(private val extensions: Extensions, private val version: String) : 
             require(PATH.matches(path)) { "Bad resource path $path" }
             @Suppress("UNCHECKED_CAST")
             val get = item["get"] as? Function<Map<String, String>, Any?> ?: throw IllegalArgumentException("The resource $path needs get, a Function")
-            Extensions.Resource(path.trim('/'), item["description"] as? String ?: "", item["public"] == true, item["mainThread"] == true, get)
+            Extensions.Resource(path.trim('/'), item["description"] as? String ?: "", item["public"] == true, item["mainThread"] == true) { params, query, _ ->
+                // Resource-specific parameters pass through as they came; path parameters win over them.
+                get.apply(query + params)
+            }
         }
         // A namespace registered again replaces its topics with the new ones.
         Topic.forget(namespace)

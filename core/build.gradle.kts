@@ -9,6 +9,8 @@ val exposedVersion = "1.6.0"
 // Everything that doesn't touch a game platform: no Bukkit, no Minecraft, no loader. paper builds on it now, and the mods
 // will through modcore, so another platform is only an adapter.
 dependencies {
+    // The expansion API ships inside every jar as it is, never relocated: other plugins and mods compile against it.
+    api(project(":expansion"))
     api("io.ktor:ktor-server-core:$ktorVersion")
     api("io.ktor:ktor-server-cio:$ktorVersion")
     api("io.ktor:ktor-server-websockets:$ktorVersion")

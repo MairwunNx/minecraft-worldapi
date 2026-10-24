@@ -17,7 +17,10 @@ import com.mairwunnx.worldapi.events.Sampler
 import com.mairwunnx.worldapi.events.Snapshots
 import com.mairwunnx.worldapi.events.Topic
 import com.mairwunnx.worldapi.events.Windows
+import com.mairwunnx.worldapi.expansion.WorldApiExpansions
 import com.mairwunnx.worldapi.extensions.Bridge
+import com.mairwunnx.worldapi.extensions.ExpansionPlugins
+import com.mairwunnx.worldapi.extensions.Expansions
 import com.mairwunnx.worldapi.extensions.Extensions
 import com.mairwunnx.worldapi.plan.Plan
 import com.mairwunnx.worldapi.script.ScriptManager
@@ -120,6 +123,14 @@ class WorldApiPlugin : JavaPlugin() {
             @EventHandler
             fun onDisable(event: PluginDisableEvent) = api.extensions.unregisterAll(event.plugin)
         }, this)
+        // The expansion API: an expansion belongs to the plugin whose class loader loaded it.
+        val expansions = Expansions(api.extensions, logger) { expansion ->
+            server.pluginManager.plugins.firstOrNull { it.javaClass.classLoader === expansion.javaClass.classLoader } ?: this
+        }
+        WorldApiExpansions.bind(expansions)
+        val expansionPlugins = ExpansionPlugins(this, expansions, logger)
+        server.pluginManager.registerEvents(expansionPlugins, this)
+        expansionPlugins.scanAll()
         val sampler = Sampler(server, bus, config::get)
         server.scheduler.runTaskTimer(this, Runnable {
             vanished.refresh(server.onlinePlayers)
@@ -156,6 +167,7 @@ class WorldApiPlugin : JavaPlugin() {
         api.bus.publish(ApiEvent(Topic.SERVER_STATUS, buildJsonObject { put("status", if (server.isStopping) "stopping" else "plugin_disabled") }))
         server.onlinePlayers.forEach { api.history.closeSession(it.uniqueId.toString(), Instant.now()) }
         api.scripts.unloadAll()
+        WorldApiExpansions.bind(null)
         server.servicesManager.unregisterAll(this)
         api.restart.close()
         api.icons?.close()
