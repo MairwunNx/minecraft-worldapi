@@ -20,7 +20,7 @@ WorldAPI feeds the site of Moonlands, my hard survival server with friends: the 
 
 ## What you get
 
-- 📡 **113 REST operations** for the server and its load, worlds, blocks, chests, entities, players online and offline with their inventories, statistics, advancements, recipes, leaderboards, and the event history.
+- 📡 **117 REST operations** for the server and its load, its commands, worlds, blocks, chests, entities, players online and offline with their inventories, statistics, advancements, recipes, leaderboards, and the event history.
 - ⚡ **A live feed** over WebSocket with 40 topics: joins, deaths, advancements, the console, positions, weather, boss kills, raids, and more.
 - 🖥️ **An admin panel** in the browser: live load, the console, chat, players, worlds, files, plugins, tokens, and the audit log. Everyday work no longer needs SSH.
 - 🏆 **Live statistics.** Leaderboards move while people play, not at the next autosave, and any vanilla statistic can be one.
