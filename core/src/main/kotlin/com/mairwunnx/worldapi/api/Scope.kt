@@ -96,12 +96,14 @@ class Groups(private val groups: Map<String, List<String>>) {
 
 /** Who made a request. `key` identifies the client for rate limits; it is never the token itself. */
 data class Principal(val name: String, val scopes: Set<Scope>, val key: String) {
-    val anonymous get() = name == ANONYMOUS
+    /** By the key, not the name: a token may be called “anonymous” too. */
+    val anonymous get() = key.startsWith(ANONYMOUS_KEY)
 
     fun has(scope: Scope) = scope in scopes
 
     companion object {
         const val ANONYMOUS = "anonymous"
-        fun anonymous(address: String) = Principal(ANONYMOUS, Scope.anonymous, "ip:$address")
+        private const val ANONYMOUS_KEY = "ip:"
+        fun anonymous(address: String) = Principal(ANONYMOUS, Scope.anonymous, "$ANONYMOUS_KEY$address")
     }
 }

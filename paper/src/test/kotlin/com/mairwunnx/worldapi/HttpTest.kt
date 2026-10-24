@@ -47,6 +47,7 @@ class HttpTest {
         auth = Auth(
             tokens = listOf(
                 Token("site", read, listOf("viewer")), Token("builder", world, listOf("world:write")), Token("nothing", empty, emptyList()),
+                Token("anonymous", "named-anonymous-0123456789", listOf("viewer")),
             ),
             anonymous = Anonymous(endpoints = listOf("/public", "/ws")),
         ),
@@ -178,5 +179,13 @@ class HttpTest {
         assertEquals("missing_scope", code(write.bodyAsText()))
         assertEquals(HttpStatusCode.Forbidden, client.get("/api/v1/private") { bearerAuth(empty) }.status)
         assertEquals(HttpStatusCode.Forbidden, client.patch("/api/v1/admin") { bearerAuth(empty); setBody(body) }.status)
+    }
+
+    @Test
+    fun `a token named anonymous is still a token`() = test {
+        val me = client.get("/api/v1/private") { bearerAuth("named-anonymous-0123456789") }
+        assertEquals(HttpStatusCode.OK, me.status)
+        // Anonymous clients share the IP's bucket; this token has its own and keeps going after it.
+        repeat(5) { assertEquals(HttpStatusCode.OK, client.get("/api/v1/public") { bearerAuth("named-anonymous-0123456789") }.status) }
     }
 }
