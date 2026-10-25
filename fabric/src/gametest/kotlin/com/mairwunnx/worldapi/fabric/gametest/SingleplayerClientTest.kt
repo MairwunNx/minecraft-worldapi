@@ -13,6 +13,8 @@ import java.nio.file.Files
 class SingleplayerClientTest : FabricClientGameTest {
     override fun runTest(context: ClientGameTestContext) {
         System.setProperty("worldapi.discovery", Files.createTempDirectory("worldapi-local").toString())
+        // The game stands still while the test runs; WorldAPI answers once ticks pass.
+        Singleplayer.await = { answer -> repeat(200) { if (!answer.isDone) context.waitTick() } }
         val mark = "first-${System.currentTimeMillis()}"
         val first = context.worldBuilder().create().use { world ->
             world.connection.waitForChunksRender()

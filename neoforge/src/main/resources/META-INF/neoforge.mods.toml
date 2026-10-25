@@ -8,7 +8,7 @@ modId = "worldapi"
 version = "${version}"
 displayName = "WorldAPI"
 displayURL = "https://github.com/MairwunNx/minecraft-worldapi"
-logoFile = "worldapi.png"
+iconFile = "worldapi.png"
 authors = "MairwunNx"
 description = '''
 A REST and WebSocket API for your world: players, statistics, events, and admin actions, with an admin panel. On a server, or in singleplayer for an AI agent through minecraft-mcp.

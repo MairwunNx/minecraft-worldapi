@@ -24,6 +24,12 @@ import java.nio.file.Files
 object Singleplayer {
     private val client = HttpClient.newHttpClient()
 
+    /**
+     * How a check waits for an answer: a loader's client test freezes the game while it runs, so it lets ticks pass
+     * until the future is done. Every request needs the server thread.
+     */
+    var await: (java.util.concurrent.CompletableFuture<*>) -> Unit = { it.join() }
+
     class World(val port: Int, val url: String, val token: String)
 
     /** On the server thread: where WorldAPI runs and keeps its data. */
@@ -84,15 +90,24 @@ object Singleplayer {
         return send(world, request)
     }
 
-    private fun send(world: World, request: HttpRequest.Builder): HttpResponse<String> =
-        client.send(request.header("Authorization", "Bearer ${world.token}").header("Content-Type", "application/json").build(), HttpResponse.BodyHandlers.ofString())
+    private fun send(world: World, request: HttpRequest.Builder): HttpResponse<String> {
+        val answer = client.sendAsync(request.header("Authorization", "Bearer ${world.token}").header("Content-Type", "application/json").build(), HttpResponse.BodyHandlers.ofString())
+        await(answer)
+        return answer.join()
+    }
 
     /** A request with a Host header of our choosing, over a plain socket. */
     private fun raw(world: World, path: String, host: String): HttpResponse<String> {
         val target = URI.create(world.url + path)
-        java.net.Socket("127.0.0.1", world.port).use { socket ->
-            socket.getOutputStream().write("GET ${target.rawPath} HTTP/1.1\r\nHost: $host\r\nAuthorization: Bearer ${world.token}\r\nConnection: close\r\n\r\n".toByteArray())
-            val response = socket.getInputStream().readBytes().decodeToString()
+        val read = java.util.concurrent.CompletableFuture.supplyAsync {
+            java.net.Socket("127.0.0.1", world.port).use { socket ->
+                socket.getOutputStream().write("GET ${target.rawPath} HTTP/1.1\r\nHost: $host\r\nAuthorization: Bearer ${world.token}\r\nConnection: close\r\n\r\n".toByteArray())
+                socket.getInputStream().readBytes().decodeToString()
+            }
+        }
+        await(read)
+        run {
+            val response = read.join()
             val status = response.substringAfter(' ').substringBefore(' ').toIntOrNull() ?: 0
             return object : HttpResponse<String> {
                 override fun statusCode() = status
