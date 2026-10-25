@@ -3,7 +3,8 @@
 <p align="center">
   <a href="https://modrinth.com/plugin/worldapi"><img alt="Modrinth" src="https://img.shields.io/modrinth/dt/worldapi?logo=modrinth&label=Modrinth&color=00AF5C"></a>
   <a href="https://hangar.papermc.io/MairwunNx/WorldAPI"><img alt="Hangar" src="https://img.shields.io/hangar/dt/WorldAPI?label=Hangar&color=1E88E5"></a>
-  <a href="https://www.curseforge.com/projects/1766131"><img alt="CurseForge" src="https://img.shields.io/curseforge/dt/1766131?logo=curseforge&label=CurseForge&color=F16436"></a>
+  <a href="https://www.curseforge.com/projects/1766131"><img alt="CurseForge plugin" src="https://img.shields.io/curseforge/dt/1766131?logo=curseforge&label=CurseForge%20plugin&color=F16436"></a>
+  <a href="https://www.curseforge.com/projects/1766173"><img alt="CurseForge mod" src="https://img.shields.io/curseforge/dt/1766173?logo=curseforge&label=CurseForge%20mod&color=F16436"></a>
   <a href="https://github.com/MairwunNx/minecraft-worldapi/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/MairwunNx/minecraft-worldapi?label=release"></a>
   <img alt="Paper 26.3" src="https://img.shields.io/badge/Paper-26.3-F7CF0D">
   <img alt="Fabric 26.3" src="https://img.shields.io/badge/Fabric-26.3-DBD0B4">
