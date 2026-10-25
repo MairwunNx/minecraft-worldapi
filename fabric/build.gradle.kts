@@ -36,8 +36,8 @@ kotlin.sourceSets.named("gametest") {
 
 // What goes into the jar besides the mod's own classes: modcore, core, the expansion API, and core's libraries,
 // relocated as on Paper. The expansion API stays where it is: other mods compile against it.
-val shade: Configuration by configurations.creating
-val nested: Configuration by configurations.creating
+val shade: Configuration = configurations.create("shade")
+val nested: Configuration = configurations.create("nested")
 val sqlite = "3.53.4.0"
 
 dependencies {

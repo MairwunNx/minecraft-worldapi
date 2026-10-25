@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "worldapi_gametest",
+  "version": "0.0.0",
+  "name": "WorldAPI game tests",
+  "environment": "*",
+  "entrypoints": {
+    "fabric-gametest": ["com.mairwunnx.worldapi.gametest.ApiGameTests"],
+    "fabric-client-gametest": ["com.mairwunnx.worldapi.fabric.gametest.SingleplayerClientTest"]
+  },
+  "depends": {
+    "worldapi": "*"
+  }
+}

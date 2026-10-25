@@ -30,7 +30,8 @@ object Discovery {
 
     private val json = Json { prettyPrint = true }
 
-    val folder: Path get() = Path.of(System.getProperty("user.home"), ".worldapi", "local")
+    /** `~/.worldapi/local`; tests point `worldapi.discovery` elsewhere, so they leave the real one alone. */
+    val folder: Path get() = System.getProperty("worldapi.discovery")?.let(Path::of) ?: Path.of(System.getProperty("user.home"), ".worldapi", "local")
 
     /** Writes the entry; the returned function removes it again. */
     fun publish(entry: Entry, port: Int, logger: Logger): () -> Unit {

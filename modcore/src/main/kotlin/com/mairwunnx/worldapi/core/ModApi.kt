@@ -67,7 +67,7 @@ class ModApi(
     }
 
     /** Whether this is the server under a singleplayer world, opened to LAN or not. */
-    val integrated: Boolean get() = !server.isDedicatedServer
+    val integrated: Boolean get() = server.isSingleplayer
 
     override val scripts: Scripts? = null
 

@@ -79,7 +79,7 @@ object WorldApiCommand {
     }
 
     /** The player whose game runs this singleplayer world, opened to LAN or not. */
-    fun owner(player: ServerPlayer): Boolean = player.level().server.let { !it.isDedicatedServer && it.isSingleplayerOwner(player.nameAndId()) }
+    fun owner(player: ServerPlayer): Boolean = player.level().server.let { it.isSingleplayer && it.isSingleplayerOwner(player.nameAndId()) }
 
     private fun run(context: CommandContext<CommandSourceStack>, block: (CommandSourceStack, Runtime) -> Unit): Int {
         val runtime = Mod.runtime

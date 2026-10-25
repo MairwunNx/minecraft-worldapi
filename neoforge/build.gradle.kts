@@ -16,8 +16,14 @@ base {
 }
 
 val modcore = project(":modcore")
+val core = project(":core")
+val expansion = project(":expansion")
 evaluationDependsOn(modcore.path)
+evaluationDependsOn(core.path)
+evaluationDependsOn(expansion.path)
 val modcoreMain: SourceSet = modcore.sourceSets.main.get()
+val coreMain: SourceSet = core.sourceSets.main.get()
+val expansionMain: SourceSet = expansion.sourceSets.main.get()
 
 // Game tests ask WorldAPI on a real server with real players (`./gradlew :neoforge:runGameTestServer`). They are
 // modcore's, shared with Fabric, and run in a dev-only mod of their own, so the release jar doesn't carry them.
@@ -34,11 +40,14 @@ neoForge {
     version = neoforgeVersion
     addModdingDependenciesTo(gametest)
 
-    // The mod is this module and modcore together, in dev runs as in the jar.
+    // The mod is this module, modcore, core, and the expansion API together, in dev runs as in the jar: they share
+    // packages, which NeoForge's module layers keep to one jar each.
     mods {
         register("worldapi") {
             sourceSet(sourceSets.main.get())
             sourceSet(modcoreMain)
+            sourceSet(coreMain)
+            sourceSet(expansionMain)
         }
         register("worldapi_gametest") {
             sourceSet(gametest)
@@ -74,7 +83,7 @@ neoForge {
 
 // What goes into the jar besides the mod's own classes: modcore, core, the expansion API, and core's libraries,
 // relocated as on Paper. The expansion API stays where it is: other mods compile against it.
-val shade: Configuration by configurations.creating
+val shade: Configuration = configurations.create("shade")
 
 dependencies {
     // The game brings SLF4J and pins its version; Ktor and Exposed log through the game's.
@@ -97,6 +106,10 @@ dependencies {
     // jar: NeoForge picks the newest copy when another mod carries one too.
     implementation("org.xerial:sqlite-jdbc:$sqlite")
     jarJar("org.xerial:sqlite-jdbc:$sqlite") { isTransitive = false }
+    // The test runs take their class path from the gametest source set, which has the mod's code but not its libraries.
+    "gametestRuntimeOnly"("org.xerial:sqlite-jdbc:$sqlite")
+    "gametestRuntimeOnly"("net.kyori:adventure-text-minimessage:5.2.0")
+    "gametestRuntimeOnly"("net.kyori:adventure-text-serializer-gson:5.2.0") { exclude(group = "com.google.code.gson") }
 }
 
 kotlin {
@@ -148,6 +161,11 @@ tasks {
 
     assemble {
         dependsOn(shadowJar)
+    }
+
+    // `./gradlew build` runs the game tests, as on Fabric.
+    check {
+        dependsOn("runGameTestServer")
     }
 
     // A game that hangs is killed, and the run fails.

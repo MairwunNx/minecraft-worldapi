@@ -1,0 +1,15 @@
+modLoader = "javafml"
+loaderVersion = "[1,)"
+license = "MIT"
+
+[[mods]]
+modId = "worldapi_gametest"
+version = "0.0.0-dev"
+displayName = "WorldAPI game tests"
+
+[[dependencies.worldapi_gametest]]
+modId = "worldapi"
+type = "required"
+versionRange = "*"
+ordering = "AFTER"
+side = "BOTH"

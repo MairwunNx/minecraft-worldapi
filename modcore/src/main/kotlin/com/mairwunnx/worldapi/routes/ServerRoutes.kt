@@ -239,7 +239,7 @@ private fun serverInfo(api: ModApi, includeVanished: Boolean): ServerInfo {
         buildTime = null,
         apiVersion = loader.softwareVersion,
         worldApiVersion = api.version,
-        motd = server.motd,
+        motd = server.motd ?: "",
         maxPlayers = server.playerList.maxPlayers,
         onlinePlayers = server.playerList.players.count { includeVanished || !loader.vanished(it) },
         startedAt = Instant.ofEpochMilli(started).toString(),

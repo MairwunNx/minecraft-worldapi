@@ -161,7 +161,7 @@ class Runtime private constructor(
     private fun startHttp() {
         val settings = config.get().http
         val endpoints = Routes.all
-        val integrated = !server.isDedicatedServer
+        val integrated = server.isSingleplayer
         // A singleplayer world listens on this machine only, and takes the next port when another game holds it.
         val host = if (integrated) "127.0.0.1" else settings.host
         val ports = if (integrated) (settings.port..minOf(settings.port + 9, 65_535)).toList() else listOf(settings.port)
@@ -232,9 +232,7 @@ class Runtime private constructor(
         WorldApiExpansions.bind(null)
         api.restart.close()
         api.icons?.close()
-        hub.closeAll(if (server.isDedicatedServer) "Server stopping" else "The world closed")
-        stopConsole?.invoke()
-        stopConsole = null
+        hub.closeAll(if (server.isSingleplayer) "The world closed" else "Server stopping")
         removeDiscovery?.invoke()
         removeDiscovery = null
         http?.stop()
@@ -242,6 +240,9 @@ class Runtime private constructor(
         scope.cancel()
         api.experience.flush()
         store.close()
+        // Last: the pool logs its shutdown through the console it would copy into.
+        stopConsole?.invoke()
+        stopConsole = null
     }
 
     companion object {
@@ -257,7 +258,7 @@ class Runtime private constructor(
             }
             if (created) logger.info("Wrote config/worldapi/config.yml with a new admin token; read it from the file")
             val config = AtomicReference(loaded)
-            val integrated = !server.isDedicatedServer
+            val integrated = server.isSingleplayer
             // Each world keeps its own history and tokens in its save, so they travel with it.
             val data = server.getWorldPath(LevelResource.ROOT).resolve("worldapi").normalize()
             val database = if (integrated) DatabaseSettings(type = DatabaseType.SQLITE) else loaded.database
