@@ -136,6 +136,13 @@ class ApiGameTests {
     }
 
     @GameTest(maxTicks = 100)
+    fun expansionsFromOtherModsAnswer(helper: GameTestHelper) {
+        helper.expect(Api.get("/extensions/test_found/echo/hello")) { answer ->
+            if (answer.status != 200 || "\"hello\"" !in answer.body) "the test mod's expansion didn't answer" else null
+        }
+    }
+
+    @GameTest(maxTicks = 100)
     fun anonymousClientsGetNoCoordinates(helper: GameTestHelper) {
         val player = Api.player(helper)
         helper.expect(Api.call("GET", "/players/online", auth = false)) { answer ->

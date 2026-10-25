@@ -30,6 +30,8 @@ val expansionMain: SourceSet = expansion.sourceSets.main.get()
 val gametest: SourceSet = sourceSets.create("gametest") {
     compileClasspath += sourceSets.main.get().output + modcoreMain.output
     runtimeClasspath += sourceSets.main.get().output + modcoreMain.output
+    // The test mod's expansion, named in its META-INF/services, is modcore's too.
+    resources.srcDir(modcore.file("src/gametest/resources"))
 }
 kotlin.sourceSets.named("gametest") {
     kotlin.srcDir(modcore.file("src/gametest/kotlin"))

@@ -33,6 +33,10 @@ fabricApi {
 kotlin.sourceSets.named("gametest") {
     kotlin.srcDir(project(":modcore").file("src/gametest/kotlin"))
 }
+// So is the test mod's expansion, named in its META-INF/services.
+sourceSets.named("gametest") {
+    resources.srcDir(project(":modcore").file("src/gametest/resources"))
+}
 
 // What goes into the jar besides the mod's own classes: modcore, core, the expansion API, and core's libraries,
 // relocated as on Paper. The expansion API stays where it is: other mods compile against it.
