@@ -136,6 +136,24 @@ class ApiGameTests {
     }
 
     @GameTest(maxTicks = 100)
+    fun playersShowWhatTheyLookAt(helper: GameTestHelper) {
+        val player = Api.player(helper)
+        // A wall of gold in front, south of the player, who looks straight south.
+        for (y in 1..5) helper.setBlock(BlockPos(1, y, 5), Blocks.GOLD_BLOCK)
+        player.yRot = 0f
+        player.xRot = 0f
+        helper.expect(Api.get("/players/${player.uuid}?include=target")) { answer ->
+            val target = answer.json.jsonObject["target"]?.jsonObject
+            when {
+                answer.status != 200 -> "GET a player with target failed"
+                target?.get("block")?.jsonObject?.get("type")?.jsonPrimitive?.content != "minecraft:gold_block" -> "the player doesn't look at the gold"
+                target["face"]?.jsonPrimitive?.content != "north" -> "the gold's north face isn't the one in sight"
+                else -> null
+            }.also { player.connection.disconnect(net.minecraft.network.chat.Component.literal("done")) }
+        }
+    }
+
+    @GameTest(maxTicks = 100)
     fun expansionsFromOtherModsAnswer(helper: GameTestHelper) {
         helper.expect(Api.get("/extensions/test_found/echo/hello")) { answer ->
             if (answer.status != 200 || "\"hello\"" !in answer.body) "the test mod's expansion didn't answer" else null

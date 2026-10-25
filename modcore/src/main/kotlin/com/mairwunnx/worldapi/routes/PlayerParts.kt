@@ -10,6 +10,7 @@ import com.mairwunnx.worldapi.game.PlayerFile
 import com.mairwunnx.worldapi.game.effectViews
 import com.mairwunnx.worldapi.game.view
 import com.mairwunnx.worldapi.game.views
+import com.mairwunnx.worldapi.game.worldName
 import com.mairwunnx.worldapi.model.AdvancementSummary
 import com.mairwunnx.worldapi.model.ArmorView
 import com.mairwunnx.worldapi.model.ContainerView
@@ -30,7 +31,7 @@ import net.minecraft.world.entity.EquipmentSlot
 import java.time.Instant
 
 /** What `GET /players/{player}?include=` may add, in the order the docs list them. */
-val PLAYER_PARTS = listOf("inventory", "enderchest", "effects", "deaths", "sessions", "statistics", "advancements")
+val PLAYER_PARTS = listOf("inventory", "enderchest", "effects", "deaths", "sessions", "statistics", "advancements", "target")
 
 private const val RECENT = 5
 
@@ -84,9 +85,43 @@ suspend fun ModCall.withParts(view: PlayerView, player: Known, online: ServerPla
     } else {
         null
     }
+    val target = if (parts.contains("target")) {
+        if (!coordinates) throw ApiException(HttpStatusCode.Forbidden, "private", "Where players look is hidden from anonymous clients")
+        val inventories = seesInventories
+        main { online?.let { targetView(it, inventories, api.loader::vanished) } }
+    } else {
+        null
+    }
     return view.copy(
         inventory = inventory, enderChest = enderChest, effects = effects, deaths = deaths,
-        sessions = sessions, statistics = statistics, advancements = advancements,
+        sessions = sessions, statistics = statistics, advancements = advancements, target = target,
+    )
+}
+
+private const val REACH = 64.0
+
+private fun Double.short() = Math.round(this * 100) / 100.0
+
+/** The block and the entity in a player's line of sight, as Paper reads them; an entity behind the block doesn't count. Server thread. */
+fun targetView(player: ServerPlayer, inventories: Boolean, vanished: (ServerPlayer) -> Boolean): com.mairwunnx.worldapi.model.TargetView {
+    val level = player.level()
+    val eye = player.eyePosition
+    val look = player.getViewVector(1f)
+    val hit = level.clip(net.minecraft.world.level.ClipContext(eye, eye.add(look.scale(REACH)), net.minecraft.world.level.ClipContext.Block.OUTLINE, net.minecraft.world.level.ClipContext.Fluid.NONE, player))
+    val blockHit = hit.takeIf { it.type == net.minecraft.world.phys.HitResult.Type.BLOCK }
+    val reach = blockHit?.location?.distanceTo(eye) ?: REACH
+    val end = eye.add(look.scale(reach))
+    val entityHit = net.minecraft.world.entity.projectile.ProjectileUtil.getEntityHitResult(
+        player, eye, end, player.boundingBox.expandTowards(look.scale(reach)).inflate(1.0),
+        { it != player && !it.isSpectator && !(it is ServerPlayer && vanished(it)) }, reach * reach,
+    )
+    return com.mairwunnx.worldapi.model.TargetView(
+        eye = LocationView(level.worldName, eye.x.short(), eye.y.short(), eye.z.short(), player.yRot, player.xRot),
+        block = blockHit?.let { com.mairwunnx.worldapi.game.blockView(level, it.blockPos, inventories) },
+        face = blockHit?.direction?.serializedName,
+        blockDistance = blockHit?.location?.distanceTo(eye)?.short(),
+        entity = entityHit?.entity?.let { entitySummary(it, coordinates = true) },
+        entityDistance = entityHit?.location?.distanceTo(eye)?.short(),
     )
 }
 
