@@ -13,6 +13,10 @@ import com.mairwunnx.worldapi.core.ModMainThread
 import com.mairwunnx.worldapi.core.TickRate
 import com.mairwunnx.worldapi.events.ApiEvent
 import com.mairwunnx.worldapi.events.EventBus
+import com.mairwunnx.worldapi.events.ModEvents
+import com.mairwunnx.worldapi.events.ModSampler
+import com.mairwunnx.worldapi.events.ModSnapshots
+import com.mairwunnx.worldapi.events.Windows
 import com.mairwunnx.worldapi.events.Topic
 import com.mairwunnx.worldapi.events.Vanished
 import com.mairwunnx.worldapi.expansion.WorldApiExpansions
@@ -59,6 +63,14 @@ class Runtime private constructor(
     val api: ModApi,
     val hub: WebSocketHub,
 ) {
+    private val windows = Windows(api.bus) { config.get().websocket.blockWindowSeconds }
+
+    /** The game's moments as WorldAPI events; [Hooks] hands them in. */
+    val events = ModEvents(server, loader, api.bus, api.history, api.experience, api.tamed, windows, api.vanished) { config.get().events.chat }
+
+    /** State without events of its own, polled every tick. */
+    val sampler = ModSampler(api, events, config::get)
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     var http: HttpServer<ModApi>? = null
         private set
@@ -97,10 +109,46 @@ class Runtime private constructor(
                 delay(24 * 3_600_000L)
             }
         }
+        seedExperience()
+        seedPets()
         api.bus.publish(ApiEvent(Topic.SERVER_STATUS, buildJsonObject {
             put("status", "started")
             put("version", server.serverVersion)
         }))
+    }
+
+    /**
+     * Gives every player without an experience baseline one: online players from the live value, everyone else from
+     * their playerdata file, read off the server thread.
+     */
+    private fun seedExperience() {
+        server.playerList.players.forEach { api.experience.seed(it.uuid, it.gameProfile.name(), it.totalExperience) }
+        val folder = server.getWorldPath(LevelResource.PLAYER_DATA_DIR).toFile()
+        if (!folder.isDirectory) return
+        scope.launch {
+            val names = com.mairwunnx.worldapi.routes.everyone(server).associate { it.uuid to it.name }
+            val seeded = api.experience.seedFromFiles(folder, names)
+            if (seeded > 0) logger.info("Started the experience totals of $seeded players from their playerdata")
+        }
+    }
+
+    /** Counts the pets in the world once in its life: loaded mobs now, the entity files off the server thread. */
+    private fun seedPets() {
+        if (api.tamed.seeded) return
+        val loaded = server.allLevels.flatMap { level -> level.allEntities.toList() }
+            .mapNotNull { pet -> (pet as? net.minecraft.world.entity.OwnableEntity)?.ownerReference?.uuid?.takeIf { com.mairwunnx.worldapi.routes.tamed(pet) }?.let { pet.uuid to it } }.toMap()
+        val roots = server.allLevels.map { net.minecraft.world.level.dimension.DimensionType.getStorageFolder(it.dimension(), server.getWorldPath(LevelResource.ROOT)).toFile() }
+        scope.launch {
+            val names = com.mairwunnx.worldapi.routes.everyone(server).mapNotNull { known -> known.name?.let { known.uuid to it } }.toMap()
+            var skipped = 0
+            val pets = HashMap<java.util.UUID, java.util.UUID>()
+            com.mairwunnx.worldapi.stats.EntityFiles.folders(roots).forEach { folder -> com.mairwunnx.worldapi.stats.EntityFiles.pets(folder) { skipped += it }.forEach { pets[it.entity] = it.owner } }
+            // Loaded mobs are newer than their files.
+            pets.putAll(loaded)
+            val owners = pets.values.groupingBy { it }.eachCount().mapNotNull { (owner, count) -> names[owner]?.let { owner to (it to count.toLong()) } }.toMap()
+            api.tamed.seed(owners)
+            logger.info("Counted ${pets.size} pets of ${owners.size} players for the tamed board" + if (skipped > 0) "; skipped $skipped chunks it couldn't read" else "")
+        }
     }
 
     /** The mod a class came from, which owns an expansion's namespace; the game's own for anything unknown. */
@@ -147,6 +195,8 @@ class Runtime private constructor(
     fun tick() {
         api.ticks.tick()
         if (++ticks % 5 == 0L) api.vanished.refresh(server.playerList.players.filter(loader::vanished).mapTo(HashSet()) { it.uuid })
+        sampler.tick()
+        windows.flushIfDue()
     }
 
     fun reload(): Result<String> = runCatching {
@@ -240,7 +290,7 @@ class Runtime private constructor(
                 server, loader, main, history, bus, ModStatistics(server, main), Experience(store), tokens, config, vanished,
                 Extensions(bus, main, logger), Tamed(store), AdminAccounts(store), Icons(folder.resolve("cache"), { server.serverVersion }, logger), files, TickRate(),
             )
-            val hub = WebSocketHub(config::get, { token -> runtime.http?.authenticate(token) }) { _, _ -> emptyList() }
+            val hub = WebSocketHub(config::get, { token -> runtime.http?.authenticate(token) }, ModSnapshots(api))
             bus.subscribe(hub)
             bus.interest = hub::wants
             runtime = Runtime(server, loader, logger, configPath, config, store, api, hub)

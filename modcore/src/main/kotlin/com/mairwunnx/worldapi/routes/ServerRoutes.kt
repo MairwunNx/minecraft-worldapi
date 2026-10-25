@@ -72,13 +72,12 @@ val serverRoutes = endpoints("Server", Scope.SERVER_READ) {
 
     get("/server/plugins", "Installed plugins") {
         val root = api.server.serverDirectory
-        val config = api.loader.config
         val folders = api.configFolders()
         api.loader.mods().sortedBy { it.name.lowercase() }.map { mod ->
             val roots = folders[mod.name].orEmpty()
             PluginInfo(
                 mod.name, mod.version, true, mod.description, mod.authors, mod.website,
-                roots.firstOrNull { Files.isDirectory(it) }?.let { relative(root, it) } ?: relative(root, config),
+                roots.firstOrNull { Files.isDirectory(it) }?.let { relative(root, it) },
                 roots.flatMap { configFiles(root, it) }.distinct().sorted().take(50),
             )
         }

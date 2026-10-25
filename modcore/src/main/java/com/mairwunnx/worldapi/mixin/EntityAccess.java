@@ -18,6 +18,13 @@ public final class EntityAccess {
         void worldapi$setPersistent(boolean persistent);
     }
 
+    /** Whether a lightning bolt only shows and burns nothing. */
+    @Mixin(net.minecraft.world.entity.LightningBolt.class)
+    public interface Bolt {
+        @Accessor("visualOnly")
+        boolean worldapi$visualOnly();
+    }
+
     /** A dropped item's delay before pickup, and who threw it. */
     @Mixin(ItemEntity.class)
     public interface Dropped {

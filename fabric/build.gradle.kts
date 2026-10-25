@@ -70,6 +70,12 @@ kotlin {
     jvmToolchain(25)
 }
 
+// The admin panel, built once by paper's `buildPanel` and served by every platform's jar under /admin. `-PskipPanel`
+// leaves it out, as on Paper.
+evaluationDependsOn(":paper")
+val skipPanel = providers.gradleProperty("skipPanel").isPresent
+val panel = project(":paper").tasks.named("buildPanel")
+
 // Fabric Loader loads only mods from a jar in the jar, so the driver gets the descriptor Loom's `include` would give it.
 val sqliteMod = tasks.register<Zip>("sqliteMod") {
     val descriptor = layout.buildDirectory.file("sqlite-mod/fabric.mod.json")
@@ -84,6 +90,7 @@ val sqliteMod = tasks.register<Zip>("sqliteMod") {
 
 tasks {
     processResources {
+        if (!skipPanel) from(panel) { into("admin") }
         val versions = mapOf("version" to project.version.toString(), "minecraft" to minecraft, "loader" to loader, "sqlite" to sqlite)
         inputs.properties(versions)
         filesMatching("fabric.mod.json") {

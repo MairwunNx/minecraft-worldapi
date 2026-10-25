@@ -103,8 +103,15 @@ kotlin {
     jvmToolchain(25)
 }
 
+// The admin panel, built once by paper's `buildPanel` and served by every platform's jar under /admin. `-PskipPanel`
+// leaves it out, as on Paper.
+evaluationDependsOn(":paper")
+val skipPanel = providers.gradleProperty("skipPanel").isPresent
+val panel = project(":paper").tasks.named("buildPanel")
+
 tasks {
     processResources {
+        if (!skipPanel) from(panel) { into("admin") }
         // FML wants a version number: a dev build is 0.0.0-dev, CI's 0.0.0-dev-<sha>.
         val version = project.version.toString().let { if (it.startsWith("dev")) "0.0.0-$it" else it }
         val properties = mapOf("version" to version, "neoforge" to neoforgeVersion, "minecraft" to minecraft)
