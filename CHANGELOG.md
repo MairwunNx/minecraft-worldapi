@@ -1,5 +1,30 @@
 # Changelog
 
+## 4.2.0
+
+WorldAPI runs on Fabric and NeoForge now, on a dedicated server and in the world you play alone. Everything Paper serves, the mods serve the same way, so sites, minecraft-mcp, minecraft-exporter, and the dashboard work with them unchanged. On Paper nothing changes but the jar's name.
+
+### Fabric and NeoForge
+
+- 🧩 **Three jars.** `worldapi-paper`, `worldapi-fabric` (needs Fabric API), and `worldapi-neoforge`, for Minecraft 26.3 on Java 25. On Modrinth each is its own version, `4.2.0+paper`, `+fabric`, and `+neoforge`; Hangar keeps the Paper one. `worldapi.jar` on GitHub stays the Paper jar, so old links keep working.
+- 🖥️ **A dedicated mod server** works as Paper does: the same REST API and WebSocket, config, tokens, permissions, admin panel, and `/worldapi`. `/server/plugins` lists the mods. Permissions in game come from fabric-permissions-api (LuckPerms, for one) or NeoForge's PermissionAPI, else operator level 2.
+- 🌍 **Worlds by dimension.** On the mods the worlds are `overworld`, `the_nether`, `the_end`, and a mod's own as `namespace:path`. Every platform also takes the other's names, so `world_nether` finds the Nether on Fabric, and `the_nether` on Paper.
+- 🔌 **Expansions in mods.** A Fabric or NeoForge mod shares its data through the same expansion library as a plugin: WorldAPI finds it through `META-INF/services`.
+- 📜 **Java scripts stay on Paper.** On the mods `/scripts` answers 501 `not_supported`.
+
+### Singleplayer
+
+- 🎮 **Your world on HTTP.** Put the mod in your game, open a world, and WorldAPI listens on `127.0.0.1:8110` for as long as it's open, then frees the port when you leave. A second game takes the next port.
+- 💾 **Each world its own data.** History, sessions, and issued tokens live in the save's `worldapi/` folder, and move, copy, and go with it. The config and its token in `config/worldapi/` serve every world.
+- 🤖 **minecraft-mcp finds the game by itself.** While a world is open, WorldAPI writes its address and token to `~/.worldapi/local/`, readable by you only. `/worldapi connect` copies the token and the line that adds minecraft-mcp to Claude Code.
+- 🛡️ **Only this computer.** A singleplayer world never listens beyond `127.0.0.1`, and refuses requests whose `Host` or a browser's `Origin` points elsewhere, so a web page can't reach it through DNS rebinding. LAN guests play as usual and don't reach the API.
+
+### Everywhere
+
+- 🧭 **Where it runs.** `GET /server` adds `platform` (`paper`, `fabric`, `neoforge`), `side` (`dedicated`, or `integrated` under a singleplayer world), `lan`, `cheats`, and `paused`.
+- 👀 **What a player looks at.** `GET /players/{player}?include=target` adds the block and the entity in their line of sight within 64 blocks, and where their eyes are. Needs `players:private`.
+- 🔒 **The same guard on Paper.** A Paper server that listens on a loopback address checks `Host` and `Origin` the same way.
+
 ## 4.1.1
 
 A security release that takes something away from moderators: making operators now needs `server:console`.

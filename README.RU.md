@@ -5,12 +5,14 @@
   <a href="https://hangar.papermc.io/MairwunNx/WorldAPI"><img alt="Hangar" src="https://img.shields.io/hangar/dt/WorldAPI?label=Hangar&color=1E88E5"></a>
   <a href="https://github.com/MairwunNx/minecraft-worldapi/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/MairwunNx/minecraft-worldapi?label=release"></a>
   <img alt="Paper 26.3" src="https://img.shields.io/badge/Paper-26.3-F7CF0D">
+  <img alt="Fabric 26.3" src="https://img.shields.io/badge/Fabric-26.3-DBD0B4">
+  <img alt="NeoForge 26.3" src="https://img.shields.io/badge/NeoForge-26.3-D7742F">
   <img alt="Java 25" src="https://img.shields.io/badge/Java-25-E76F00">
   <a href="https://github.com/MairwunNx/minecraft-worldapi/actions/workflows/build.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/MairwunNx/minecraft-worldapi/build.yml?branch=master&label=build"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/MairwunNx/minecraft-worldapi"></a>
 </p>
 
-🌍 **WorldAPI** выводит ваш Paper-сервер в HTTP. Положите один jar, и сайты, боты и ИИ-агенты смогут читать мир, игроков и их статистику, следить за событиями в реальном времени, а с токеном — управлять сервером.
+🌍 **WorldAPI** выводит в HTTP ваш сервер Minecraft или мир, в котором вы играете в одиночку. Положите один jar в Paper, Fabric или NeoForge, и сайты, боты и ИИ-агенты смогут читать мир, игроков и их статистику, следить за событиями в реальном времени, а с токеном — управлять игрой.
 
 [English version](https://github.com/MairwunNx/minecraft-worldapi/blob/master/README.md)
 
@@ -27,11 +29,12 @@
 - 🗂️ **Конфиги и логи как файлы**: чтение постранично или поиском, правка по ключу и бэкап каждой прежней версии.
 - 🔑 **Безопасно по умолчанию.** Публичный сайт читает без токена и не видит ни координат, ни инвентарей, ни чата. Для остального нужен токен с подходящими правами.
 - 🔌 **Данные других плагинов.** Плагины отдают через WorldAPI свои ресурсы и живые события: через маленькую Java-библиотеку с Maven Central или вовсе без неё.
+- 🎮 **И в одиночной игре.** Поставьте мод в игру, и ИИ-агент ответит на вопросы о мире, в котором вы играете прямо сейчас: где ближайшая деревня, что лежит в сундуках, на что вы смотрите.
 - 🤖 **Готов к ИИ-агентам** через [minecraft-mcp](https://github.com/MairwunNx/minecraft-mcp) и к Grafana через [minecraft-exporter](https://github.com/MairwunNx/minecraft-exporter).
 
 ## Как начать
 
-1. Скачайте jar с [Modrinth](https://modrinth.com/plugin/worldapi), [Hangar](https://hangar.papermc.io/MairwunNx/WorldAPI) или [GitHub](https://github.com/MairwunNx/minecraft-worldapi/releases/latest/download/worldapi.jar), положите в `plugins/` сервера на Paper 26.3 и перезапустите его.
+1. Скачайте jar для своей платформы с [Modrinth](https://modrinth.com/plugin/worldapi), [Hangar](https://hangar.papermc.io/MairwunNx/WorldAPI) (Paper) или GitHub ([Paper](https://github.com/MairwunNx/minecraft-worldapi/releases/latest/download/worldapi-paper.jar), [Fabric](https://github.com/MairwunNx/minecraft-worldapi/releases/latest/download/worldapi-fabric.jar), [NeoForge](https://github.com/MairwunNx/minecraft-worldapi/releases/latest/download/worldapi-neoforge.jar)). Положите его в `plugins/` сервера на Paper 26.3 или в `mods/` сервера на Fabric или NeoForge и перезапустите. Играете один? Страница [Singleplayer](https://github.com/MairwunNx/minecraft-worldapi/wiki/Singleplayer) подключит ИИ-агента за две минуты.
 2. Спросите что-нибудь: `curl http://localhost:8110/api/v1/server`. Чтобы войти в админ-панель, выполните в игре `/worldapi admin`.
 3. Прежде чем открывать порт 8110 в интернет, пройдите [первые шаги](https://github.com/MairwunNx/minecraft-worldapi/wiki/First-steps) и поставьте [HTTPS](https://github.com/MairwunNx/minecraft-worldapi/wiki/Reverse-proxy).
 
@@ -39,7 +42,7 @@
 
 Всё по шагам — в [вики](https://github.com/MairwunNx/minecraft-worldapi/wiki), на английском.
 
-**Владельцам серверов:** [Installation](https://github.com/MairwunNx/minecraft-worldapi/wiki/Installation) · [First steps](https://github.com/MairwunNx/minecraft-worldapi/wiki/First-steps) · [Tokens and permissions](https://github.com/MairwunNx/minecraft-worldapi/wiki/Tokens-and-permissions) · [Admin panel](https://github.com/MairwunNx/minecraft-worldapi/wiki/Admin-panel) · [Configuration](https://github.com/MairwunNx/minecraft-worldapi/wiki/Configuration) · [Reverse proxy](https://github.com/MairwunNx/minecraft-worldapi/wiki/Reverse-proxy) · [Security](https://github.com/MairwunNx/minecraft-worldapi/wiki/Security) · [Monitoring](https://github.com/MairwunNx/minecraft-worldapi/wiki/Monitoring) · [MCP](https://github.com/MairwunNx/minecraft-worldapi/wiki/MCP) · [FAQ](https://github.com/MairwunNx/minecraft-worldapi/wiki/FAQ)
+**Владельцам серверов:** [Installation](https://github.com/MairwunNx/minecraft-worldapi/wiki/Installation) · [Singleplayer](https://github.com/MairwunNx/minecraft-worldapi/wiki/Singleplayer) · [First steps](https://github.com/MairwunNx/minecraft-worldapi/wiki/First-steps) · [Tokens and permissions](https://github.com/MairwunNx/minecraft-worldapi/wiki/Tokens-and-permissions) · [Admin panel](https://github.com/MairwunNx/minecraft-worldapi/wiki/Admin-panel) · [Configuration](https://github.com/MairwunNx/minecraft-worldapi/wiki/Configuration) · [Reverse proxy](https://github.com/MairwunNx/minecraft-worldapi/wiki/Reverse-proxy) · [Security](https://github.com/MairwunNx/minecraft-worldapi/wiki/Security) · [Monitoring](https://github.com/MairwunNx/minecraft-worldapi/wiki/Monitoring) · [MCP](https://github.com/MairwunNx/minecraft-worldapi/wiki/MCP) · [FAQ](https://github.com/MairwunNx/minecraft-worldapi/wiki/FAQ)
 
 **Разработчикам:** [REST API](https://github.com/MairwunNx/minecraft-worldapi/wiki/REST-API) · [WebSocket](https://github.com/MairwunNx/minecraft-worldapi/wiki/WebSocket) · [Extensions](https://github.com/MairwunNx/minecraft-worldapi/wiki/Extensions) · [Expansions](https://github.com/MairwunNx/minecraft-worldapi/wiki/Expansions) · [Java scripts](https://github.com/MairwunNx/minecraft-worldapi/wiki/Java-scripts) · [Building from source](https://github.com/MairwunNx/minecraft-worldapi/wiki/Building-from-source) · [Architecture](https://github.com/MairwunNx/minecraft-worldapi/wiki/Architecture) · [Development](https://github.com/MairwunNx/minecraft-worldapi/wiki/Development) · [Releasing](https://github.com/MairwunNx/minecraft-worldapi/wiki/Releasing)
 
