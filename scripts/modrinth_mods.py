@@ -1,4 +1,4 @@
-"""Upload the mods' jars to Modrinth as versions of the project, each marked to run on the server only.
+"""Upload the mods' jars to Modrinth as versions of the project, each marked to run on the client or the server.
 
 Standard library only: MODRINTH_TOKEN=… python3 -I scripts/modrinth_mods.py --version X.Y.Z --notes release-notes.md
 The release workflow runs it after `./gradlew build`. Minotaur can't set a version's `environment`, which Modrinth
@@ -21,9 +21,11 @@ PROJECT = "worldapi"
 API = "https://api.modrinth.com"
 AGENT = "MairwunNx/minecraft-worldapi (github.com/MairwunNx)"
 MODS = {
-    # loader: its name on the version, and the projects it can't run without
-    "fabric": ("Fabric", ["fabric-api", "fabric-language-kotlin"]),
-    "neoforge": ("NeoForge", []),
+    # loader: its name on the version, the projects it can't run without, the ones it works with, and where it runs.
+    # WorldAPI runs on either side: on a dedicated server and under a singleplayer world. Players joining a server with
+    # it need nothing on their side, and Kotlin is inside the jar.
+    "fabric": ("Fabric", ["fabric-api"], ["luckperms"], "client_or_server"),
+    "neoforge": ("NeoForge", [], ["luckperms"], "client_or_server"),
 }
 
 
@@ -63,7 +65,7 @@ def main():
     project = project_id(PROJECT, token)
     uploaded = {v["version_number"] for v in request("GET", f"/v2/project/{project}/version", token)}
 
-    for loader, (name, needs) in MODS.items():
+    for loader, (name, needs, works_with, environment) in MODS.items():
         number = f"{args.version}+{loader}"
         if number in uploaded:
             print(f"{number}: already on Modrinth")
@@ -73,8 +75,9 @@ def main():
         data = {
             "name": f"WorldAPI {args.version} for {name}", "version_number": number, "changelog": notes,
             "game_versions": [game], "loaders": [loader], "version_type": "release", "featured": True,
-            "project_id": project, "status": "listed", "environment": "server_only",
-            "dependencies": [{"project_id": project_id(slug, token), "dependency_type": "required"} for slug in needs],
+            "project_id": project, "status": "listed", "environment": environment,
+            "dependencies": [{"project_id": project_id(slug, token), "dependency_type": "required"} for slug in needs]
+            + [{"project_id": project_id(slug, token), "dependency_type": "optional"} for slug in works_with],
             "file_parts": ["file"], "primary_file": "file",
         }
         body, content_type = multipart(data, jar.name, jar.read_bytes())

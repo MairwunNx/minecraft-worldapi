@@ -10,9 +10,9 @@ plugins {
     id("io.papermc.hangar-publish-plugin")
 }
 
-// `worldapi.mods=true` in gradle.properties, once the mods serve the API, gives each platform its own jar and Modrinth
-// version, as “Platforms” in CLAUDE.md says. Until then the plugin keeps the names it always had: worldapi-X.Y.Z.jar,
-// version X.Y.Z, so links and Moonlands' jars.txt keep working.
+// `worldapi.mods=true` in gradle.properties, on since the mods serve the API, gives each platform its own jar and Modrinth
+// version, as “Platforms” in CLAUDE.md says: worldapi-paper-X.Y.Z.jar and X.Y.Z+paper. Off, the plugin would keep the
+// names it had before: worldapi-X.Y.Z.jar, version X.Y.Z.
 val mods = providers.gradleProperty("worldapi.mods").map(String::toBoolean).getOrElse(false)
 val jarName = if (mods) "worldapi-paper" else "worldapi"
 

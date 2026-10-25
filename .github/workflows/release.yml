@@ -70,8 +70,8 @@ jobs:
           bun-version: 1.4.3
       - uses: gradle/actions/setup-gradle@v6
       - name: Read the platforms
-        # `worldapi.mods` in gradle.properties: off while the mods are only frames, so the release ships Paper alone
-        # under its old names; on, it ships all three platforms. Empty mods must never reach a store.
+        # `worldapi.mods` in gradle.properties: on since 4.2.0, so the release ships all three platforms; off, it would
+        # ship Paper alone under its old names. Empty mods must never reach a store.
         run: echo "MODS=$(sed -n 's/^worldapi\.mods=//p' gradle.properties)" >> "$GITHUB_ENV"
       - name: Build and test
         run: ./gradlew build -PreleaseVersion="$VERSION"
