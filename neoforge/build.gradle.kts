@@ -72,6 +72,8 @@ neoForge {
             sourceSet = gametest
             gameDirectory = file("run/gametest")
             systemProperty("neoforge.enabledGameTestNamespaces", "worldapi_gametest")
+            // Fabric's tests may run at the same time, on a port of their own.
+            systemProperty("worldapi.port", "8131")
         }
         // Singleplayer worlds in a game window, checked and closed by the test mod: `./gradlew :neoforge:runClientGameTest`.
         register("clientGameTest") {
@@ -79,6 +81,7 @@ neoForge {
             sourceSet = gametest
             gameDirectory = file("run/clientgametest")
             systemProperty("worldapi.clientGameTest", "true")
+            systemProperty("worldapi.port", "8141")
         }
     }
 }

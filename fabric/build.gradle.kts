@@ -1,4 +1,7 @@
 import java.time.Duration
+import java.util.zip.ZipEntry
+import java.util.zip.ZipFile
+import java.util.zip.ZipOutputStream
 
 plugins {
     kotlin("jvm")
@@ -81,15 +84,39 @@ val skipPanel = providers.gradleProperty("skipPanel").isPresent
 val panel = project(":paper").tasks.named("buildPanel")
 
 // Fabric Loader loads only mods from a jar in the jar, so the driver gets the descriptor Loom's `include` would give it.
-val sqliteMod = tasks.register<Zip>("sqliteMod") {
-    val descriptor = layout.buildDirectory.file("sqlite-mod/fabric.mod.json")
-    val text = "{\"schemaVersion\":1,\"id\":\"org_xerial_sqlite-jdbc\",\"version\":\"$sqlite\",\"name\":\"sqlite-jdbc\",\"custom\":{\"fabric-loom:generated\":true}}"
-    inputs.property("descriptor", text)
-    doFirst { descriptor.get().asFile.apply { parentFile.mkdirs(); writeText(text) } }
-    from(nested.elements.map { jars -> jars.map { zipTree(it) } })
-    from(descriptor)
-    archiveFileName = "sqlite-jdbc-$sqlite.jar"
-    destinationDirectory = layout.buildDirectory.dir("sqlite-mod")
+abstract class NestedMod : DefaultTask() {
+    @get:InputFiles
+    abstract val library: ConfigurableFileCollection
+
+    @get:Input
+    abstract val descriptor: Property<String>
+
+    @get:OutputFile
+    abstract val output: RegularFileProperty
+
+    @TaskAction
+    fun write() {
+        val jar = library.singleFile
+        ZipOutputStream(output.get().asFile.outputStream()).use { out ->
+            ZipFile(jar).use { zip ->
+                for (entry in zip.entries()) {
+                    if (entry.name == "fabric.mod.json") continue
+                    out.putNextEntry(ZipEntry(entry.name))
+                    zip.getInputStream(entry).use { it.copyTo(out) }
+                    out.closeEntry()
+                }
+            }
+            out.putNextEntry(ZipEntry("fabric.mod.json"))
+            out.write(descriptor.get().toByteArray())
+            out.closeEntry()
+        }
+    }
+}
+
+val sqliteMod = tasks.register<NestedMod>("sqliteMod") {
+    library.from(nested)
+    descriptor = "{\"schemaVersion\":1,\"id\":\"org_xerial_sqlite-jdbc\",\"version\":\"$sqlite\",\"name\":\"sqlite-jdbc\",\"custom\":{\"fabric-loom:generated\":true}}"
+    output = layout.buildDirectory.file("sqlite-mod/sqlite-jdbc-$sqlite.jar")
 }
 
 tasks {
@@ -132,8 +159,9 @@ tasks {
         dependsOn(shadowJar)
     }
 
-    // A game that hangs is killed, and the run fails.
+    // A game that hangs is killed, and the run fails. NeoForge's tests may run at the same time, on a port of their own.
     matching { it.name == "runGameTest" || it.name == "runClientGameTest" }.configureEach {
         timeout = Duration.ofMinutes(10)
+        (this as JavaExec).systemProperty("worldapi.port", "8121")
     }
 }

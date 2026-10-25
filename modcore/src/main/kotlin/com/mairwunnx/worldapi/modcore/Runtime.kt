@@ -164,7 +164,9 @@ class Runtime private constructor(
         val integrated = server.isSingleplayer
         // A singleplayer world listens on this machine only, and takes the next port when another game holds it.
         val host = if (integrated) "127.0.0.1" else settings.host
-        val ports = if (integrated) (settings.port..minOf(settings.port + 9, 65_535)).toList() else listOf(settings.port)
+        // The game tests of both loaders run at once; each takes a port of its own.
+        val port = System.getProperty("worldapi.port")?.toIntOrNull() ?: settings.port
+        val ports = if (integrated) (port..minOf(port + 9, 65_535)).toList() else listOf(port)
         var last: Exception? = null
         for (port in ports) {
             val server = HttpServer(api, endpoints, hub, logger)
