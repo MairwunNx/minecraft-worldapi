@@ -58,6 +58,24 @@ data class PlayerView(
     /** The `minecraft:custom` statistics (play time, deaths, distances, kills); the rest is under /statistics. */
     val statistics: Map<String, Long>? = null,
     val advancements: AdvancementSummary? = null,
+    /** What the player looks at, online players only. */
+    val target: TargetView? = null,
+)
+
+/** What a player looks at: the block and the entity in their line of sight, within 64 blocks. */
+@Serializable
+data class TargetView(
+    /** Where the eyes are, with the way they look. */
+    val eye: LocationView,
+    /** The first block the line of sight hits, liquids aside; absent when there is none in reach. */
+    val block: BlockView? = null,
+    /** The side of the block it hits: `up`, `down`, `north`, `south`, `east`, or `west`. */
+    val face: String? = null,
+    /** Blocks from the eyes to that spot. */
+    val blockDistance: Double? = null,
+    /** The nearest entity in the line of sight, before the block; absent when there is none. */
+    val entity: EntitySummary? = null,
+    val entityDistance: Double? = null,
 )
 
 @Serializable

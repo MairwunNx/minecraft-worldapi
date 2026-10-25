@@ -93,7 +93,8 @@ val playerRoutes = endpoints("Players", Scope.PLAYERS_READ) {
         "/players/{player}", "A player's profile, state, and whereabouts, with more parts on request",
         description = "`include` adds parts in the same answer: inventory and enderchest (players:private; read from the playerdata file while the player is offline), " +
             "effects (online only), deaths (the last place, and the newest 5 from the history with causes and killers), sessions (the newest 5), " +
-            "statistics (the minecraft:custom ones), and advancements (counts and the newest 5 done).",
+            "statistics (the minecraft:custom ones), advancements (counts and the newest 5 done), and target (online only, with players:private: " +
+            "the block and the entity the player looks at within 64 blocks, and where their eyes are).",
         query = listOf(string("include", "Comma-separated parts: ${PLAYER_PARTS.joinToString()}")),
         also = Scope.PLAYERS_PRIVATE,
     ) {

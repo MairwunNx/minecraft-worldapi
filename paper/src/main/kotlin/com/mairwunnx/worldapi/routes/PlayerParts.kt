@@ -5,6 +5,7 @@ import com.mairwunnx.worldapi.api.ApiException
 import com.mairwunnx.worldapi.api.ApiJson
 import com.mairwunnx.worldapi.api.badRequest
 import com.mairwunnx.worldapi.bukkit.effectViews
+import com.mairwunnx.worldapi.bukkit.isVanished
 import com.mairwunnx.worldapi.bukkit.view
 import com.mairwunnx.worldapi.bukkit.views
 import com.mairwunnx.worldapi.events.Topic
@@ -32,7 +33,7 @@ import java.io.File
 import java.time.Instant
 
 /** What `GET /players/{player}?include=` may add, in the order the docs list them. */
-val PLAYER_PARTS = listOf("inventory", "enderchest", "effects", "deaths", "sessions", "statistics", "advancements")
+val PLAYER_PARTS = listOf("inventory", "enderchest", "effects", "deaths", "sessions", "statistics", "advancements", "target")
 
 private const val RECENT = 5
 
@@ -86,9 +87,36 @@ suspend fun PaperCall.withParts(view: PlayerView, player: OfflinePlayer, online:
     } else {
         null
     }
+    val target = if (parts.contains("target")) {
+        if (!coordinates) throw ApiException(HttpStatusCode.Forbidden, "private", "Where players look is hidden from anonymous clients")
+        val inventories = seesInventories
+        main { online?.let { targetView(it, inventories) } }
+    } else {
+        null
+    }
     return view.copy(
         inventory = inventory, enderChest = enderChest, effects = effects, deaths = deaths,
-        sessions = sessions, statistics = statistics, advancements = advancements,
+        sessions = sessions, statistics = statistics, advancements = advancements, target = target,
+    )
+}
+
+private const val REACH = 64.0
+
+/** The block and the entity in a player's line of sight; an entity behind the block doesn't count. Server thread. */
+fun targetView(player: Player, inventories: Boolean): com.mairwunnx.worldapi.model.TargetView {
+    val eye = player.eyeLocation
+    val hit = player.rayTraceBlocks(REACH, org.bukkit.FluidCollisionMode.NEVER)
+    val block = hit?.hitBlock
+    val blockDistance = hit?.hitPosition?.distance(eye.toVector())
+    val entityHit = player.world.rayTraceEntities(eye, eye.direction, blockDistance ?: REACH, 0.0) { it != player && !(it is Player && it.isVanished()) }
+    val entity = entityHit?.hitEntity
+    return com.mairwunnx.worldapi.model.TargetView(
+        eye = eye.view(),
+        block = block?.let { blockView(it, inventories) },
+        face = hit?.hitBlockFace?.name?.lowercase(),
+        blockDistance = blockDistance?.let { Math.round(it * 100) / 100.0 },
+        entity = entity?.let { entitySummary(it, coordinates = true) },
+        entityDistance = entityHit?.hitPosition?.distance(eye.toVector())?.let { Math.round(it * 100) / 100.0 },
     )
 }
 

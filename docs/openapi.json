@@ -2023,7 +2023,7 @@
             "get": {
                 "operationId": "getPlayersPlayer",
                 "summary": "A player's profile, state, and whereabouts, with more parts on request",
-                "description": "`include` adds parts in the same answer: inventory and enderchest (players:private; read from the playerdata file while the player is offline), effects (online only), deaths (the last place, and the newest 5 from the history with causes and killers), sessions (the newest 5), statistics (the minecraft:custom ones), and advancements (counts and the newest 5 done).\n\nPermission: `players:read`. Coordinates, items, and the like also need `players:private`.",
+                "description": "`include` adds parts in the same answer: inventory and enderchest (players:private; read from the playerdata file while the player is offline), effects (online only), deaths (the last place, and the newest 5 from the history with causes and killers), sessions (the newest 5), statistics (the minecraft:custom ones), advancements (counts and the newest 5 done), and target (online only, with players:private: the block and the entity the player looks at within 64 blocks, and where their eyes are).\n\nPermission: `players:read`. Coordinates, items, and the like also need `players:private`.",
                 "tags": [
                     "Players"
                 ],
@@ -2050,7 +2050,7 @@
                         "name": "include",
                         "in": "query",
                         "required": false,
-                        "description": "Comma-separated parts: inventory, enderchest, effects, deaths, sessions, statistics, advancements",
+                        "description": "Comma-separated parts: inventory, enderchest, effects, deaths, sessions, statistics, advancements, target",
                         "schema": {
                             "type": "string"
                         }
@@ -16606,6 +16606,16 @@
                                 "type": "null"
                             }
                         ]
+                    },
+                    "target": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/TargetView"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
                     }
                 },
                 "required": [
@@ -17666,6 +17676,56 @@
                 },
                 "required": [
                     "taken"
+                ],
+                "additionalProperties": false
+            },
+            "TargetView": {
+                "type": "object",
+                "properties": {
+                    "eye": {
+                        "$ref": "#/components/schemas/LocationView"
+                    },
+                    "block": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/BlockView"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "face": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "blockDistance": {
+                        "type": [
+                            "number",
+                            "null"
+                        ]
+                    },
+                    "entity": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/EntitySummary"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "entityDistance": {
+                        "type": [
+                            "number",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "eye"
                 ],
                 "additionalProperties": false
             },

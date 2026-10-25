@@ -86,7 +86,7 @@ val entityRoutes = endpoints("Entities", Scope.SERVER_READ) {
                 .filter { origin == null || chunk == null || it.location.distanceSquared(origin) <= area.radius * area.radius }
                 .filterNot { it is Player && hides(it) }
                 .sortedWith(if (origin != null) compareBy { it.location.distanceSquared(origin) } else compareBy { it.uniqueId })
-                .map { summary(it, coordinates) }
+                .map { entitySummary(it, coordinates) }
                 .toList()
                 .page(limit, cursor)
         }
@@ -291,7 +291,7 @@ private fun census(world: World, entities: List<Entity>): EntityCensus {
     )
 }
 
-private fun summary(entity: Entity, coordinates: Boolean) = EntitySummary(
+internal fun entitySummary(entity: Entity, coordinates: Boolean) = EntitySummary(
     uuid = entity.uniqueId.toString(),
     type = entity.type.key.asString(),
     name = entity.customName()?.plain() ?: (entity as? Player)?.name,
