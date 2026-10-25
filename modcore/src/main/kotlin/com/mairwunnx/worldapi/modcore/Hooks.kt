@@ -28,7 +28,11 @@ object Hooks {
         runCatching { events.block() }.onFailure { Logs.logger.log(java.util.logging.Level.WARNING, "A WorldAPI event failed", it) }
     }
 
-    @JvmStatic fun joined(player: ServerPlayer) = events { joined(player) }
+    @JvmStatic
+    fun joined(player: ServerPlayer) {
+        events { joined(player) }
+        runCatching { Mod.runtime?.welcome(player) }
+    }
     @JvmStatic fun left(player: ServerPlayer) = events { left(player) }
     @JvmStatic fun kicked(player: ServerPlayer, reason: Component) = events { kicked(player, reason) }
     @JvmStatic fun died(player: ServerPlayer, source: DamageSource, drops: Int) = events { died(player, source, drops) }

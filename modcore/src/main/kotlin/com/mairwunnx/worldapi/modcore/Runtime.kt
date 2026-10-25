@@ -199,6 +199,21 @@ class Runtime private constructor(
         windows.flushIfDue()
     }
 
+    /**
+     * A singleplayer world's owner hears how to connect when they arrive: the whole message once per game, a short
+     * line in every world after.
+     */
+    fun welcome(player: net.minecraft.server.level.ServerPlayer) {
+        if (!WorldApiCommand.owner(player) || address == null) return
+        if (welcomed) {
+            player.sendSystemMessage(net.minecraft.network.chat.Component.literal("WorldAPI is on for this world. ").withStyle(net.minecraft.ChatFormatting.GRAY)
+                .append(net.minecraft.network.chat.Component.literal("[How to connect]").withStyle { it.withColor(net.minecraft.ChatFormatting.AQUA).withClickEvent(net.minecraft.network.chat.ClickEvent.RunCommand("/worldapi connect")) }))
+        } else {
+            welcomed = true
+            WorldApiCommand.connect(player.createCommandSourceStack(), this)
+        }
+    }
+
     fun reload(): Result<String> = runCatching {
         val old = config.get()
         val new = ConfigFile.load(configPath).first
@@ -246,6 +261,10 @@ class Runtime private constructor(
     }
 
     companion object {
+        /** Whether this game showed the whole welcome already; it stays for the game's life, across worlds. */
+        @Volatile
+        private var welcomed = false
+
         /** Builds and starts WorldAPI for [server], or logs why it stays off and returns null. */
         fun start(server: MinecraftServer, loader: Loader, logger: Logger): Runtime? {
             val folder = loader.config.resolve("worldapi")
