@@ -1,7 +1,5 @@
 package com.mairwunnx.worldapi.routes
 
-import com.mairwunnx.worldapi.api.ApiException
-import io.ktor.http.HttpStatusCode
 import com.mairwunnx.worldapi.api.Scope
 import com.mairwunnx.worldapi.api.badRequest
 import com.mairwunnx.worldapi.api.integer
@@ -134,10 +132,7 @@ val serverRoutes = endpoints("Server", Scope.SERVER_READ) {
         val command = request.command.trim().removePrefix("/")
         if (command.isEmpty()) badRequest("command is empty")
         if (command.length > 32_767) badRequest("command is too long")
-        // worldapi.admin opens /worldapi, which makes tokens with any permission; the API never hands it out or takes it.
-        if (WORLDAPI_NODE.containsMatchIn(command)) {
-            throw ApiException(HttpStatusCode.Forbidden, "protected_permission", "WorldAPI's own permissions (worldapi.*) can't change through the API; change them in game or in the permissions plugin")
-        }
+        refuseProtected(command)
         auditTarget = command.substringBefore(' ')
         auditDetail = command
         // As the console itself, so `say` reads “[Server] …” in game; the console's answer is the output.
@@ -291,6 +286,3 @@ internal fun performance(server: Server, entityTypes: Boolean = false, includeVa
         at = Instant.now().toString(),
     )
 }
-
-/** A WorldAPI permission node in a command, such as `lp user Steve permission set worldapi.admin`. */
-internal val WORLDAPI_NODE = Regex("""(?i)(?<![\w.])worldapi\.(\*|[a-z0-9_]+)""")

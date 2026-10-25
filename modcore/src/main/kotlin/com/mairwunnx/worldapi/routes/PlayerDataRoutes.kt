@@ -139,7 +139,7 @@ val playerDataRoutes = endpoints("Player data", Scope.PLAYERS_READ) {
         }
     }
 
-    patch<PermissionPatch, PermissionView>("/players/{player}/permissions", "Make a player an operator or take it away", Scope.PLAYERS_MODERATE) { patch ->
+    patch<PermissionPatch, PermissionView>("/players/{player}/permissions", "Make a player an operator or take it away", Scope.SERVER_CONSOLE, description = OPERATORS_NEED_CONSOLE) { patch ->
         main {
             val player = knownPlayer()
             val profile = NameAndId(player.uuid, player.name ?: "")

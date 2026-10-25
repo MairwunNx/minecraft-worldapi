@@ -169,6 +169,22 @@ class ApiGameTests {
     }
 
     @GameTest(maxTicks = 100)
+    fun moderatorsCantMakeOperators(helper: GameTestHelper) {
+        val moderator = Mod.runtime!!.api.tokens.issue("moderator-${System.nanoTime()}", listOf("moderator"), "test", null)
+        val ops = Api.call("PATCH", "/server/ops", """{"add":["Steve"]}""", headers = mapOf("Authorization" to "Bearer $moderator"), auth = false)
+        helper.expect(ops) { answer ->
+            if (answer.status != 403 || "missing_scope" !in answer.body) "a moderator made an operator" else null
+        }
+    }
+
+    @GameTest(maxTicks = 100)
+    fun theConsoleKeepsWorldApiPermissions(helper: GameTestHelper) {
+        helper.expect(Api.call("POST", "/server/commands", """{"command":"lp user Steve permission set worldapi.admin true"}""")) { answer ->
+            if (answer.status != 403 || "protected_permission" !in answer.body) "the console handed out worldapi.admin" else null
+        }
+    }
+
+    @GameTest(maxTicks = 100)
     fun expansionsFromOtherModsAnswer(helper: GameTestHelper) {
         helper.expect(Api.get("/extensions/test_found/echo/hello")) { answer ->
             if (answer.status != 200 || "\"hello\"" !in answer.body) "the test mod's expansion didn't answer" else null

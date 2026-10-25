@@ -151,6 +151,7 @@ val serverRoutes = endpoints("Server", Scope.SERVER_READ) {
         val command = request.command.trim().removePrefix("/")
         if (command.isEmpty()) badRequest("command is empty")
         if (command.length > 32_767) badRequest("command is too long")
+        refuseProtected(command)
         auditTarget = command.substringBefore(' ')
         auditDetail = command
         // As the server itself, so `say` reads “[Server] …” in game; what it answers goes to the log, which is the output.

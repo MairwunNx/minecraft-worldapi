@@ -46,7 +46,7 @@ val accessRoutes = endpoints("Access", Scope.PLAYERS_MODERATE) {
     // An operator runs every command and /worldapi, which makes tokens with any permission: as much as the console.
     patch<OperatorsPatch, Operators>(
         "/server/ops", "Make players operators or take it away", Scope.SERVER_CONSOLE,
-        description = "Needs `server:console`, not `players:moderate`: an operator may run every command, `/worldapi` among them.",
+        description = OPERATORS_NEED_CONSOLE,
     ) { patch ->
         val add = patch.add.map { profile(it) }
         val remove = patch.remove.map { profile(it) }
