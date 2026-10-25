@@ -154,6 +154,21 @@ class ApiGameTests {
     }
 
     @GameTest(maxTicks = 100)
+    fun idleTimeStartsAtJoin(helper: GameTestHelper) {
+        val player = Api.player(helper)
+        helper.expect(Api.get("/players/online")) { answer ->
+            val idle = (answer.json.jsonObject["players"] as? JsonArray).orEmpty().map { it.jsonObject }
+                .firstOrNull { it["uuid"]?.jsonPrimitive?.content == player.uuid.toString() }?.get("idleSeconds")?.jsonPrimitive?.int
+            when {
+                answer.status != 200 -> "GET /players/online failed"
+                idle == null -> "the player isn't online"
+                idle > 60 -> "a player who just joined is idle for $idle seconds"
+                else -> null
+            }.also { player.connection.disconnect(net.minecraft.network.chat.Component.literal("done")) }
+        }
+    }
+
+    @GameTest(maxTicks = 100)
     fun expansionsFromOtherModsAnswer(helper: GameTestHelper) {
         helper.expect(Api.get("/extensions/test_found/echo/hello")) { answer ->
             if (answer.status != 200 || "\"hello\"" !in answer.body) "the test mod's expansion didn't answer" else null

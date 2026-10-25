@@ -210,8 +210,8 @@ private fun ticks(millis: Long?, default: Long, max: Long): Int = ((millis ?: de
 
 internal fun iso(millis: Long): String? = if (millis > 0) Instant.ofEpochMilli(millis).toString() else null
 
-/** How long the player has done nothing, as Paper's `idleDuration` counts it. */
-internal fun idleSeconds(player: ServerPlayer) = ((System.currentTimeMillis() - player.lastActionTime).coerceAtLeast(0)) / 1000
+/** How long the player has done nothing, as Paper's `idleDuration` counts it; the game keeps the last action on its own monotonic clock. */
+internal fun idleSeconds(player: ServerPlayer) = ((net.minecraft.util.Util.getMillis() - player.lastActionTime).coerceAtLeast(0)) / 1000
 
 /** A playerdata file's creation and last change: when the player first joined, and when the game last saved them. */
 private fun times(path: java.nio.file.Path): Pair<Long, Long>? = runCatching {
