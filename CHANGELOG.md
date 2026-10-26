@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.2.1
+
+Updated libraries; nothing changes in the API.
+
+- 📦 **Updates.** Built against Paper 26.3 build 223 and NeoForge 26.3.0.99. Updated the MariaDB and MySQL driver to 4.0.0, kotlinx-serialization, and the admin panel’s libraries.
+- 🔐 **MySQL and MariaDB connect as before.** The new driver turns on TLS with certificate checks by default, which most database servers on the same machine would fail. WorldAPI keeps connecting without TLS, as it did; to turn TLS on, set `sslMode` (`verify-full`, `verify-ca`, or `trust`) under `database.properties` in `config.yml`.
+
 ## 4.2.0
 
 WorldAPI runs on Fabric and NeoForge now, on a dedicated server and in the world you play alone. Everything Paper serves, the mods serve the same way, so sites, minecraft-mcp, minecraft-exporter, and the dashboard work with them unchanged. On Paper nothing changes but the jar's name.
