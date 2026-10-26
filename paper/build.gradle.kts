@@ -21,13 +21,13 @@ val ktorVersion = "3.6.0"
 dependencies {
     // What doesn't touch Bukkit: the HTTP server's pieces, the config, the store, the models. Shaded with its libraries.
     implementation(project(":core"))
-    compileOnly("io.papermc.paper:paper-api:26.3.build.205-stable")
+    compileOnly("io.papermc.paper:paper-api:26.3.build.223-stable")
     // Paper ships the SQLite driver, so it stays out of the jar.
     compileOnly("org.xerial:sqlite-jdbc:3.53.4.0")
     // Plan is optional: its section shows on Plan's pages when Plan runs next to WorldAPI.
     compileOnly("com.djrapitops:plan-api:5.9-R1.3")
 
-    testImplementation("io.papermc.paper:paper-api:26.3.build.205-stable")
+    testImplementation("io.papermc.paper:paper-api:26.3.build.223-stable")
     testImplementation("org.xerial:sqlite-jdbc:3.53.4.0")
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
     testImplementation("io.ktor:ktor-client-websockets:$ktorVersion")
@@ -168,7 +168,7 @@ hangarPublish {
 // paper_smoke.py --plugin paper/build/libs/worldapi-smoke.jar). It compiles against the API alone, as any expansion does.
 val smoke: SourceSet = sourceSets.create("smoke")
 dependencies {
-    "smokeCompileOnly"("io.papermc.paper:paper-api:26.3.build.205-stable")
+    "smokeCompileOnly"("io.papermc.paper:paper-api:26.3.build.223-stable")
     "smokeCompileOnly"(project(":expansion"))
 }
 tasks.register<Jar>("smokeJar") {
