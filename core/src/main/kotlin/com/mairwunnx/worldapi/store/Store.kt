@@ -143,6 +143,9 @@ class Store(private val settings: DatabaseSettings, folder: Path) : AutoCloseabl
                 DatabaseType.MYSQL -> {
                     driverClassName = org.mariadb.jdbc.Driver::class.java.name
                     jdbcUrl = "jdbc:mariadb://${settings.host}:${port(settings)}/${settings.name}"
+                    // Driver 4 verifies TLS by default, which most servers on the same host can't pass; connect as
+                    // 3.x did unless `properties` sets sslMode.
+                    addDataSourceProperty("sslMode", "disable")
                 }
             }
             if (settings.type != DatabaseType.SQLITE) {

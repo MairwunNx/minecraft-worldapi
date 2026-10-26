@@ -16,7 +16,7 @@ dependencies {
     api("io.ktor:ktor-server-websockets:$ktorVersion")
     api("io.ktor:ktor-server-cors:$ktorVersion")
     api("io.ktor:ktor-server-status-pages:$ktorVersion")
-    api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
+    api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
     api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
     api("com.charleskorn.kaml:kaml:0.104.0")
     api("org.jetbrains.exposed:exposed-core:$exposedVersion")
@@ -24,7 +24,7 @@ dependencies {
     api("com.zaxxer:HikariCP:7.1.0")
     api("org.postgresql:postgresql:42.7.14")
     // MariaDB's driver also talks to MySQL; MySQL's own is GPL.
-    api("org.mariadb.jdbc:mariadb-java-client:3.5.10")
+    api("org.mariadb.jdbc:mariadb-java-client:4.0.0")
     // Compiles scripts on servers that run a JRE without javac.
     api("org.eclipse.jdt:ecj:3.46.100")
     // Every platform ships its own SQLite driver (Paper does), so it stays out of the jar.
