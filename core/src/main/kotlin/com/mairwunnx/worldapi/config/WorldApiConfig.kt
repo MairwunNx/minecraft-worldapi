@@ -157,9 +157,15 @@ data class Webhook(
     val url: String,
     /** Topic ids, as on the WebSocket: `player.join`, `ext.mobosses.boss.spawned`. */
     val topics: List<String>,
-    /** What it may see, as a token's permissions and groups decide; chat needs chat:read, coordinates players:private. */
-    val permissions: List<String> = listOf("viewer"),
-    /** Signs each body: X-WorldAPI-Signature is `sha256=` and the HMAC of the timestamp header, a dot, and the body. */
+    /**
+     * What it may see, as a token's permissions and groups decide. A webhook usually posts to a shared channel, so the
+     * default leaves out coordinates (players:private) and chat (chat:read).
+     */
+    val permissions: List<String> = listOf("server:read", "players:read", "events:read"),
+    /**
+     * Signs each body: X-WorldAPI-Signature is `sha256=` and the HMAC of the X-WorldAPI-Timestamp header, a dot, the
+     * X-WorldAPI-Delivery header, a dot, and the body.
+     */
     val secret: String? = null,
 ) {
     init {

@@ -1,5 +1,7 @@
 package com.mairwunnx.worldapi.config
 
+import com.mairwunnx.worldapi.events.Topic
+
 import com.charleskorn.kaml.Yaml
 import com.charleskorn.kaml.YamlConfiguration
 import com.mairwunnx.worldapi.api.Cidr
@@ -29,6 +31,9 @@ object ConfigFile {
         return parse(path.readText()) to created
     }
 
+    /** The secret config.yml's example shows, which signs nothing anyone can trust. */
+    const val WEBHOOK_SECRET_EXAMPLE = "a-long-random-string"
+
     fun parse(text: String): WorldApiConfig = validate(yaml.decodeFromString(WorldApiConfig.serializer(), text))
 
     fun defaultText(): String =
@@ -55,6 +60,18 @@ object ConfigFile {
             // A placeholder nothing replaced, such as ${CFG_TOKEN} with the variable unset, is the same for everyone who reads the docs.
             config.auth.tokens.filter { UNSET_VARIABLE.containsMatchIn(it.token) }.forEach {
                 add("auth.tokens.${it.name}: the token is a placeholder (${it.token.substringAfter("\${").substringBefore('}')}) that nothing filled in")
+            }
+            config.webhooks.groupBy { it.name }.filter { it.value.size > 1 }.keys.forEach {
+                add("webhooks: the name \"$it\" appears more than once")
+            }
+            config.webhooks.forEach { hook ->
+                hook.permissions.filterNot(config.auth.resolver::contains).forEach { add("webhooks.${hook.name}: \"$it\" is neither a permission nor a group") }
+                // Plugins' topics register as their plugins start, so only WorldAPI's own are known now.
+                hook.topics.filter { !it.startsWith("ext.") && Topic.of(it) == null }.forEach { add("webhooks.${hook.name}: there is no topic \"$it\"") }
+                hook.secret?.let { secret ->
+                    if (secret.length < 16 || secret == WEBHOOK_SECRET_EXAMPLE) add("webhooks.${hook.name}: the secret must be at least 16 characters, and not the example's")
+                    if (UNSET_VARIABLE.containsMatchIn(secret)) add("webhooks.${hook.name}: the secret is a placeholder that nothing filled in")
+                }
             }
             val limits = listOf(config.rateLimit.anonymous, config.rateLimit.tokens) +
                 config.auth.tokens.mapNotNull { it.rateLimit }

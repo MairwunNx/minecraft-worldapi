@@ -1,5 +1,6 @@
 package com.mairwunnx.worldapi
 
+import com.mairwunnx.worldapi.config.ConfigFile
 import com.mairwunnx.worldapi.config.Events
 import com.mairwunnx.worldapi.config.Webhook
 import com.mairwunnx.worldapi.config.WorldApiConfig
@@ -61,17 +62,18 @@ class WebhookTest {
 
     @Test
     fun `an event arrives signed, and the signature checks out`() {
-        val got = assertNotNull(send(Webhook("deaths", url, listOf("player.death"), secret = "s3cret"), death))
+        val got = assertNotNull(send(Webhook("deaths", url, listOf("player.death"), listOf("viewer"), secret = "s3cret-s3cret-s3cret"), death))
         assertTrue("\"cause\":\"fall\"" in got.body)
         assertTrue("\"location\"" in got.body)
         assertEquals("player.death", got.headers["x-worldapi-topic"])
         val at = got.headers.getValue("x-worldapi-timestamp")
-        assertEquals("sha256=" + Webhooks.sign("s3cret", "$at.${got.body}"), got.headers["x-worldapi-signature"])
+        val delivery = got.headers.getValue("x-worldapi-delivery")
+        assertEquals("sha256=" + Webhooks.sign("s3cret-s3cret-s3cret", "$at.$delivery.${got.body}"), got.headers["x-worldapi-signature"])
     }
 
     @Test
-    fun `without players private, coordinates are stripped`() {
-        val got = assertNotNull(send(Webhook("deaths", url, listOf("player.death"), permissions = listOf("events:read")), death))
+    fun `by default, coordinates are stripped`() {
+        val got = assertNotNull(send(Webhook("deaths", url, listOf("player.death")), death))
         assertTrue("\"cause\":\"fall\"" in got.body)
         assertFalse("\"location\"" in got.body)
     }
@@ -94,5 +96,27 @@ class WebhookTest {
         assertFailsWith<IllegalArgumentException> { Webhook("x", "ftp://example.com", listOf("player.join")) }
         assertFailsWith<IllegalArgumentException> { Webhook("x", "https://example.com", emptyList()) }
         assertFailsWith<IllegalArgumentException> { Webhook("bad name", "https://example.com", listOf("player.join")) }
+    }
+
+    @Test
+    fun `duplicate names, unknown permissions or topics, and weak secrets don't load`() {
+        fun load(hooks: String) = ConfigFile.parse("webhooks:\n$hooks")
+        val hook = "  - {name: a, url: \"https://example.com\", topics: [player.join]"
+        load("$hook}")
+        assertFailsWith<IllegalArgumentException> { load("$hook}\n$hook}") }
+        assertFailsWith<IllegalArgumentException> { load("$hook, permissions: [players:fly]}") }
+        assertFailsWith<IllegalArgumentException> { load("  - {name: a, url: \"https://example.com\", topics: [player.jump]}") }
+        load("  - {name: a, url: \"https://example.com\", topics: [ext.mobosses.boss.spawned]}")
+        assertFailsWith<IllegalArgumentException> { load("$hook, secret: short}") }
+        assertFailsWith<IllegalArgumentException> { load("$hook, secret: ${ConfigFile.WEBHOOK_SECRET_EXAMPLE}}") }
+        assertFailsWith<IllegalArgumentException> { load("$hook, secret: \"\${HOOK_SECRET_UNSET}\"}") }
+    }
+
+    @Test
+    fun `plain http warns, except on this machine`() {
+        assertTrue(Webhooks.plain("http://example.com/hook"))
+        assertFalse(Webhooks.plain("http://127.0.0.1:8080/hook"))
+        assertFalse(Webhooks.plain("http://[::1]/hook"))
+        assertFalse(Webhooks.plain("https://example.com/hook"))
     }
 }

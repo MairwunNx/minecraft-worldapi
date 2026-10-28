@@ -132,14 +132,15 @@ events:
   retentionDays: 0
 
 # URLs that get events as they happen: a POST with the event as JSON, retried twice, then dropped.
-# A webhook sees what a token with its permissions would; the log names it, never its URL.
+# A webhook sees what a token with its permissions would; by default no coordinates and no chat,
+# since a webhook usually posts to a shared channel. The log names a webhook, never its URL.
 # A secret signs each body: X-WorldAPI-Signature is sha256= and the HMAC of
-# X-WorldAPI-Timestamp, a dot, and the body.
+# X-WorldAPI-Timestamp, a dot, X-WorldAPI-Delivery, a dot, and the body.
 #   - name: deaths
 #     url: https://example.com/minecraft
 #     topics: [player.join, player.leave, player.death]
-#     permissions: [viewer]
-#     secret: change-me
+#     permissions: [server:read, players:read, events:read]
+#     secret: a-long-random-string
 webhooks: []
 
 # Other plugins' data, through the expansion API: their resources under
