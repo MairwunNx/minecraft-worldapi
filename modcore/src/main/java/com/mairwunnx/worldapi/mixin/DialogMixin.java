@@ -11,13 +11,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * A dialog's answer, such as the webhook wizard's secret, taken on the server thread before the game's own handler,
- * which would write the payload to the debug log.
+ * which would write the payload to the debug log, and NeoForge's event, which would hand it to other mods.
  */
 @Mixin(ServerCommonPacketListenerImpl.class)
 public abstract class DialogMixin {
     @Inject(
         method = "handleCustomClickAction",
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/server/MinecraftServer;handleCustomClickAction(Lnet/minecraft/resources/Identifier;Ljava/util/Optional;)V"),
+        // Right after the hop to the server thread: NeoForge changes the call that follows, both loaders keep this one.
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/network/protocol/PacketUtils;ensureRunningOnSameThread(Lnet/minecraft/network/protocol/Packet;Lnet/minecraft/network/PacketListener;Lnet/minecraft/network/PacketProcessor;)V", shift = At.Shift.AFTER),
         cancellable = true
     )
     private void worldapi$answer(ServerboundCustomClickActionPacket packet, CallbackInfo info) {
