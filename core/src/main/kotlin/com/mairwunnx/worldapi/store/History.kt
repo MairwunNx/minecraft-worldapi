@@ -33,6 +33,8 @@ data class StoredEvent(
     val data: JsonObject,
 )
 
+private const val SEARCH_BATCH = 1_000
+
 data class EventQuery(
     val types: List<String> = emptyList(),
     val player: String? = null,
@@ -80,6 +82,29 @@ class History(private val store: Store) {
             .orderBy(Events.id, if (query.oldestFirst) SortOrder.ASC else SortOrder.DESC)
             .limit(query.limit)
             .map { it.toEvent() }
+    }
+
+    /**
+     * Events whose data holds [text], ignoring case in any language. SQLite lowers only ASCII, so the history is read in
+     * batches and matched here; past [scanLimit] rows it stops and answers the last id it read, to go on from there.
+     */
+    suspend fun searchEvents(query: EventQuery, text: String, scanLimit: Int = 20_000): Pair<List<StoredEvent>, Long?> {
+        val needle = text.lowercase()
+        val found = mutableListOf<StoredEvent>()
+        var before = query.before
+        var scanned = 0
+        while (found.size < query.limit && scanned < scanLimit) {
+            val batch = events(query.copy(before = before, limit = minOf(SEARCH_BATCH, scanLimit - scanned)))
+            if (batch.isEmpty()) return found to null
+            scanned += batch.size
+            for (event in batch) {
+                if (needle !in event.data.toString().lowercase()) continue
+                found += event
+                if (found.size == query.limit) return found to null
+            }
+            before = batch.last().id
+        }
+        return found to before.takeIf { scanned >= scanLimit }
     }
 
     /** How many events the history holds, for Plan's server page. */

@@ -1,5 +1,6 @@
 package com.mairwunnx.worldapi.routes
 
+import com.mairwunnx.worldapi.api.ApiException
 import com.mairwunnx.worldapi.api.Scope
 import com.mairwunnx.worldapi.api.endpoints
 import com.mairwunnx.worldapi.api.Page
@@ -11,18 +12,21 @@ import com.mairwunnx.worldapi.events.Visibility
 import com.mairwunnx.worldapi.model.EventView
 import com.mairwunnx.worldapi.model.PlayerRef
 import com.mairwunnx.worldapi.store.EventQuery
+import io.ktor.http.HttpStatusCode
 import java.time.Instant
 
 val eventRoutes = endpoints("Events", Scope.EVENTS_READ) {
     get(
         "/events", "Event history: joins, deaths, advancements, skipped nights, boss kills, and more",
-        description = "Newest first by default. Recorded types: ${Topic.entries.filter { it.recorded }.joinToString { "`${it.id}`" }}.",
+        description = "Newest first by default. Recorded types: ${Topic.entries.filter { it.recorded }.joinToString { "`${it.id}`" }}. " +
+            "With `text`, a page reads at most 20,000 events: it may hold fewer items than `limit` and still have a `nextCursor` to search on.",
         query = pageParams + listOf(
             string("type", "Only these types, separated by commas"),
             string("player", "Only events of this player, by UUID or name"),
             string("from", "ISO-8601 time or epoch milliseconds; events at or after it"),
             string("to", "ISO-8601 time or epoch milliseconds; events before it"),
             string("order", "Newest first or oldest first", values = listOf("newest", "oldest")),
+            string("text", "Only events whose data holds this, ignoring case: words in chat, a death message, an advancement. Needs players:private, since it matches coordinates too"),
         ),
     ) {
         val visibility = Visibility(principal, config)
@@ -33,7 +37,10 @@ val eventRoutes = endpoints("Events", Scope.EVENTS_READ) {
         if (types.isEmpty()) return@get Page(emptyList<EventView>())
         // The history has no total to give, so 0 means one.
         val limit = limit.coerceAtLeast(1)
-        val rows = api.history.events(
+        val text = query("text")
+        // The data holds coordinates the answer would strip: matching on them would tell them anyway.
+        if (text != null && !seesCoordinates) throw ApiException(HttpStatusCode.Forbidden, "private", "Searching by text needs players:private")
+        val eventQuery =
             EventQuery(
                 types = types.map { it.id },
                 player = query("player"),
@@ -43,8 +50,8 @@ val eventRoutes = endpoints("Events", Scope.EVENTS_READ) {
                 limit = limit + 1,
                 oldestFirst = order == "oldest",
                 includeHidden = seesVanished,
-            ),
-        )
+            )
+        val (rows, resumeAt) = if (text == null) api.history.events(eventQuery) to null else api.history.searchEvents(eventQuery, text)
         // A plugin that stopped takes its topics with it; its rows wait in the history until it's back.
         val items = rows.take(limit).mapNotNull { row ->
             val topic = Topic.of(row.type) ?: return@mapNotNull null
@@ -53,7 +60,7 @@ val eventRoutes = endpoints("Events", Scope.EVENTS_READ) {
                 topic,
             )
         }
-        Page(items, nextCursor = if (rows.size > limit) rows[limit - 1].id.toString() else null)
+        Page(items, nextCursor = if (rows.size > limit) rows[limit - 1].id.toString() else resumeAt?.toString())
     }
 }
 

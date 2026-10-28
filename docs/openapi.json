@@ -950,7 +950,7 @@
             "get": {
                 "operationId": "getEvents",
                 "summary": "Event history: joins, deaths, advancements, skipped nights, boss kills, and more",
-                "description": "Newest first by default. Recorded types: `player.join`, `player.leave`, `player.kick`, `player.death`, `player.advancement`, `player.chat`, `world.night_skipped`, `entity.boss_killed`, `raid.start`, `raid.finish`, `server.status`.\n\nPermission: `events:read`.",
+                "description": "Newest first by default. Recorded types: `player.join`, `player.leave`, `player.kick`, `player.death`, `player.advancement`, `player.chat`, `world.night_skipped`, `entity.boss_killed`, `raid.start`, `raid.finish`, `server.status`. With `text`, a page reads at most 20,000 events: it may hold fewer items than `limit` and still have a `nextCursor` to search on.\n\nPermission: `events:read`.",
                 "tags": [
                     "Events"
                 ],
@@ -1028,6 +1028,15 @@
                                 "newest",
                                 "oldest"
                             ]
+                        }
+                    },
+                    {
+                        "name": "text",
+                        "in": "query",
+                        "required": false,
+                        "description": "Only events whose data holds this, ignoring case: words in chat, a death message, an advancement. Needs players:private, since it matches coordinates too",
+                        "schema": {
+                            "type": "string"
                         }
                     }
                 ],

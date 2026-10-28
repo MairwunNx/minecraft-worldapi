@@ -60,6 +60,24 @@ class StoreTest {
     }
 
     @Test
+    fun `text search ignores case beyond ASCII, which SQLite's LOWER doesn't`() {
+        Store(DatabaseSettings(file = Files.createTempFile("worldapi", ".db").toString()), tempFolder()).use { store ->
+            val history = History(store)
+            val alex = UUID.randomUUID()
+            history.record("player.chat", Instant.ofEpochMilli(4_000), alex.toString(), "Alex", "world", buildJsonObject { put("message", "Где АЛМАЗЫ?") })
+            history.record("player.chat", Instant.ofEpochMilli(5_000), alex.toString(), "Alex", "world", buildJsonObject { put("message", "алмазы нашёл") })
+            val diamonds = runBlocking { history.searchEvents(EventQuery(limit = 10), "алмазы") }
+            assertEquals(listOf("алмазы нашёл", "Где АЛМАЗЫ?"), diamonds.first.map { it.data["message"]!!.jsonPrimitive.content })
+            assertNull(diamonds.second)
+            // Past the scan limit it stops and says where to go on.
+            val first = runBlocking { history.searchEvents(EventQuery(limit = 10), "АЛМАЗЫ", scanLimit = 1) }
+            assertEquals(1, first.first.size)
+            val rest = runBlocking { history.searchEvents(EventQuery(limit = 10, before = first.second), "алмазы", scanLimit = 1) }
+            assertEquals("Где АЛМАЗЫ?", rest.first.single().data["message"]!!.jsonPrimitive.content)
+        }
+    }
+
+    @Test
     fun `the store works on SQLite`() = suite(DatabaseSettings(file = Files.createTempFile("worldapi", ".db").toString()))
 
     /**
@@ -113,6 +131,7 @@ class StoreTest {
             assertEquals(1_000L, runBlocking { history.firstEventAt("player.join") })
             assertNull(runBlocking { history.firstEventAt("raid.start") })
             assertEquals(3_000L, history.lastActivity())
+
 
             val experience = Experience(store)
             experience.add(alex, "Alex", 40)
