@@ -89,6 +89,9 @@ abstract class WorldApi(
     /** Applies [text] as the new content of one of [listFiles] through the server; answers what changed, for the audit log. */
     abstract suspend fun applyList(file: String, text: String): String
 
+    /** Every key in one of [com.mairwunnx.worldapi.routes.REGISTRIES], such as `minecraft:stone` in `block`. Any thread. */
+    abstract fun registryKeys(registry: String): List<String>
+
     /** The overworld's day, counted from 1, and when the first player first joined, from the server's own records. */
     abstract suspend fun calendar(): Pair<Long, Long?>
 }

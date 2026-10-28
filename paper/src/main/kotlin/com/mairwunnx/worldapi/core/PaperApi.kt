@@ -17,6 +17,9 @@ import com.mairwunnx.worldapi.tokens.TokenStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import io.papermc.paper.registry.RegistryAccess
+import io.papermc.paper.registry.RegistryKey
+import org.bukkit.Keyed
 import org.bukkit.Server
 import java.nio.file.Path
 import java.util.UUID
@@ -67,7 +70,20 @@ class PaperApi(
     override suspend fun calendar() = main.call {
         server.worlds.first().fullTime / 24_000 + 1 to server.offlinePlayers.map { it.firstPlayed }.filter { it > 0 }.minOrNull()
     }
+
+    override fun registryKeys(registry: String): List<String> {
+        val key = REGISTRY_KEYS[registry] ?: return emptyList()
+        return RegistryAccess.registryAccess().getRegistry(key).keyStream().map { it.asString() }.toList()
+    }
 }
+
+/** Paper's keys for [com.mairwunnx.worldapi.routes.REGISTRIES]. */
+private val REGISTRY_KEYS: Map<String, RegistryKey<out Keyed>> = mapOf(
+    "item" to RegistryKey.ITEM, "block" to RegistryKey.BLOCK, "entity_type" to RegistryKey.ENTITY_TYPE, "mob_effect" to RegistryKey.MOB_EFFECT,
+    "enchantment" to RegistryKey.ENCHANTMENT, "potion" to RegistryKey.POTION, "biome" to RegistryKey.BIOME, "structure" to RegistryKey.STRUCTURE,
+    "sound_event" to RegistryKey.SOUND_EVENT, "particle_type" to RegistryKey.PARTICLE_TYPE, "villager_profession" to RegistryKey.VILLAGER_PROFESSION,
+    "attribute" to RegistryKey.ATTRIBUTE, "damage_type" to RegistryKey.DAMAGE_TYPE,
+)
 
 /** [Restart] on Paper: a gold broadcast, then players and worlds saved before the server shuts down. */
 fun paperRestart(server: Server, main: MainThread, scope: CoroutineScope, secondMillis: Long = 1_000) = Restart(

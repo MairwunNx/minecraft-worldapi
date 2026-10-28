@@ -12,6 +12,7 @@ import com.mairwunnx.worldapi.routes.inventoryRoutes
 import com.mairwunnx.worldapi.routes.playerDataRoutes
 import com.mairwunnx.worldapi.routes.playerRoutes
 import com.mairwunnx.worldapi.routes.recipeRoutes
+import com.mairwunnx.worldapi.routes.registryRoutes
 import com.mairwunnx.worldapi.routes.scriptRoutes
 import com.mairwunnx.worldapi.routes.searchRoutes
 import com.mairwunnx.worldapi.routes.serverRoutes
@@ -23,5 +24,5 @@ import com.mairwunnx.worldapi.routes.worldRoutes
 /** Every REST endpoint, in the order the OpenAPI document lists their groups. */
 object Routes {
     val all = serverRoutes + accessRoutes + worldRoutes + worldInfoRoutes + searchRoutes + blockRoutes + containerRoutes + entityRoutes + worldEffectRoutes +
-        playerRoutes + inventoryRoutes + playerDataRoutes + statsRoutes + recipeRoutes + eventRoutes + fileRoutes + manageRoutes + scriptRoutes + extensionRoutes
+        playerRoutes + inventoryRoutes + playerDataRoutes + statsRoutes + recipeRoutes + registryRoutes + eventRoutes + fileRoutes + manageRoutes + scriptRoutes + extensionRoutes
 }

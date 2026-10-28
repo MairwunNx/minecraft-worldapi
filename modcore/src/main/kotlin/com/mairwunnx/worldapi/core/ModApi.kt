@@ -22,6 +22,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.Component
+import net.minecraft.resources.Identifier
+import net.minecraft.resources.ResourceKey
 import net.minecraft.server.MinecraftServer
 import net.minecraft.world.level.Level
 import java.nio.file.Files
@@ -81,6 +83,10 @@ class ModApi(
         val overworld = server.getLevel(Level.OVERWORLD) ?: server.allLevels.first()
         overworld.defaultClockTime / 24_000 + 1 to firstPlayed()
     }
+
+    override fun registryKeys(registry: String): List<String> =
+        server.registryAccess().lookup(ResourceKey.createRegistryKey<Any>(Identifier.withDefaultNamespace(registry)))
+            .map { lookup -> lookup.keySet().map { it.toString() } }.orElse(emptyList())
 
     /** When the first player first joined: the oldest playerdata file, since the game keeps no first-join time. */
     private fun firstPlayed(): Long? {
