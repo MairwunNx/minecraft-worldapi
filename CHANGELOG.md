@@ -1,5 +1,35 @@
 # Changelog
 
+## 4.3.0
+
+WorldAPI tells your Discord, Telegram, or Slack what happens on the server, and an AI agent connects in one click. Webhooks and MCP connections are made in game, in the admin panel, or through the API, and anything made through the API to the world can be undone.
+
+### Webhooks
+
+- 📣 **Events to chat services.** Discord, Slack (Mattermost and Rocket.Chat too), Telegram, Microsoft Teams, Google Chat, or any URL as JSON signed with HMAC-SHA256. Chat services get a short message in English, Russian, Spanish, Portuguese, or German; you can reword any message with placeholders such as `{player}`.
+- 🎛️ **The events you want.** Ready sets (everything notable, players, the server, chat), single events, `player.*` for a prefix, or `*` for everything notable. Pause, test, edit, or delete a webhook at any time.
+- 🎮 **From the game.** An operator runs `/worldapi webhook` and clicks through: the service, the events, the language, then pastes the webhook URL or Telegram bot token into chat. WorldAPI takes that message before anyone sees it, so it never reaches chat or the log, and finds the Telegram chat by itself.
+- 🖥️ **In the panel and the API.** Access → Webhooks in the admin panel; `/webhooks` in the API with the new `webhooks:manage` permission, which the default `admin` and `owner` groups have. Webhooks in `config.yml` (`webhooks.hooks`) keep working, and `webhooks.enabled: false` turns every webhook off.
+- 🔒 **Safe by default.** A webhook never gets a permission its maker lacks, and by default sees no coordinates and no chat. One made in game, in the panel, or through the API can't post to the server's own machine or private network unless `webhooks.allowPrivateAddresses` allows it. Messages can't ping `@everyone`.
+
+### MCP connections
+
+- 🤖 **One click to an AI agent.** A token of the new kind “MCP” comes with a ready setup for Claude Code, Codex, Cursor, OpenCode, or any MCP client: a command to paste or a file to save. In game, `/worldapi mcp <name> [group]` gives a copy button per client; in the panel, Tokens → New token → AI agent (MCP).
+- 📁 **For one project only.** A switch sets the agent up for every project on your machine or for the one you're in, with a reminder to keep the token's file out of git.
+- 🌐 **`http.publicUrl`** names the address people reach the API at, for the setup to point there.
+
+### The world
+
+- ↩️ **Undo.** Setting and filling blocks and editing containers through the API keeps what they replaced, until the server stops: `GET /changes` lists the changes and `POST /changes/{id}/undo` puts the blocks back, a chest's items included. It doesn't touch blocks players changed since unless you ask, and players' own actions aren't recorded. `limits.undoBlocks` caps the memory it takes.
+- 🧱 **A whole area at once.** `GET /worlds/{world}/blocks?from=x,y,z&to=x,y,z` reads every block in a box, up to `limits.maxReadBlocks`, and with `spawns=true` shows where monsters could spawn.
+- 📚 **The game's ids.** `GET /registries` lists items, blocks, entities, effects, enchantments, biomes, structures, sounds, and more, mods' included, with search by words.
+- 🧑‍🌾 **Villagers' homes.** A villager shows the bed and the workstation it claimed.
+- 🔎 **Search the history.** `GET /events?text=` finds events by their text, chat included, in any language. It needs `players:private`.
+
+### What to do when you update
+
+- If your `config.yml` lists its own groups, add `"webhooks:manage"` where you want it: to `admin` and `owner` as the default does.
+
 ## 4.2.1
 
 Updated libraries; nothing changes in the API.
