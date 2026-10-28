@@ -54,24 +54,44 @@ class Webhooks(
     @Volatile
     private var closed = false
 
-    fun all(): List<Entry> = if (!config().webhooks.enabled) emptyList() else config().webhooks.hooks.map { Entry(it, true) } + store?.all.orEmpty().map { Entry(it.hook, false) }
+    /** The list and which topics it takes, kept until config.yml or the stored webhooks change: producers ask on every event. */
+    private class Snapshot(val settings: Any, val stored: Any?, val entries: List<Entry>) {
+        val wanted = ConcurrentHashMap<Topic, Boolean>()
+    }
+
+    @Volatile
+    private var snapshot: Snapshot? = null
+
+    private fun snapshot(): Snapshot {
+        val settings = config().webhooks
+        val stored = store?.all
+        snapshot?.takeIf { it.settings === settings && it.stored === stored }?.let { return it }
+        val entries = if (!settings.enabled) emptyList() else settings.hooks.map { Entry(it, true) } + stored.orEmpty().map { Entry(it.hook, false) }
+        return Snapshot(settings, stored, entries).also { snapshot = it }
+    }
+
+    fun all(): List<Entry> = snapshot().entries
 
     private fun find(name: String) = all().firstOrNull { it.hook.name == name }
 
     /** Whether a webhook listens to [topic], so producers don't skip events only a webhook wants. */
-    fun wants(topic: Topic) = all().any { it.hook.listens(topic) }
+    fun wants(topic: Topic): Boolean = snapshot().let { now -> now.wanted.getOrPut(topic) { now.entries.any { it.hook.listens(topic) } } }
 
     /** Any thread: queues the event for each webhook that listens to it, never waits on the network. */
     override fun accept(event: ApiEvent) {
-        if (closed) return
+        if (closed || !wants(event.topic)) return
         val hooks = all()
-        // A webhook a reload or an admin removed or renamed keeps no thread.
-        if (senders.keys.any { name -> hooks.none { it.hook.name == name } }) {
-            senders.entries.removeIf { (name, sender) -> (hooks.none { it.hook.name == name }).also { gone -> if (gone) sender.stop() } }
-        }
+        if (senders.keys.any { name -> hooks.none { it.hook.name == name } }) prune()
         for (entry in hooks) {
             if (entry.hook.listens(event.topic)) sender(entry.hook)?.offer(event)
         }
+    }
+
+    /** Stops the threads of webhooks a reload or an admin removed, against the list as it is now, never while one is made. */
+    @Synchronized
+    private fun prune() {
+        val hooks = all()
+        senders.entries.removeIf { (name, sender) -> (hooks.none { it.hook.name == name }).also { gone -> if (gone) sender.stop() } }
     }
 
     @Synchronized
@@ -97,6 +117,16 @@ class Webhooks(
     /** What a delivery came to: the status the service answered, or why there was none. */
     class Outcome(val status: Int?, val problem: String?, val refused: Boolean = false) {
         val ok get() = status != null && status in 200..299
+    }
+
+    private val tested = ConcurrentHashMap<String, Long>()
+
+    /** Whether [name] may get a test message now: one every 10 seconds, so the endpoint can't make the server spam a URL. */
+    fun mayTest(name: String): Boolean {
+        val now = System.currentTimeMillis()
+        var allowed = false
+        tested.compute(name) { _, last -> if (last == null || now - last >= 10_000) now.also { allowed = true } else last }
+        return allowed
     }
 
     /** Sends [hook] a test message right away, for a webhook just made or one an admin checks. Off the server thread. */

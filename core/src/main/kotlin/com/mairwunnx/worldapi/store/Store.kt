@@ -65,13 +65,25 @@ class Store(private val settings: DatabaseSettings, folder: Path) : AutoCloseabl
             if (writer.isShutdown) return
             lastWrite = try {
                 CompletableFuture.supplyAsync({
-                    runCatching { transaction(database) { block() } }.onFailure { System.err.println("[WorldAPI] store write failed: $it") }
+                    runCatching { transaction(database) { block() } }.onFailure { System.err.println("[WorldAPI] store write failed: ${describe(it)}") }
                     Unit
                 }, writer)
             } catch (_: RejectedExecutionException) {
                 return
             }
         }
+    }
+
+    /**
+     * Writes after the writes queued before it, and waits: the answer, or the failure for the caller to handle. One
+     * attempt, so Exposed never logs a retry with the statement and its values, which may hold secrets.
+     */
+    suspend fun <T> writeNow(block: JdbcTransaction.() -> T): T {
+        val done = synchronized(this) {
+            if (writer.isShutdown) throw IllegalStateException("The store is closed")
+            CompletableFuture.supplyAsync({ transaction(database) { maxAttempts = 1; block() } }, writer).also { future -> lastWrite = future.handle { _, _ -> } }
+        }
+        return runCatching { done.await() }.getOrElse { throw IllegalStateException("The database refused the write: ${describe(it)}") }
     }
 
     suspend fun <T> read(block: JdbcTransaction.() -> T): T {
@@ -154,5 +166,11 @@ class Store(private val settings: DatabaseSettings, folder: Path) : AutoCloseabl
             }
             settings.properties.forEach { (key, value) -> addDataSourceProperty(key, value) }
         }
+    }
+
+    /** A failure without its message: Exposed's holds the statement with every value, a chat line or a webhook's URL among them. */
+    private fun describe(error: Throwable): String {
+        val sql = generateSequence(error) { it.cause }.filterIsInstance<java.sql.SQLException>().firstOrNull()
+        return error.javaClass.simpleName + (sql?.sqlState?.let { " (SQL state $it)" } ?: "")
     }
 }

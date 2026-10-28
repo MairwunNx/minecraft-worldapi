@@ -15,6 +15,12 @@ import com.mairwunnx.worldapi.model.WebhookTestResult
 import com.mairwunnx.worldapi.routes.view
 import io.ktor.http.HttpStatusCode
 
+/** Webhooks the database keeps at most: each has a thread of its own. */
+const val MAX_WEBHOOKS = 50
+
+/** Topics one webhook may list: every check of an event walks them. */
+const val MAX_TOPICS = 64
+
 /** What a webhook sees unless its maker says otherwise: no coordinates and no chat, since it usually posts to a shared channel. */
 val DEFAULT_WEBHOOK_PERMISSIONS = listOf("server:read", "players:read", "events:read")
 
@@ -38,7 +44,8 @@ suspend fun WorldApi.createWebhook(request: WebhookRequest, by: String, scopes: 
         )
     }
     checkTarget(settings, hook)
-    store.add(hook, by)
+    if (store.all.size >= MAX_WEBHOOKS) conflict("too_many_webhooks", "There are $MAX_WEBHOOKS webhooks already; delete one first")
+    if (!store.add(hook, by)) conflict("webhook_exists", "A webhook named ${request.name} exists")
     val test = if (request.test) result(webhooks.test(hook, fromConfig = false)) else null
     return WebhookCreated(view(hook, store.find(hook.name)), hook.secret, test)
 }
@@ -56,6 +63,7 @@ fun checkGrant(config: WorldApiConfig, scopes: Set<Scope>, names: List<String>) 
 /** Builds a webhook, turning what its checks refuse into 400, and checks what the config file would. */
 fun buildWebhook(build: () -> Webhook): Webhook {
     val hook = runCatching(build).getOrElse { badRequest(it.message ?: "Invalid webhook", "invalid_webhook") }
+    if (hook.topics.size > MAX_TOPICS) badRequest("A webhook takes $MAX_TOPICS topics at most; `*` or `player.*` cover many", "too_many_topics")
     hook.topics.filterNot(ConfigFile::knownTopic).takeIf { it.isNotEmpty() }?.let { badRequest("Unknown topics: ${it.joinToString()}", "unknown_topic") }
     hook.messages.keys.filterNot(Messages.keys::contains).takeIf { it.isNotEmpty() }?.let { badRequest("Unknown messages: ${it.joinToString()}", "unknown_message") }
     return hook

@@ -8,9 +8,9 @@ WorldAPI tells your Discord, Telegram, or Slack what happens on the server, and 
 
 - 📣 **Events to chat services.** Discord, Slack (Mattermost and Rocket.Chat too), Telegram, Microsoft Teams, Google Chat, or any URL as JSON signed with HMAC-SHA256. Chat services get a short message in English, Russian, Spanish, Portuguese, or German; you can reword any message with placeholders such as `{player}`.
 - 🎛️ **The events you want.** Ready sets (everything notable, players, the server, chat), single events, `player.*` for a prefix, or `*` for everything notable. Pause, test, edit, or delete a webhook at any time.
-- 🎮 **From the game.** An operator runs `/worldapi webhook` and clicks through: the service, the events, the language, then pastes the webhook URL or Telegram bot token into chat. WorldAPI takes that message before anyone sees it, so it never reaches chat or the log, and finds the Telegram chat by itself.
+- 🎮 **From the game.** An operator runs `/worldapi webhook` and clicks through: the service, the events, the language. Then a window asks for the webhook URL or the Telegram bot token, which goes straight to WorldAPI, never into chat, a command, or the log. WorldAPI finds the Telegram chat by itself.
 - 🖥️ **In the panel and the API.** Access → Webhooks in the admin panel; `/webhooks` in the API with the new `webhooks:manage` permission, which the default `admin` and `owner` groups have. Webhooks in `config.yml` (`webhooks.hooks`) keep working, and `webhooks.enabled: false` turns every webhook off.
-- 🔒 **Safe by default.** A webhook never gets a permission its maker lacks, and by default sees no coordinates and no chat. One made in game, in the panel, or through the API can't post to the server's own machine or private network unless `webhooks.allowPrivateAddresses` allows it. Messages can't ping `@everyone`.
+- 🔒 **Safe by default.** A webhook never gets a permission its maker lacks, and by default sees no coordinates and no chat. One made in game, in the panel, or through the API posts over HTTPS only, and never to the server's own machine or private network, unless `webhooks.allowPrivateAddresses` allows it. Messages can't ping `@everyone` or carry links from game text, and a test message goes out once per webhook every 10 seconds.
 
 ### MCP connections
 

@@ -37,9 +37,11 @@ class WebhookStore(private val store: Store) {
 
     fun find(name: String) = all.firstOrNull { it.hook.name == name }
 
-    suspend fun add(hook: Webhook, createdBy: String) = changes.withLock {
+    /** Saves a new webhook; false when one of that name exists. Throws when the database refuses, and keeps nothing then. */
+    suspend fun add(hook: Webhook, createdBy: String): Boolean = changes.withLock {
+        if (find(hook.name) != null) return@withLock false
         val now = System.currentTimeMillis()
-        store.write {
+        store.writeNow {
             WebhookRows.insert {
                 it[name] = hook.name
                 it[data] = ApiJson.encodeToString(Webhook.serializer(), hook)
@@ -47,20 +49,18 @@ class WebhookStore(private val store: Store) {
                 it[WebhookRows.createdBy] = createdBy
             }
         }
-        store.read { }
         all = (all + Stored(hook, now, createdBy)).sortedBy { it.hook.name }
+        true
     }
 
     suspend fun replace(hook: Webhook) = changes.withLock {
-        store.write { WebhookRows.update({ WebhookRows.name eq hook.name }) { it[data] = ApiJson.encodeToString(Webhook.serializer(), hook) } }
-        store.read { }
+        store.writeNow { WebhookRows.update({ WebhookRows.name eq hook.name }) { it[data] = ApiJson.encodeToString(Webhook.serializer(), hook) } }
         all = all.map { if (it.hook.name == hook.name) Stored(hook, it.createdAt, it.createdBy) else it }
     }
 
     suspend fun remove(name: String): Boolean = changes.withLock {
         if (find(name) == null) return@withLock false
-        store.write { WebhookRows.deleteWhere { WebhookRows.name eq name } }
-        store.read { }
+        store.writeNow { WebhookRows.deleteWhere { WebhookRows.name eq name } }
         all = all.filterNot { it.hook.name == name }
         true
     }

@@ -102,9 +102,15 @@ val webhookRoutes = endpoints("Webhooks", Scope.WEBHOOKS_MANAGE) {
         Unit
     }
 
-    post<NoBody, WebhookTestResult>("/webhooks/{name}/test", "Send a webhook a test message", Scope.WEBHOOKS_MANAGE) {
+    post<NoBody, WebhookTestResult>(
+        "/webhooks/{name}/test", "Send a webhook a test message", Scope.WEBHOOKS_MANAGE,
+        description = "One test per webhook every 10 seconds. $GRANT",
+    ) {
         val name = path("name")
         val entry = api.webhooks.all().firstOrNull { it.hook.name == name } ?: notFound("webhook_not_found", "No webhook $name")
+        // Like changing it: a weaker admin can't make the server post to a stronger one's target.
+        checkGrant(entry.hook.permissions)
+        if (!api.webhooks.mayTest(name)) throw ApiException(HttpStatusCode.TooManyRequests, "test_too_soon", "Test $name again in a few seconds")
         auditTarget = name
         result(api.webhooks.test(entry.hook, entry.fromConfig))
     }
@@ -148,10 +154,14 @@ fun view(hook: Webhook, stored: WebhookStore.Stored?) = WebhookView(
     createdBy = stored?.createdBy,
 )
 
-/** `https://discord.com/api/…`: the host and the first segment, which say what it is without the secret behind it. */
+/** Services whose first path segment names the kind of URL, not a secret: `https://discord.com/api/…`. */
+private val KNOWN_HOSTS = setOf("discord.com", "discordapp.com", "hooks.slack.com", "chat.googleapis.com")
+
+/** The address without the secret part: the host alone, or for a known service its first segment too. */
 fun masked(hook: Webhook): String {
     if (hook.format == WebhookFormat.TELEGRAM) return "Telegram chat ${hook.chatId}"
     val uri = runCatching { java.net.URI.create(hook.url!!) }.getOrNull() ?: return "…"
-    val first = uri.path.orEmpty().split('/').firstOrNull { it.isNotEmpty() }
-    return "${uri.scheme}://${uri.host}${uri.port.takeIf { it > 0 }?.let { ":$it" }.orEmpty()}/" + (first?.let { "$it/…" } ?: "…")
+    val host = uri.host.orEmpty()
+    val first = uri.path.orEmpty().split('/').firstOrNull { it.isNotEmpty() }?.takeIf { host in KNOWN_HOSTS }
+    return "${uri.scheme}://$host${uri.port.takeIf { it > 0 }?.let { ":$it" }.orEmpty()}/" + (first?.let { "$it/…" } ?: "…")
 }

@@ -8921,7 +8921,7 @@
             "post": {
                 "operationId": "postWebhooksNameTest",
                 "summary": "Send a webhook a test message",
-                "description": "Permission: `webhooks:manage`.",
+                "description": "One test per webhook every 10 seconds. A webhook gets only permissions its maker has, and changing or deleting one needs every permission it holds.\n\nPermission: `webhooks:manage`.",
                 "tags": [
                     "Webhooks"
                 ],

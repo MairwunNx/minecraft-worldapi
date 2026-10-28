@@ -197,7 +197,7 @@ data class Webhook(
     val chatId: String? = null,
     /**
      * Topic ids, as on the WebSocket: `player.join`, `ext.mobosses.boss.spawned`. `player.*` takes every topic under
-     * `player.`; `*` takes every notable one, which is what the event history records (joins, deaths, advancements,
+     * `player.` but positions, health, and other values sampled all the time, and players' commands; `*` takes every notable one, which is what the event history records (joins, deaths, advancements,
      * chat, raids, bosses, the server starting and stopping, and plugins' recorded events), not the noisy ones such as
      * positions or blocks.
      */
@@ -226,7 +226,8 @@ data class Webhook(
     fun listens(topic: Topic): Boolean = enabled && topics.any { pattern ->
         when {
             pattern == "*" -> topic.recorded
-            pattern.endsWith(".*") -> topic.id.startsWith(pattern.dropLast(1))
+            // A pattern leaves out what would flood a channel or post what players type into commands; name those to get them.
+            pattern.endsWith(".*") -> topic.id.startsWith(pattern.dropLast(1)) && !topic.state && topic.scope != com.mairwunnx.worldapi.api.Scope.LOGS_READ
             else -> pattern == topic.id
         }
     }

@@ -171,6 +171,11 @@ class WebhookTest {
         assertTrue(players.listens(Topic.PLAYER_DAMAGE))
         assertFalse(players.listens(Topic.RAID_START))
         assertFalse(all.copy(enabled = false).listens(Topic.PLAYER_DEATH))
+        // A pattern skips sampled values and players' commands; naming them still works, but not for sampled ones in config.
+        assertFalse(players.listens(Topic.PLAYER_HEALTH))
+        assertFalse(players.listens(Topic.PLAYER_COMMAND))
+        assertTrue(all.copy(topics = listOf("player.command")).listens(Topic.PLAYER_COMMAND))
+        assertFalse(ConfigFile.knownTopic("player.move"))
     }
 
     @Test
@@ -182,6 +187,12 @@ class WebhookTest {
         assertNotNull(Addresses.refusal("http://100.64.0.1/"))
         assertNotNull(Addresses.refusal("http://[::ffff:192.168.0.1]/"))
         assertNull(Addresses.refusal("https://1.1.1.1/"))
+        // Plain http could be pointed inside between the check and the connection; https meets a certificate that isn't its own.
+        assertNotNull(Addresses.refusal("http://1.1.1.1/"))
+        for (inside in listOf("192.0.0.192", "198.18.0.1", "240.0.0.1", "255.255.255.255", "[64:ff9b::a00:5]", "[2002:a00:5::]", "[2001:0:4136:e378::1]", "[::10.0.0.5]")) {
+            assertNotNull(Addresses.refusal("https://$inside/"), inside)
+        }
+        assertNull(Addresses.refusal("https://[64:ff9b::101:101]/"))
     }
 
     @Test
@@ -199,6 +210,23 @@ class WebhookTest {
     @Test
     fun `the address shows without its secret part`() {
         assertEquals("https://discord.com/api/…", masked(Webhook("d", WebhookFormat.DISCORD, url = "https://discord.com/api/webhooks/1/SECRET", topics = listOf("*"))))
+        assertEquals("https://ntfy.sh/…", masked(Webhook("n", url = "https://ntfy.sh/secret-topic", topics = listOf("*"))))
         assertEquals("Telegram chat -100123", masked(Webhook("t", WebhookFormat.TELEGRAM, botToken = "123456:" + "a".repeat(35), chatId = "-100123", topics = listOf("*"))))
+    }
+
+    @Test
+    fun `Discord and Teams get no Markdown links from game text`() {
+        val hook = Webhook("d", WebhookFormat.DISCORD, url = "https://discord.com/api/webhooks/1/x", topics = listOf("*"))
+        val content = Formats.message(hook, "Steve was slain by [free op](https://evil.example)")["content"]!!.jsonPrimitive.content
+        assertFalse("](" in content)
+        assertTrue("free op" in content)
+    }
+
+    @Test
+    fun `a webhook is tested once every 10 seconds`() {
+        val sink = Webhooks({ WorldApiConfig() }, "test", Logger.getAnonymousLogger()).also { webhooks = it }
+        assertTrue(sink.mayTest("a"))
+        assertFalse(sink.mayTest("a"))
+        assertTrue(sink.mayTest("b"))
     }
 }

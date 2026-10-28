@@ -35,9 +35,10 @@ object ConfigFile {
     const val WEBHOOK_SECRET_EXAMPLE = "a-long-random-string"
 
     /**
-     * A topic a webhook may name: WorldAPI's own, a pattern, or a plugin's, whose topics register as its plugin starts.
+     * A topic a webhook may name: WorldAPI's own but the sampled values (positions, health, time), which would flood a
+     * channel, a pattern, or a plugin's, whose topics register as its plugin starts.
      */
-    fun knownTopic(id: String) = id == "*" || id.startsWith("ext.") || Topic.of(id) != null ||
+    fun knownTopic(id: String) = id == "*" || id.startsWith("ext.") || Topic.of(id)?.let { !it.state } == true ||
         (id.endsWith(".*") && Topic.entries.any { it.id.startsWith(id.dropLast(1)) })
 
     fun parse(text: String): WorldApiConfig = validate(yaml.decodeFromString(WorldApiConfig.serializer(), text))

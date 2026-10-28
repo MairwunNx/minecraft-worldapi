@@ -17,7 +17,7 @@ import kotlinx.serialization.json.putJsonObject
 object Formats {
     fun message(hook: Webhook, text: String): JsonObject = when (hook.format) {
         WebhookFormat.DISCORD -> buildJsonObject {
-            put("content", text.take(2_000))
+            put("content", links(text).take(2_000))
             putJsonObject("allowed_mentions") { putJsonArray("parse") {} }
         }
         WebhookFormat.SLACK -> buildJsonObject { put("text", slack(text)) }
@@ -39,7 +39,7 @@ object Formats {
                         putJsonArray("body") {
                             addJsonObject {
                                 put("type", "TextBlock")
-                                put("text", text)
+                                put("text", links(text))
                                 put("wrap", true)
                             }
                         }
@@ -49,6 +49,12 @@ object Formats {
         }
         WebhookFormat.JSON -> error("A json webhook sends the event itself")
     }
+
+    /**
+     * Breaks Markdown links, which Discord and Teams render: a named mob in a death message could carry
+     * `[click here](https://…)`. A zero-width space between `]` and `(` keeps the text and drops the link.
+     */
+    private fun links(text: String) = text.replace("](", "]\u200B(")
 
     /** Slack's and Google Chat's escaping: `<!channel>` and `<users/all>` mention everyone, and only these three need it. */
     private fun slack(text: String) = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
