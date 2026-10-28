@@ -3,22 +3,30 @@ import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { client, data, type Schema } from "@/api/client";
+import { API_BASE, client, data, type Schema } from "@/api/client";
 import { Chips, Confirm, Empty, ErrorBox, Loading, PageHeader, Secret, TableFrame } from "@/components/common";
 import { FormField } from "@/components/form-field";
+import { McpSetupView } from "@/components/mcp-setup";
 import { ScopePicker } from "@/components/scope-picker";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { date, dateTime } from "@/lib/format";
 import { showError } from "@/lib/forms";
 
 const NAME = /^[A-Za-z0-9_-]{1,32}$/;
 
-/** Name, permissions, expiry; then the token, once, with a copy button. */
+/** The API's full address as this browser reaches it, which an AI client on this machine can use too. */
+const apiUrl = () => new URL(API_BASE, location.href).toString().replace(/\/+$/, "");
+
+/**
+ * A plain token for sites and scripts, or an MCP connection for an AI client: name, permissions, expiry; then the token,
+ * once, and for MCP a ready setup per client.
+ */
 const CreateToken = () => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -26,6 +34,7 @@ const CreateToken = () => {
   const [name, setName] = useState("");
   const [scopes, setScopes] = useState<string[]>([]);
   const [days, setDays] = useState("");
+  const [kind, setKind] = useState<"token" | "mcp">("token");
   const [created, setCreated] = useState<Schema<"TokenCreated"> | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +42,7 @@ const CreateToken = () => {
     setName("");
     setScopes([]);
     setDays("");
+    setKind("token");
     setCreated(null);
     setError(null);
   };
@@ -43,7 +53,7 @@ const CreateToken = () => {
     setBusy(true);
     try {
       const expiresInDays = Number.parseInt(days, 10) || undefined;
-      setCreated(await data(client.POST("/tokens", { body: { name: name.trim(), scopes, expiresInDays } })));
+      setCreated(await data(client.POST("/tokens", { body: { name: name.trim(), scopes, expiresInDays, kind, apiUrl: kind === "mcp" ? apiUrl() : undefined } })));
       await queryClient.invalidateQueries({ queryKey: ["tokens"] });
     } catch (failure) {
       showError(failure);
@@ -63,7 +73,7 @@ const CreateToken = () => {
         <Plus className="size-4" aria-hidden />
         {t("tokens.create")}
       </Button>
-      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
         {created ? (
           <>
             <DialogHeader>
@@ -72,6 +82,7 @@ const CreateToken = () => {
             </DialogHeader>
             <Secret value={created.token} />
             <Chips items={created.scopes} />
+            {created.setup && <McpSetupView setup={created.setup} />}
             <DialogFooter>
               <Button onClick={() => setOpen(false)}>{t("common.done")}</Button>
             </DialogFooter>
@@ -82,6 +93,13 @@ const CreateToken = () => {
               <DialogTitle>{t("tokens.createTitle")}</DialogTitle>
               <DialogDescription>{t("tokens.createText")}</DialogDescription>
             </DialogHeader>
+            <Tabs value={kind} onValueChange={(value) => setKind(value as typeof kind)}>
+              <TabsList>
+                <TabsTrigger value="token">{t("tokens.kinds.token")}</TabsTrigger>
+                <TabsTrigger value="mcp">{t("tokens.kinds.mcp")}</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <p className="text-sm text-muted-foreground">{t(`tokens.kindText.${kind}`)}</p>
             <FormField id="token-name" label={t("tokens.name")} hint={t("tokens.nameRule")}>
               <Input id="token-name" value={name} onChange={(event) => setName(event.target.value)} autoComplete="off" spellCheck={false} />
             </FormField>
@@ -150,6 +168,7 @@ export const TokensPage = () => {
                       <Badge variant="outline" className="font-normal">
                         {t(`tokens.sources.${token.source}`, { defaultValue: token.source })}
                       </Badge>
+                      {token.kind === "mcp" && <Badge variant="secondary">{t("tokens.kinds.mcp")}</Badge>}
                       {token.expired && <Badge variant="destructive">{t("tokens.expired")}</Badge>}
                     </div>
                   </TableCell>

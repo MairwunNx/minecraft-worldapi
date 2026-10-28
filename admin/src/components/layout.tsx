@@ -6,6 +6,7 @@ import {
   FolderTree,
   Globe,
   KeyRound,
+  Webhook,
   LogOut,
   Menu,
   MessagesSquare,
@@ -62,6 +63,7 @@ export const SECTIONS: Array<{ title: string; items: Item[] }> = [
     title: "nav.access",
     items: [
       { to: "/access/tokens", label: "nav.tokens", icon: KeyRound, needs: ["tokens:manage"] },
+      { to: "/access/webhooks", label: "nav.webhooks", icon: Webhook, needs: ["webhooks:manage"] },
       { to: "/access/accounts", label: "nav.accounts", icon: UserCog, needs: ["tokens:manage"] },
       { to: "/access/groups", label: "nav.groups", icon: Shield, needs: ["tokens:manage"] },
       { to: "/access/audit", label: "nav.audit", icon: FileClock, needs: ["tokens:manage"] },

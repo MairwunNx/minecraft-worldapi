@@ -26,6 +26,7 @@ export type Permission =
   | "files:read"
   | "files:write"
   | "tokens:manage"
+  | "webhooks:manage"
   | "code";
 
 /** Whether the signed-in account has every one of these; WorldAPI checks again on each call. */

@@ -39,7 +39,8 @@
     "accounts": "Accounts",
     "groups": "Groups",
     "audit": "Audit log",
-    "worlds": "Worlds"
+    "worlds": "Worlds",
+    "webhooks": "Webhooks"
   },
   "menu": {
     "theme": "Theme",
@@ -473,7 +474,15 @@
     "revokeTitle": "Revoke “{{name}}”?",
     "revokeText": "Anything that uses it stops working at once.",
     "revoked": "“{{name}}” revoked",
-    "configNote": "Tokens from config.yml change only there; edit the file and reload WorldAPI."
+    "configNote": "Tokens from config.yml change only there; edit the file and reload WorldAPI.",
+    "kinds": {
+      "token": "Token",
+      "mcp": "AI agent (MCP)"
+    },
+    "kindText": {
+      "token": "A plain token for a site, a bot, or a script.",
+      "mcp": "A token for an AI client through minecraft-mcp. After it’s made, you get a ready setup for Claude Code, Codex, Cursor, OpenCode, or any other MCP client."
+    }
   },
   "accounts": {
     "title": "Accounts",
@@ -557,7 +566,7 @@
     "off": "Off",
     "load": "Load",
     "loadValue": "{{players}} players · {{chunks}} chunks · {{entities}} entities",
-    "spawn": "Spawn",
+    "spawn": "Spawn point",
     "heights": "Heights",
     "heightsValue": "{{min}} to {{max}}, sea at {{sea}}",
     "seed": "Seed",
@@ -612,7 +621,6 @@
     "centerZ": "Center Z",
     "borderApply": "Apply",
     "borderSaved": "Border changed",
-    "spawn": "Spawn point",
     "spawnHere": "Players join and respawn here, without a bed or an anchor",
     "spawnElsewhere": "Players join and respawn in {{world}}; this world keeps its own point for teleports",
     "spawnPoint": "Point",
@@ -681,5 +689,88 @@
     "containerLine": "{{x}} {{y}} {{z}} · {{used}} of {{size}} slots · {{distance}} blocks away",
     "container": "Container",
     "notContainer": "This block holds no items."
+  },
+  "mcp": {
+    "project": "This project only",
+    "projectHint": "Off, the client sees the server in every project. On, only in the one you set it up in.",
+    "clients": {
+      "claude": "Claude Code",
+      "codex": "Codex",
+      "cursor": "Cursor",
+      "opencode": "OpenCode",
+      "plain": "Other"
+    },
+    "run": "Run this in a terminal:",
+    "runInProject": "Run this in the project’s folder. It stays on your machine and never reaches the repository.",
+    "file": "Put this in {{file}}, or merge it into the file you have:",
+    "plain": "Most MCP clients take this “mcpServers” block. Others take the command “npx -y @mairwunnx/minecraft-mcp” with the variables WORLDAPI_URL and WORLDAPI_TOKEN.",
+    "openIn": "Add to {{client}}",
+    "gitignore": "The file holds the token. Add {{file}} to .gitignore so it never reaches the repository.",
+    "trust": "Codex reads a project’s file only after you mark the project as trusted.",
+    "noProject": "This client has no per-project setup; this one works everywhere.",
+    "address": "The setup points at {{url}}. If the AI client runs on another machine, set http.publicUrl in WorldAPI’s config.yml first."
+  },
+  "webhooks": {
+    "title": "Webhooks",
+    "text": "Send server events to Discord, Slack, Telegram, Microsoft Teams, Google Chat, or any URL as JSON.",
+    "create": "New webhook",
+    "createTitle": "New webhook",
+    "createText": "Pick a service and the events it gets. It sees only what you allow below, and never more than your account may.",
+    "createdTitle": "Webhook “{{name}}” is ready",
+    "createdText": "It starts sending with the next event.",
+    "testOk": "A test message went out. Check the channel.",
+    "testFailed": "The test message didn’t arrive: {{problem}}. Check the address, then test again.",
+    "secretText": "Its signing secret, shown only now. Your receiver checks X-WorldAPI-Signature with it.",
+    "service": "Service",
+    "url": "Webhook URL",
+    "urlHints": {
+      "discord": "Channel settings → Integrations → Webhooks → Copy Webhook URL",
+      "slack": "api.slack.com/apps → your app → Incoming Webhooks. Mattermost and Rocket.Chat take this format too.",
+      "teams": "Channel → Workflows → “Post to a channel when a webhook request is received”",
+      "google_chat": "Space → Apps & integrations → Webhooks",
+      "json": "Any HTTPS address. It gets each event as JSON, signed."
+    },
+    "botToken": "Bot token",
+    "botTokenHint": "Make a bot with @BotFather in Telegram; it gives you this token.",
+    "findChatsHint": "Write /start to the bot, or add it to a group or channel, then find the chat.",
+    "findChats": "Find chats",
+    "noChats": "The bot has no chats yet. Write /start to it, then try again.",
+    "needUrl": "Paste the webhook URL",
+    "needTelegram": "Paste the bot token and pick a chat",
+    "pickTopic": "Pick at least one event",
+    "topics": "Events",
+    "presets": {
+      "all": "Everything notable",
+      "players": "Joins, leaves, deaths, advancements",
+      "server": "Server, raids, bosses",
+      "chat": "Chat"
+    },
+    "pickTopics": "Pick events one by one ({{count}} chosen)",
+    "needs": "needs {{permission}}",
+    "needsCoordinates": "coordinates need players:private",
+    "language": "Language",
+    "languages": {
+      "en": "English",
+      "ru": "Русский",
+      "es": "Español",
+      "pt": "Português",
+      "de": "Deutsch"
+    },
+    "messages": "Your own words ({{count}} changed)",
+    "messagesHint": "Leave a field empty to keep the default. Placeholders like {player} and {message} fill in from the event.",
+    "access": "What it may see",
+    "accessHint": "By default no coordinates and no chat, since a webhook usually posts to a shared channel.",
+    "on": "On",
+    "test": "Send a test message",
+    "edit": "Edit",
+    "editTitle": "Webhook “{{name}}”",
+    "saved": "“{{name}}” saved",
+    "delete": "Delete",
+    "deleteTitle": "Delete “{{name}}”?",
+    "deleteText": "It stops sending at once.",
+    "deleted": "“{{name}}” deleted",
+    "none": "No webhooks yet.",
+    "off": "Webhooks are off in config.yml (webhooks.enabled).",
+    "gameNote": "Operators can connect a service from the game too: /worldapi webhook. Webhooks in config.yml change only there."
   }
 }

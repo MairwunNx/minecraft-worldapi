@@ -20,6 +20,7 @@ import { PluginsPage } from "@/pages/plugins";
 import { WorldPage } from "@/pages/world";
 import { WorldsPage } from "@/pages/worlds";
 import { TokensPage } from "@/pages/tokens";
+import { WebhooksPage } from "@/pages/webhooks";
 
 interface Context {
   queryClient: QueryClient;
@@ -84,6 +85,7 @@ const files = createRoute({
 });
 const plugins = page("/plugins", PluginsPage);
 const tokens = page("/access/tokens", TokensPage);
+const webhooks = page("/access/webhooks", WebhooksPage);
 const accounts = page("/access/accounts", AccountsPage);
 const groups = page("/access/groups", GroupsPage);
 const audit = createRoute({
@@ -94,7 +96,7 @@ const audit = createRoute({
 });
 const account = page("/account", AccountPage);
 
-const tree = root.addChildren([login, app.addChildren([overview, players, player, worlds, world, consolePage, chat, files, plugins, tokens, accounts, groups, audit, account])]);
+const tree = root.addChildren([login, app.addChildren([overview, players, player, worlds, world, consolePage, chat, files, plugins, tokens, webhooks, accounts, groups, audit, account])]);
 
 export const router = createRouter({
   routeTree: tree,
