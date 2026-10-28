@@ -35,6 +35,7 @@ import com.mairwunnx.worldapi.store.Store
 import com.mairwunnx.worldapi.tokens.TokenMenu
 import com.mairwunnx.worldapi.tokens.TokenStore
 import com.mairwunnx.worldapi.ws.WebSocketHub
+import com.mairwunnx.worldapi.events.Webhooks
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicReference
@@ -54,6 +55,7 @@ class WorldApiPlugin : JavaPlugin() {
     private lateinit var store: Store
     private lateinit var api: PaperApi
     private lateinit var hub: WebSocketHub
+    private lateinit var webhooks: Webhooks
     private var http: HttpServer<PaperApi>? = null
     private var stopConsole: (() -> Unit)? = null
     private var plan: AutoCloseable? = null
@@ -105,7 +107,9 @@ class WorldApiPlugin : JavaPlugin() {
 
         hub = WebSocketHub(config::get, { token -> http?.authenticate(token) }, Snapshots(server, main))
         bus.subscribe(hub)
-        bus.interest = hub::wants
+        webhooks = Webhooks(config::get, api.version, logger)
+        bus.subscribe(webhooks)
+        bus.interest = { hub.wants(it) || webhooks.wants(it) }
 
         val windows = Windows(bus) { config.get().websocket.blockWindowSeconds }
         val listeners = Listeners(this, bus, history, api.experience, windows, vanished) { config.get().events.chat }
@@ -161,6 +165,7 @@ class WorldApiPlugin : JavaPlugin() {
         api.restart.close()
         api.icons?.close()
         hub.closeAll(if (server.isStopping) "Server stopping" else "WorldAPI disabled")
+        webhooks.close()
         stopConsole?.invoke()
         stopConsole = null
         http?.stop()

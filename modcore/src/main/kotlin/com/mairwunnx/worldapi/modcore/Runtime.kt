@@ -31,6 +31,7 @@ import com.mairwunnx.worldapi.store.History
 import com.mairwunnx.worldapi.store.Store
 import com.mairwunnx.worldapi.tokens.TokenStore
 import com.mairwunnx.worldapi.ws.WebSocketHub
+import com.mairwunnx.worldapi.events.Webhooks
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -62,6 +63,7 @@ class Runtime private constructor(
     private val store: Store,
     val api: ModApi,
     val hub: WebSocketHub,
+    private val webhooks: Webhooks,
 ) {
     private val windows = Windows(api.bus) { config.get().websocket.blockWindowSeconds }
 
@@ -250,6 +252,7 @@ class Runtime private constructor(
         api.restart.close()
         api.icons?.close()
         hub.closeAll(if (server.isSingleplayer) "The world closed" else "Server stopping")
+        webhooks.close()
         removeDiscovery?.invoke()
         removeDiscovery = null
         http?.stop()
@@ -314,8 +317,10 @@ class Runtime private constructor(
             )
             val hub = WebSocketHub(config::get, { token -> runtime.http?.authenticate(token) }, ModSnapshots(api))
             bus.subscribe(hub)
-            bus.interest = hub::wants
-            runtime = Runtime(server, loader, logger, configPath, config, store, api, hub)
+            val webhooks = Webhooks(config::get, api.version, logger)
+            bus.subscribe(webhooks)
+            bus.interest = { hub.wants(it) || webhooks.wants(it) }
+            runtime = Runtime(server, loader, logger, configPath, config, store, api, hub, webhooks)
             runtime.start()
             return runtime
         }

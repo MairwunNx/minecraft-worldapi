@@ -16,6 +16,7 @@ data class WorldApiConfig(
     val privacy: Privacy = Privacy(),
     val websocket: WebSocket = WebSocket(),
     val events: Events = Events(),
+    val webhooks: List<Webhook> = emptyList(),
     val extensions: Extensions = Extensions(),
     val limits: Limits = Limits(),
     val scripts: Scripts = Scripts(),
@@ -147,6 +148,27 @@ data class Extensions(
      */
     val private: List<String> = emptyList(),
 )
+
+/** A URL that gets events as they happen; see [com.mairwunnx.worldapi.events.Webhooks]. */
+@Serializable
+data class Webhook(
+    /** Names it in the log, which never shows the URL: Discord's and others' URLs hold a secret. */
+    val name: String,
+    val url: String,
+    /** Topic ids, as on the WebSocket: `player.join`, `ext.mobosses.boss.spawned`. */
+    val topics: List<String>,
+    /** What it may see, as a token's permissions and groups decide; chat needs chat:read, coordinates players:private. */
+    val permissions: List<String> = listOf("viewer"),
+    /** Signs each body: X-WorldAPI-Signature is `sha256=` and the HMAC of the timestamp header, a dot, and the body. */
+    val secret: String? = null,
+) {
+    init {
+        require(name.matches(Regex("[A-Za-z0-9_-]{1,32}"))) { "A webhook's name takes letters, digits, - and _, up to 32: \"$name\"" }
+        require(url.startsWith("https://") || url.startsWith("http://")) { "Webhook $name: url must start with https:// or http://" }
+        require(runCatching { java.net.URI.create(url).host != null }.getOrDefault(false)) { "Webhook $name: url isn't a valid address" }
+        require(topics.isNotEmpty()) { "Webhook $name lists no topics" }
+    }
+}
 
 @Serializable
 data class Events(
