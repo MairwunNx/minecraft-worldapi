@@ -24,15 +24,27 @@
 
 ## Что внутри
 
-- 📡 **117 REST-операций**: сервер и его нагрузка, его команды, миры, блоки, сундуки, сущности, игроки онлайн и офлайн с инвентарями, статистика, достижения, рецепты, рейтинги и история событий.
+- 📡 **129 REST-операций**: сервер и его нагрузка, его команды, миры, блоки по одному или целой областью сразу, сундуки, сущности, игроки онлайн и офлайн с инвентарями, статистика, достижения, рецепты, рейтинги, реестры игры и история событий.
 - ⚡ **Живая лента** по WebSocket, 40 тем: входы, смерти, достижения, консоль, позиции, погода, убийства боссов, рейды и не только.
-- 🖥️ **Админ-панель** в браузере: нагрузка в реальном времени, консоль, чат, игроки, миры, файлы, плагины, токены и журнал аудита. Для повседневных дел SSH больше не нужен.
+- 📣 **Вебхуки в ваш чат.** Входы, смерти, достижения, рейды и перезапуски уходят в Discord, Telegram, Slack, Microsoft Teams, Google Chat или на любой URL — на русском, английском, испанском, португальском или немецком. Подключите вебхук в игре за пару кликов в чате или в админ-панели.
+- 🤖 **ИИ-агент в один клик.** Создайте MCP-подключение в игре или в панели и скопируйте готовую настройку для Claude Code, Codex, Cursor или OpenCode — для всех проектов на компьютере или только для одного. Агент работает через [minecraft-mcp](https://github.com/MairwunNx/minecraft-mcp).
+- 🖥️ **Админ-панель** в браузере: нагрузка в реальном времени, консоль, чат, игроки, миры, файлы, плагины, токены, вебхуки и журнал аудита. Для повседневных дел SSH больше не нужен.
+- ↩️ **Отмена изменений через API.** Если агент или скрипт поставил блоки, залил область или поменял сундук через API, один вызов вернёт всё как было, пока сервер не остановится.
 - 🏆 **Живая статистика.** Рейтинги меняются, пока люди играют, а не при следующем автосохранении, и рейтингом может стать любая ванильная статистика.
 - 🗂️ **Конфиги и логи как файлы**: чтение постранично или поиском, правка по ключу и бэкап каждой прежней версии.
 - 🔑 **Безопасно по умолчанию.** Публичный сайт читает без токена и не видит ни координат, ни инвентарей, ни чата. Для остального нужен токен с подходящими правами.
 - 🔌 **Данные других плагинов.** Плагины отдают через WorldAPI свои ресурсы и живые события: через маленькую Java-библиотеку с Maven Central или вовсе без неё.
 - 🎮 **И в одиночной игре.** Поставьте мод в игру, и ИИ-агент ответит на вопросы о мире, в котором вы играете прямо сейчас: где ближайшая деревня, что лежит в сундуках, на что вы смотрите.
-- 🤖 **Готов к ИИ-агентам** через [minecraft-mcp](https://github.com/MairwunNx/minecraft-mcp) и к Grafana через [minecraft-exporter](https://github.com/MairwunNx/minecraft-exporter).
+- 📊 **Дашборды в Grafana** через [minecraft-exporter](https://github.com/MairwunNx/minecraft-exporter).
+
+## Админ-панель
+
+<p align="center">
+  <a href="https://raw.githubusercontent.com/MairwunNx/minecraft-worldapi/master/media/panel/overview.png"><img alt="Обзор: графики TPS, времени тика, памяти и CPU и нагрузка миров" src="https://raw.githubusercontent.com/MairwunNx/minecraft-worldapi/master/media/panel/overview.png" width="49%"></a>
+  <a href="https://raw.githubusercontent.com/MairwunNx/minecraft-worldapi/master/media/panel/webhooks-dark.png"><img alt="Вебхуки в Discord, Telegram, Slack, Microsoft Teams, Google Chat и JSON в тёмной теме" src="https://raw.githubusercontent.com/MairwunNx/minecraft-worldapi/master/media/panel/webhooks-dark.png" width="49%"></a>
+  <a href="https://raw.githubusercontent.com/MairwunNx/minecraft-worldapi/master/media/panel/mcp-setup.png"><img alt="Новое MCP-подключение с готовой настройкой Cursor для одного проекта" src="https://raw.githubusercontent.com/MairwunNx/minecraft-worldapi/master/media/panel/mcp-setup.png" width="49%"></a>
+  <a href="https://raw.githubusercontent.com/MairwunNx/minecraft-worldapi/master/media/panel/console-dark.png"><img alt="Живая консоль в тёмной теме" src="https://raw.githubusercontent.com/MairwunNx/minecraft-worldapi/master/media/panel/console-dark.png" width="49%"></a>
+</p>
 
 ## Как начать
 
@@ -44,7 +56,7 @@
 
 Всё по шагам — в [вики](https://github.com/MairwunNx/minecraft-worldapi/wiki), на английском.
 
-**Владельцам серверов:** [Installation](https://github.com/MairwunNx/minecraft-worldapi/wiki/Installation) · [Singleplayer](https://github.com/MairwunNx/minecraft-worldapi/wiki/Singleplayer) · [First steps](https://github.com/MairwunNx/minecraft-worldapi/wiki/First-steps) · [Tokens and permissions](https://github.com/MairwunNx/minecraft-worldapi/wiki/Tokens-and-permissions) · [Admin panel](https://github.com/MairwunNx/minecraft-worldapi/wiki/Admin-panel) · [Configuration](https://github.com/MairwunNx/minecraft-worldapi/wiki/Configuration) · [Reverse proxy](https://github.com/MairwunNx/minecraft-worldapi/wiki/Reverse-proxy) · [Security](https://github.com/MairwunNx/minecraft-worldapi/wiki/Security) · [Monitoring](https://github.com/MairwunNx/minecraft-worldapi/wiki/Monitoring) · [MCP](https://github.com/MairwunNx/minecraft-worldapi/wiki/MCP) · [FAQ](https://github.com/MairwunNx/minecraft-worldapi/wiki/FAQ)
+**Владельцам серверов:** [Installation](https://github.com/MairwunNx/minecraft-worldapi/wiki/Installation) · [Singleplayer](https://github.com/MairwunNx/minecraft-worldapi/wiki/Singleplayer) · [First steps](https://github.com/MairwunNx/minecraft-worldapi/wiki/First-steps) · [Tokens and permissions](https://github.com/MairwunNx/minecraft-worldapi/wiki/Tokens-and-permissions) · [Admin panel](https://github.com/MairwunNx/minecraft-worldapi/wiki/Admin-panel) · [Webhooks](https://github.com/MairwunNx/minecraft-worldapi/wiki/Webhooks) · [Configuration](https://github.com/MairwunNx/minecraft-worldapi/wiki/Configuration) · [Reverse proxy](https://github.com/MairwunNx/minecraft-worldapi/wiki/Reverse-proxy) · [Security](https://github.com/MairwunNx/minecraft-worldapi/wiki/Security) · [Monitoring](https://github.com/MairwunNx/minecraft-worldapi/wiki/Monitoring) · [MCP](https://github.com/MairwunNx/minecraft-worldapi/wiki/MCP) · [FAQ](https://github.com/MairwunNx/minecraft-worldapi/wiki/FAQ)
 
 **Разработчикам:** [REST API](https://github.com/MairwunNx/minecraft-worldapi/wiki/REST-API) · [WebSocket](https://github.com/MairwunNx/minecraft-worldapi/wiki/WebSocket) · [Extensions](https://github.com/MairwunNx/minecraft-worldapi/wiki/Extensions) · [Expansions](https://github.com/MairwunNx/minecraft-worldapi/wiki/Expansions) · [Java scripts](https://github.com/MairwunNx/minecraft-worldapi/wiki/Java-scripts) · [Building from source](https://github.com/MairwunNx/minecraft-worldapi/wiki/Building-from-source) · [Architecture](https://github.com/MairwunNx/minecraft-worldapi/wiki/Architecture) · [Development](https://github.com/MairwunNx/minecraft-worldapi/wiki/Development) · [Releasing](https://github.com/MairwunNx/minecraft-worldapi/wiki/Releasing)
 

@@ -24,15 +24,27 @@ WorldAPI feeds the site of Moonlands, my hard survival server with friends: the 
 
 ## What you get
 
-- 📡 **117 REST operations** for the server and its load, its commands, worlds, blocks, chests, entities, players online and offline with their inventories, statistics, advancements, recipes, leaderboards, and the event history.
+- 📡 **129 REST operations** for the server and its load, its commands, worlds, blocks one by one or a whole area at once, chests, entities, players online and offline with their inventories, statistics, advancements, recipes, leaderboards, the game's registries, and the event history.
 - ⚡ **A live feed** over WebSocket with 40 topics: joins, deaths, advancements, the console, positions, weather, boss kills, raids, and more.
-- 🖥️ **An admin panel** in the browser: live load, the console, chat, players, worlds, files, plugins, tokens, and the audit log. Everyday work no longer needs SSH.
+- 📣 **Webhooks to your chat.** Joins, deaths, advancements, raids, and restarts go to Discord, Telegram, Slack, Microsoft Teams, Google Chat, or any URL, in English, Russian, Spanish, Portuguese, or German. Set one up in game with a few clicks in chat, or in the admin panel.
+- 🤖 **An AI agent in one click.** Make an MCP connection in game or in the panel, and copy a ready setup for Claude Code, Codex, Cursor, or OpenCode, for every project on your machine or just one. The agent works through [minecraft-mcp](https://github.com/MairwunNx/minecraft-mcp).
+- 🖥️ **An admin panel** in the browser: live load, the console, chat, players, worlds, files, plugins, tokens, webhooks, and the audit log. Everyday work no longer needs SSH.
+- ↩️ **Undo for the API.** When an agent or a script sets blocks, fills an area, or changes a chest through the API, one call puts it back, until the server stops.
 - 🏆 **Live statistics.** Leaderboards move while people play, not at the next autosave, and any vanilla statistic can be one.
 - 🗂️ **Configs and logs as files**, read by page or by search and changed by key, with a backup of every previous version.
 - 🔑 **Safe by default.** A public site reads without a token and never sees coordinates, inventories, or chat; everything else takes a token with the right permissions.
 - 🔌 **Other plugins' data, too.** Plugins share their own resources and live events through WorldAPI, with a small Java library from Maven Central or with none at all.
 - 🎮 **Singleplayer too.** Put the mod in your game, and an AI agent answers questions about the world you're playing right now: where the nearest village is, what's in your chests, what you're looking at.
-- 🤖 **Ready for AI agents** through [minecraft-mcp](https://github.com/MairwunNx/minecraft-mcp), and for Grafana through [minecraft-exporter](https://github.com/MairwunNx/minecraft-exporter).
+- 📊 **Grafana dashboards** through [minecraft-exporter](https://github.com/MairwunNx/minecraft-exporter).
+
+## The admin panel
+
+<p align="center">
+  <a href="https://raw.githubusercontent.com/MairwunNx/minecraft-worldapi/master/media/panel/overview.png"><img alt="Overview: TPS, tick time, heap, and CPU charts, and the worlds' load" src="https://raw.githubusercontent.com/MairwunNx/minecraft-worldapi/master/media/panel/overview.png" width="49%"></a>
+  <a href="https://raw.githubusercontent.com/MairwunNx/minecraft-worldapi/master/media/panel/webhooks-dark.png"><img alt="Webhooks to Discord, Telegram, Slack, Microsoft Teams, Google Chat, and JSON, in the dark theme" src="https://raw.githubusercontent.com/MairwunNx/minecraft-worldapi/master/media/panel/webhooks-dark.png" width="49%"></a>
+  <a href="https://raw.githubusercontent.com/MairwunNx/minecraft-worldapi/master/media/panel/mcp-setup.png"><img alt="A new MCP connection with a ready setup for Cursor in one project" src="https://raw.githubusercontent.com/MairwunNx/minecraft-worldapi/master/media/panel/mcp-setup.png" width="49%"></a>
+  <a href="https://raw.githubusercontent.com/MairwunNx/minecraft-worldapi/master/media/panel/console-dark.png"><img alt="The live console in the dark theme" src="https://raw.githubusercontent.com/MairwunNx/minecraft-worldapi/master/media/panel/console-dark.png" width="49%"></a>
+</p>
 
 ## Get started
 
@@ -44,7 +56,7 @@ WorldAPI feeds the site of Moonlands, my hard survival server with friends: the 
 
 The [wiki](https://github.com/MairwunNx/minecraft-worldapi/wiki) has everything, step by step.
 
-**For server owners:** [Installation](https://github.com/MairwunNx/minecraft-worldapi/wiki/Installation) · [Singleplayer](https://github.com/MairwunNx/minecraft-worldapi/wiki/Singleplayer) · [First steps](https://github.com/MairwunNx/minecraft-worldapi/wiki/First-steps) · [Tokens and permissions](https://github.com/MairwunNx/minecraft-worldapi/wiki/Tokens-and-permissions) · [Admin panel](https://github.com/MairwunNx/minecraft-worldapi/wiki/Admin-panel) · [Configuration](https://github.com/MairwunNx/minecraft-worldapi/wiki/Configuration) · [Reverse proxy](https://github.com/MairwunNx/minecraft-worldapi/wiki/Reverse-proxy) · [Security](https://github.com/MairwunNx/minecraft-worldapi/wiki/Security) · [Monitoring](https://github.com/MairwunNx/minecraft-worldapi/wiki/Monitoring) · [MCP](https://github.com/MairwunNx/minecraft-worldapi/wiki/MCP) · [FAQ](https://github.com/MairwunNx/minecraft-worldapi/wiki/FAQ)
+**For server owners:** [Installation](https://github.com/MairwunNx/minecraft-worldapi/wiki/Installation) · [Singleplayer](https://github.com/MairwunNx/minecraft-worldapi/wiki/Singleplayer) · [First steps](https://github.com/MairwunNx/minecraft-worldapi/wiki/First-steps) · [Tokens and permissions](https://github.com/MairwunNx/minecraft-worldapi/wiki/Tokens-and-permissions) · [Admin panel](https://github.com/MairwunNx/minecraft-worldapi/wiki/Admin-panel) · [Webhooks](https://github.com/MairwunNx/minecraft-worldapi/wiki/Webhooks) · [Configuration](https://github.com/MairwunNx/minecraft-worldapi/wiki/Configuration) · [Reverse proxy](https://github.com/MairwunNx/minecraft-worldapi/wiki/Reverse-proxy) · [Security](https://github.com/MairwunNx/minecraft-worldapi/wiki/Security) · [Monitoring](https://github.com/MairwunNx/minecraft-worldapi/wiki/Monitoring) · [MCP](https://github.com/MairwunNx/minecraft-worldapi/wiki/MCP) · [FAQ](https://github.com/MairwunNx/minecraft-worldapi/wiki/FAQ)
 
 **For developers:** [REST API](https://github.com/MairwunNx/minecraft-worldapi/wiki/REST-API) · [WebSocket](https://github.com/MairwunNx/minecraft-worldapi/wiki/WebSocket) · [Extensions](https://github.com/MairwunNx/minecraft-worldapi/wiki/Extensions) · [Expansions](https://github.com/MairwunNx/minecraft-worldapi/wiki/Expansions) · [Java scripts](https://github.com/MairwunNx/minecraft-worldapi/wiki/Java-scripts) · [Building from source](https://github.com/MairwunNx/minecraft-worldapi/wiki/Building-from-source) · [Architecture](https://github.com/MairwunNx/minecraft-worldapi/wiki/Architecture) · [Development](https://github.com/MairwunNx/minecraft-worldapi/wiki/Development) · [Releasing](https://github.com/MairwunNx/minecraft-worldapi/wiki/Releasing)
 
