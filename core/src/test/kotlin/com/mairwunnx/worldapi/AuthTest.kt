@@ -119,4 +119,16 @@ class AuthTest {
         assertEquals(Scope.entries.toSet(), groups.resolve(listOf("owner")))
         assertTrue(groups.resolve(listOf("viewer")).all { it in groups.resolve(listOf("moderator")) })
     }
+
+    @Test
+    fun `groups kept as 4_2 shipped them gain webhooks manage, changed ones don't`() {
+        val old = Scope.defaultGroups.mapValues { (_, members) -> members - "webhooks:manage" }
+        val config = com.mairwunnx.worldapi.config.WorldApiConfig(auth = com.mairwunnx.worldapi.config.Auth(groups = old + ("custom" to listOf("admin"))))
+        assertTrue(Scope.WEBHOOKS_MANAGE in config.auth.resolver.resolve(listOf("admin")))
+        assertTrue(Scope.WEBHOOKS_MANAGE in config.auth.resolver.resolve(listOf("owner")))
+        assertTrue(Scope.WEBHOOKS_MANAGE in config.auth.resolver.resolve(listOf("custom")))
+        assertFalse(Scope.WEBHOOKS_MANAGE in config.auth.resolver.resolve(listOf("moderator")))
+        val changed = Scope.upgrade(mapOf("admin" to old.getValue("admin") - "code" - "files:read"))
+        assertFalse("webhooks:manage" in changed.getValue("admin"))
+    }
 }

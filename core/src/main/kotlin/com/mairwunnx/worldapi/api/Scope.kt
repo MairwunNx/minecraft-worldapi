@@ -54,6 +54,23 @@ enum class Scope(val id: String, val description: String) {
             "admin" to (entries - setOf(FILES_WRITE, CODE)).map { it.id },
             "owner" to entries.map { it.id },
         )
+
+        /**
+         * Permissions added after a release, with the groups that gain them while they still list exactly what that
+         * release shipped. A config.yml spells admin and owner out, so without this a new permission would reach no one
+         * who kept the defaults, and a group someone changed stays as they left it.
+         */
+        private val added: List<Pair<Scope, Set<String>>> = listOf(WEBHOOKS_MANAGE to setOf("admin", "owner"))
+
+        /** [groups] as the running version reads them: see [added]. Nothing is written back to config.yml. */
+        fun upgrade(groups: Map<String, List<String>>): Map<String, List<String>> = groups.mapValues { (name, members) ->
+            var result = members
+            for ((scope, gaining) in added) {
+                val shipped = defaultGroups[name]?.filter { it != scope.id }
+                if (name in gaining && scope.id !in result && shipped != null && result.toSet() == shipped.toSet()) result = result + scope.id
+            }
+            result
+        }
     }
 }
 

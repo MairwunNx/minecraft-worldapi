@@ -28,7 +28,7 @@ WorldAPI tells your Discord, Telegram, or Slack what happens on the server, and 
 
 ### What to do when you update
 
-- If your `config.yml` lists its own groups, add `"webhooks:manage"` where you want it: to `admin` and `owner` as the default does.
+- `admin` and `owner` in an older `config.yml` get `webhooks:manage` without an edit, as long as they list what 4.2 shipped. If you changed either group, add `"webhooks:manage"` to it yourself.
 
 ## 4.2.1
 

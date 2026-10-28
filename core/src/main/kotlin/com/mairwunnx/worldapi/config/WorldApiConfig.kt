@@ -53,7 +53,7 @@ data class Auth(
     val anonymous: Anonymous = Anonymous(),
 ) {
     @Transient
-    val resolver = Groups(groups)
+    val resolver = Groups(Scope.upgrade(groups))
 }
 
 @Serializable
