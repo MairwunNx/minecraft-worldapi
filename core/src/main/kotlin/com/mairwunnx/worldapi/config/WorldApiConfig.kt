@@ -160,6 +160,8 @@ data class Events(
 data class Limits(
     val maxPageSize: Int = 500,
     val maxFillBlocks: Int = 32_768,
+    /** Blocks the undo journal keeps in memory, across every change; the oldest changes drop out first. 0 keeps none. */
+    val undoBlocks: Int = 262_144,
     /** Blocks one area read (GET /worlds/{world}/blocks) may cover; it runs on the server thread. */
     val maxReadBlocks: Int = 32_768,
     val maxSpawnCount: Int = 50,

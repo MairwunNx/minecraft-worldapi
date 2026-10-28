@@ -57,6 +57,8 @@ class ModApi(
 ) : WorldApi(main, history, bus, tokens, configRef, loader.version, vanished, extensions, tamed, experience, accounts, icons, files) {
     val commands = ModCommands(server, loader)
 
+    override val changes = com.mairwunnx.worldapi.changes.Changes<com.mairwunnx.worldapi.game.BlockCopy> { config.limits.undoBlocks }
+
     /** A restart with a countdown; a singleplayer world has nothing to bring it back, so it refuses one. */
     val restart by lazy {
         Restart(main, CoroutineScope(SupervisorJob() + Dispatchers.Default), { text ->

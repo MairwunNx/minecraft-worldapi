@@ -49,6 +49,8 @@ class PaperApi(
     /** A restart with a countdown, scheduled through POST /server/restart. */
     val restart by lazy { paperRestart(server, main, CoroutineScope(SupervisorJob() + Dispatchers.Default)) }
 
+    override val changes = com.mairwunnx.worldapi.changes.Changes<org.bukkit.block.BlockState> { config.limits.undoBlocks }
+
     override suspend fun playerName(uuid: UUID): String? = main.call { server.getOfflinePlayer(uuid).name }
 
     override suspend fun online() = main.call { server.onlinePlayers.map { it.uniqueId to it.isVanished() } }

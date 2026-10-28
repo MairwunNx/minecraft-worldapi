@@ -93,14 +93,16 @@ val blockRoutes = endpoints("Blocks", Scope.SERVER_READ) {
         auditDetail = request.block
         main {
             val pos = BlockPos(x, y, z)
+            val recording = Recording(world).apply { copy(pos) }
             world.setBlock(pos, blockState(request.block), flags(request.physics))
+            recording.finish(this, "set ${request.block}")
             blockView(world, pos, true)
         }
     }
 
     post<FillRequest, FillResult>(
         "/worlds/{world}/blocks/fill", "Fill a box with one block", Scope.WORLD_WRITE,
-        description = "The box includes both corners. Its volume can't pass limits.maxFillBlocks.",
+        description = "The box includes both corners. Its volume can't pass limits.maxFillBlocks. `change` names the change to undo with POST /changes/{id}/undo.",
     ) { request ->
         val world = main { world() }
         val (from, to) = request.from to request.to
@@ -119,6 +121,7 @@ val blockRoutes = endpoints("Blocks", Scope.SERVER_READ) {
             val replace = request.replace?.let { name -> block(name) ?: badRequest("Unknown block \"$name\"") }
             if (ys.first < world.minY || ys.last >= world.maxHeight) badRequest("y must stay within ${world.minY}..${world.maxHeight - 1}")
             var changed = 0
+            val recording = Recording(world)
             val pos = BlockPos.MutableBlockPos()
             for (x in xs) for (y in ys) for (z in zs) {
                 pos.set(x, y, z)
@@ -129,11 +132,12 @@ val blockRoutes = endpoints("Blocks", Scope.SERVER_READ) {
                     else -> true
                 }
                 if (take && state != data) {
+                    recording.copy(pos)
                     world.setBlock(pos, data, flags(request.physics))
                     changed++
                 }
             }
-            FillResult(changed, volume.toInt())
+            FillResult(changed, volume.toInt(), recording.finish(this, "fill ${request.block}"))
         }
     }
 

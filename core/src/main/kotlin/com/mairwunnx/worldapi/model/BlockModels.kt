@@ -62,7 +62,12 @@ data class FillRequest(
 )
 
 @Serializable
-data class FillResult(val changed: Int, val volume: Int)
+data class FillResult(
+    val changed: Int,
+    val volume: Int,
+    /** The change's id in GET /changes, to undo it; absent when nothing changed or the journal keeps nothing. */
+    val change: Long? = null,
+)
 
 @Serializable
 data class BlockArea(
@@ -102,6 +107,38 @@ data class SpawnSpot(
     val z: Int,
     /** Above 0, the open sky reaches it: monsters come there at night, or in a thunderstorm, but not in daylight. */
     val skyLight: Int,
+)
+
+/** A change the API made to a world, which `POST /changes/{id}/undo` can take back. */
+@Serializable
+data class ChangeView(
+    val id: Long,
+    val at: String,
+    /** The token, or `panel:<account>`, that made it. */
+    val by: String,
+    val world: String,
+    /** Such as `fill minecraft:stone` or `container give`. */
+    val what: String,
+    /** The lowest corner of the blocks it touched. */
+    val from: BlockPosition,
+    /** The highest corner. */
+    val to: BlockPosition,
+    /** Blocks it changed. */
+    val blocks: Int,
+    val undone: Boolean,
+)
+
+@Serializable
+data class UndoRequest(
+    /** Restore blocks that changed again since, by players or later changes. Off, those stay as they are now. */
+    val force: Boolean = false,
+)
+
+@Serializable
+data class UndoResult(
+    val restored: Int,
+    /** Blocks left alone because something changed them again. */
+    val skipped: Int,
 )
 
 @Serializable

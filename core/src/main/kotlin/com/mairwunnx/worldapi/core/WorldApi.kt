@@ -89,6 +89,9 @@ abstract class WorldApi(
     /** Applies [text] as the new content of one of [listFiles] through the server; answers what changed, for the audit log. */
     abstract suspend fun applyList(file: String, text: String): String
 
+    /** What the API changed in worlds, to undo; each platform keeps its own copy of a block. */
+    abstract val changes: com.mairwunnx.worldapi.changes.Changes<*>
+
     /** Every key in one of [com.mairwunnx.worldapi.routes.REGISTRIES], such as `minecraft:stone` in `block`. Any thread. */
     abstract fun registryKeys(registry: String): List<String>
 

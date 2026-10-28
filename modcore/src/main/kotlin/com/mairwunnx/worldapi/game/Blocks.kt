@@ -95,3 +95,6 @@ private fun tileEntity(level: ServerLevel, entity: BlockEntity, inventories: Boo
 
 /** Registry lookups need the server's: the dimension registry and the biome registry live there. */
 fun ServerLevel.biomes() = registryAccess().lookupOrThrow(Registries.BIOME)
+
+/** A block as it was before the API changed it, for undo: its state, and its block entity's data with the entity's id. */
+class BlockCopy(val state: BlockState, val entity: net.minecraft.nbt.CompoundTag?)

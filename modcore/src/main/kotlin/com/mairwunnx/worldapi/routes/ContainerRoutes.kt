@@ -85,8 +85,10 @@ val containerRoutes = endpoints("Containers", Scope.SERVER_READ) {
             val inventory = containerAt(world, x, y, z)
             val slot = slot(inventory)
             val item = input.toItemStack(api.server)
+            val recording = Recording(world).apply { copyContainer(BlockPos(x, y, z)) }
             inventory.setItem(slot, item)
             inventory.setChanged()
+            recording.finish(this, "container slot $slot")
             auditTarget = "${world.worldName} $x $y $z [$slot]"
             auditDetail = item.view(registries = api.server.registryAccess())?.components
             item.view(slot, registries = api.server.registryAccess())!!
@@ -104,7 +106,11 @@ val containerRoutes = endpoints("Containers", Scope.SERVER_READ) {
             val inventory = containerAt(world, x, y, z)
             val slot = slot(inventory)
             auditTarget = "${world.worldName} $x $y $z [$slot]"
-            take(inventory, slot, request.amount, api).also { inventory.setChanged() }
+            val recording = Recording(world).apply { copyContainer(BlockPos(x, y, z)) }
+            take(inventory, slot, request.amount, api).also {
+                inventory.setChanged()
+                recording.finish(this, "container take from slot $slot")
+            }
         }
     }
 
@@ -116,8 +122,11 @@ val containerRoutes = endpoints("Containers", Scope.SERVER_READ) {
             val inventory = containerAt(world, x, y, z)
             val slot = slot(inventory)
             auditTarget = "${world.worldName} $x $y $z [$slot]"
+            val recording = Recording(world).apply { copyContainer(BlockPos(x, y, z)) }
             inventory.setItem(slot, ItemStack.EMPTY)
             inventory.setChanged()
+            recording.finish(this, "container empty slot $slot")
+            Unit
         }
     }
 
@@ -127,10 +136,12 @@ val containerRoutes = endpoints("Containers", Scope.SERVER_READ) {
         loadBlockChunk(world, x, z)
         main {
             auditTarget = "${world.worldName} $x $y $z"
-            containerAt(world, x, y, z).let {
-                it.clearContent()
-                it.setChanged()
-            }
+            val inventory = containerAt(world, x, y, z)
+            val recording = Recording(world).apply { copyContainer(BlockPos(x, y, z)) }
+            inventory.clearContent()
+            inventory.setChanged()
+            recording.finish(this, "container empty")
+            Unit
         }
     }
 
@@ -147,8 +158,10 @@ val containerRoutes = endpoints("Containers", Scope.SERVER_READ) {
             auditTarget = "${world.worldName} $x $y $z"
             auditDetail = item.view(registries = api.server.registryAccess())?.components
             val amount = item.count
+            val recording = Recording(world).apply { copyContainer(BlockPos(x, y, z)) }
             val left = addItem(inventory, item)
             inventory.setChanged()
+            recording.finish(this, "container give")
             GiveResult(amount - left, left)
         }
     }

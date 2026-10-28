@@ -27,6 +27,9 @@
             "name": "Containers"
         },
         {
+            "name": "Changes"
+        },
+        {
             "name": "Entities"
         },
         {
@@ -692,6 +695,226 @@
                     },
                     "403": {
                         "description": "The token lacks the permission",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit hit; see Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "The server thread didn't answer in time",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/changes": {
+            "get": {
+                "operationId": "getChanges",
+                "summary": "Changes the API made to blocks and containers, newest first, to undo",
+                "description": "Setting and filling blocks and editing containers record what they replace, in memory until the server stops. The oldest changes drop out once they hold more than limits.undoBlocks blocks.\n\nPermission: `world:write`.",
+                "tags": [
+                    "Changes"
+                ],
+                "x-scope": "world:write",
+                "security": [
+                    {
+                        "bearer": [
+                            "world:write"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "description": "How many items to return; the server caps it. 0 returns only `total` where a list has one",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "cursor",
+                        "in": "query",
+                        "required": false,
+                        "description": "The `nextCursor` from the previous page",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "world",
+                        "in": "query",
+                        "required": false,
+                        "description": "Only changes in this world",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChangeViewPage"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or unknown token",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The token lacks the permission",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit hit; see Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "The server thread didn't answer in time",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/changes/{id}/undo": {
+            "post": {
+                "operationId": "postChangesIdUndo",
+                "summary": "Take back a change the API made",
+                "description": "Puts back every block the change touched as it was, a container's items and a sign's text included. A block that changed again since, by a player or a later change, stays as it is now unless `force` is on. Blocks that physics moved, such as sand that fell, and entities aren't part of a change.\n\nPermission: `world:write`.",
+                "tags": [
+                    "Changes"
+                ],
+                "x-scope": "world:write",
+                "security": [
+                    {
+                        "bearer": [
+                            "world:write"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Script id",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UndoRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UndoResult"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or unknown token",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The token lacks the permission",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -8707,7 +8930,7 @@
             "post": {
                 "operationId": "postWorldsWorldBlocksFill",
                 "summary": "Fill a box with one block",
-                "description": "The box includes both corners. Its volume can't pass limits.maxFillBlocks.\n\nPermission: `world:write`.",
+                "description": "The box includes both corners. Its volume can't pass limits.maxFillBlocks. `change` names the change to undo with POST /changes/{id}/undo.\n\nPermission: `world:write`.",
                 "tags": [
                     "Blocks"
                 ],
@@ -13470,6 +13693,80 @@
                 ],
                 "additionalProperties": false
             },
+            "ChangeView": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "at": {
+                        "type": "string"
+                    },
+                    "by": {
+                        "type": "string"
+                    },
+                    "world": {
+                        "type": "string"
+                    },
+                    "what": {
+                        "type": "string"
+                    },
+                    "from": {
+                        "$ref": "#/components/schemas/BlockPosition"
+                    },
+                    "to": {
+                        "$ref": "#/components/schemas/BlockPosition"
+                    },
+                    "blocks": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "undone": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "id",
+                    "at",
+                    "by",
+                    "world",
+                    "what",
+                    "from",
+                    "to",
+                    "blocks",
+                    "undone"
+                ],
+                "additionalProperties": false
+            },
+            "ChangeViewPage": {
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ChangeView"
+                        }
+                    },
+                    "nextCursor": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "total": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "format": "int32"
+                    }
+                },
+                "required": [
+                    "items"
+                ],
+                "additionalProperties": false
+            },
             "ChunkLoad": {
                 "type": "object",
                 "properties": {
@@ -15195,6 +15492,13 @@
                     "volume": {
                         "type": "integer",
                         "format": "int32"
+                    },
+                    "change": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "format": "int64"
                     }
                 },
                 "required": [
@@ -18574,6 +18878,33 @@
                 "required": [
                     "material",
                     "pattern"
+                ],
+                "additionalProperties": false
+            },
+            "UndoRequest": {
+                "type": "object",
+                "properties": {
+                    "force": {
+                        "type": "boolean"
+                    }
+                },
+                "additionalProperties": false
+            },
+            "UndoResult": {
+                "type": "object",
+                "properties": {
+                    "restored": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "skipped": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                },
+                "required": [
+                    "restored",
+                    "skipped"
                 ],
                 "additionalProperties": false
             },
