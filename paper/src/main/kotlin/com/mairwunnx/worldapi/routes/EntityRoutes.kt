@@ -36,6 +36,7 @@ import com.mairwunnx.worldapi.model.Spawned
 import io.papermc.paper.registry.RegistryKey
 import kotlinx.coroutines.future.await
 import org.bukkit.Location
+import org.bukkit.entity.memory.MemoryKey
 import org.bukkit.World
 import org.bukkit.block.Hopper
 import org.bukkit.attribute.Attribute
@@ -348,6 +349,8 @@ fun entityView(entity: Entity, coordinates: Boolean, inventories: Boolean): Enti
                 trades = villager.recipes.map { trade ->
                     TradeView(trade.ingredients.mapNotNull { it.view() }, trade.result.view()!!, trade.uses, trade.maxUses, trade.demand, trade.specialPrice)
                 },
+                home = villager.getMemory(MemoryKey.HOME)?.takeIf { coordinates }?.view(withRotation = false),
+                jobSite = villager.getMemory(MemoryKey.JOB_SITE)?.takeIf { coordinates }?.view(withRotation = false),
             )
         },
         item = (entity as? Item)?.itemStack?.view(),

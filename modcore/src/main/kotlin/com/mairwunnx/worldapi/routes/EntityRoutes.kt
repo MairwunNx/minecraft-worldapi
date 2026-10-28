@@ -53,6 +53,7 @@ import net.minecraft.world.entity.TamableAnimal
 import net.minecraft.world.entity.ai.attributes.Attributes
 import net.minecraft.world.entity.animal.equine.AbstractHorse
 import net.minecraft.world.entity.item.ItemEntity
+import net.minecraft.world.entity.ai.memory.MemoryModuleType
 import net.minecraft.world.entity.npc.villager.Villager
 import net.minecraft.world.level.block.entity.HopperBlockEntity
 import net.minecraft.world.phys.AABB
@@ -383,6 +384,8 @@ fun entityView(entity: Entity, coordinates: Boolean, inventories: Boolean): Enti
                         trade.result.view(registries = registries)!!, trade.uses, trade.maxUses, trade.demand, trade.specialPriceDiff,
                     )
                 },
+                home = villager.brain.getMemory(MemoryModuleType.HOME).orElse(null)?.takeIf { coordinates }?.view(server),
+                jobSite = villager.brain.getMemory(MemoryModuleType.JOB_SITE).orElse(null)?.takeIf { coordinates }?.view(server),
             )
         },
         item = (entity as? ItemEntity)?.item?.view(registries = registries),

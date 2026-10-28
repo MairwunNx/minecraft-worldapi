@@ -18088,6 +18088,26 @@
                         "items": {
                             "$ref": "#/components/schemas/TradeView"
                         }
+                    },
+                    "home": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/LocationView"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "jobSite": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/LocationView"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
                     }
                 },
                 "required": [

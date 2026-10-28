@@ -66,6 +66,10 @@ data class VillagerView(
     val level: Int,
     val experience: Int,
     val trades: List<TradeView>,
+    /** The bed it claimed; hidden without coordinates. */
+    val home: LocationView? = null,
+    /** The workstation it claimed, such as a lectern; hidden without coordinates. */
+    val jobSite: LocationView? = null,
 )
 
 @Serializable
