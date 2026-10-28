@@ -24,6 +24,8 @@ data class IssuedToken(
     val createdBy: String,
     /** Absent for a token that never expires. */
     val expiresAt: String? = null,
+    /** `token` for sites and scripts, `mcp` for an AI client through minecraft-mcp. */
+    val kind: String = "token",
 ) {
     fun expired(now: Instant = Instant.now()) = expiresAt?.let { Instant.parse(it) <= now } ?: false
 }
@@ -52,10 +54,10 @@ class TokenStore(private val path: Path) {
 
     /** Creates a token and returns its plain value, which exists nowhere else afterwards. */
     @Synchronized
-    fun issue(name: String, scopes: List<String>, createdBy: String, expiresAt: Instant?): String {
+    fun issue(name: String, scopes: List<String>, createdBy: String, expiresAt: Instant?, kind: String = "token"): String {
         require(tokens.none { it.name == name }) { "A token named $name already exists" }
         val token = ConfigFile.newToken()
-        save(tokens + IssuedToken(name, digest(token), scopes.distinct(), Instant.now().toString(), createdBy, expiresAt?.toString()))
+        save(tokens + IssuedToken(name, digest(token), scopes.distinct(), Instant.now().toString(), createdBy, expiresAt?.toString(), kind))
         return token
     }
 

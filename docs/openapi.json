@@ -8210,7 +8210,7 @@
             "post": {
                 "operationId": "postTokens",
                 "summary": "Issue a token",
-                "description": "The answer holds the token once. A caller hands out only permissions it has itself.\n\nPermission: `tokens:manage`.",
+                "description": "The answer holds the token once. With `kind` `mcp`, it also holds how to add minecraft-mcp to Claude Code, Codex, Cursor, OpenCode, or any MCP client, for every project or one. A caller hands out only permissions it has itself.\n\nPermission: `tokens:manage`.",
                 "tags": [
                     "Access control"
                 ],
@@ -17052,6 +17052,87 @@
                 ],
                 "additionalProperties": false
             },
+            "McpClientSetup": {
+                "type": "object",
+                "properties": {
+                    "client": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "scope": {
+                        "type": "string"
+                    },
+                    "command": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "file": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "content": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "link": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "gitignore": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "trust": {
+                        "type": "boolean"
+                    },
+                    "env": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "required": [
+                    "client",
+                    "title",
+                    "scope"
+                ],
+                "additionalProperties": false
+            },
+            "McpSetup": {
+                "type": "object",
+                "properties": {
+                    "url": {
+                        "type": "string"
+                    },
+                    "clients": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/McpClientSetup"
+                        }
+                    }
+                },
+                "required": [
+                    "url",
+                    "clients"
+                ],
+                "additionalProperties": false
+            },
             "Memory": {
                 "type": "object",
                 "properties": {
@@ -19402,6 +19483,19 @@
                             "string",
                             "null"
                         ]
+                    },
+                    "kind": {
+                        "type": "string"
+                    },
+                    "setup": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/McpSetup"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
                     }
                 },
                 "required": [
@@ -19429,6 +19523,15 @@
                             "null"
                         ],
                         "format": "int32"
+                    },
+                    "kind": {
+                        "type": "string"
+                    },
+                    "apiUrl": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     }
                 },
                 "required": [
@@ -19478,6 +19581,9 @@
                     },
                     "expired": {
                         "type": "boolean"
+                    },
+                    "kind": {
+                        "type": "string"
                     }
                 },
                 "required": [

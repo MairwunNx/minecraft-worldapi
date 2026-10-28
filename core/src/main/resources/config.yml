@@ -8,6 +8,9 @@ http:
   # 8110 rather than 8100, which BlueMap's web server uses.
   port: 8110
   basePath: /api/v1
+  # The address people reach the API at, such as https://example.com/worldapi/api/v1. The
+  # setup WorldAPI shows for an MCP connection uses it; empty, it guesses from the request.
+  publicUrl: ""
   # Take the client address from X-Forwarded-For (for rate limits). Turn on only behind your own proxy.
   trustForwardedFor: false
   # Only these proxies may set X-Forwarded-For; a header from anyone else is ignored.

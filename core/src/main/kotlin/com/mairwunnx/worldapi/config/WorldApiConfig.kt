@@ -30,6 +30,8 @@ data class Http(
     val host: String = "0.0.0.0",
     val port: Int = 8110,
     val basePath: String = "/api/v1",
+    /** Where people reach the API, for the setup an MCP connection shows; empty guesses from the request. */
+    val publicUrl: String = "",
     /** Take the client address from X-Forwarded-For. Turn on only behind a proxy you control. */
     val trustForwardedFor: Boolean = false,
     /** Proxies whose X-Forwarded-For counts; anyone else's header is ignored. Addresses or CIDR ranges. */

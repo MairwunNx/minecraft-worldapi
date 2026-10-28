@@ -6,6 +6,8 @@ import com.mairwunnx.worldapi.api.ApiCall
 import com.mairwunnx.worldapi.api.ApiException
 import com.mairwunnx.worldapi.api.Page
 import com.mairwunnx.worldapi.api.Scope
+import com.mairwunnx.worldapi.connections.McpSetup
+import io.ktor.server.plugins.origin
 import com.mairwunnx.worldapi.api.endpoints
 import com.mairwunnx.worldapi.api.badRequest
 import com.mairwunnx.worldapi.api.conflict
@@ -34,13 +36,14 @@ val manageRoutes = endpoints("Access control", Scope.TOKENS_MANAGE) {
         val now = Instant.now()
         auth.tokens.map { TokenView(it.name, it.scopes, ids(auth.resolver.resolve(it.scopes)), "config") } +
             api.tokens.tokens.map {
-                TokenView(it.name, it.scopes, ids(auth.resolver.resolve(it.scopes)), "issued", it.createdAt, it.createdBy, it.expiresAt, it.expired(now))
+                TokenView(it.name, it.scopes, ids(auth.resolver.resolve(it.scopes)), "issued", it.createdAt, it.createdBy, it.expiresAt, it.expired(now), it.kind)
             }
     }
 
     post<TokenRequest, TokenCreated>(
         "/tokens", "Issue a token", Scope.TOKENS_MANAGE, status = HttpStatusCode.Created,
-        description = "The answer holds the token once. $GRANT",
+        description = "The answer holds the token once. With `kind` `mcp`, it also holds how to add minecraft-mcp to Claude Code, Codex, Cursor, " +
+            "OpenCode, or any MCP client, for every project or one. $GRANT",
     ) { request ->
         if (!TOKEN_NAME.matches(request.name)) badRequest("Names are 1–32 letters, digits, dashes, or underscores")
         if (config.auth.tokens.any { it.name == request.name } || api.tokens.tokens.any { it.name == request.name }) conflict("token_exists", "A token named ${request.name} exists")
@@ -48,11 +51,13 @@ val manageRoutes = endpoints("Access control", Scope.TOKENS_MANAGE) {
         if (days !in 0..3_650) badRequest("expiresInDays must be between 0 and 3650")
         if (request.scopes.isEmpty()) badRequest("Give at least one group or permission")
         checkGrant(request.scopes)
+        if (request.kind !in setOf("token", "mcp")) badRequest("kind must be token or mcp")
+        val apiUrl = if (request.kind == "mcp") apiUrl(request.apiUrl) else null
         val expires = days.takeIf { it > 0 }?.let { Instant.now().plus(Duration.ofDays(it.toLong())) }
         auditTarget = request.name
         auditDetail = request.scopes.joinToString()
-        val token = api.tokens.issue(request.name, request.scopes, principal.name, expires)
-        TokenCreated(request.name, token, request.scopes, expires?.toString())
+        val token = api.tokens.issue(request.name, request.scopes, principal.name, expires, request.kind)
+        TokenCreated(request.name, token, request.scopes, expires?.toString(), request.kind, apiUrl?.let { McpSetup.build(it, token) })
     }
 
     delete("/tokens/{name}", "Revoke a token made in game or here", Scope.TOKENS_MANAGE, description = "Tokens in config.yml change only there.") {
@@ -141,6 +146,15 @@ val manageRoutes = endpoints("Access control", Scope.TOKENS_MANAGE) {
 private val TOKEN_NAME = Regex("[A-Za-z0-9_-]{1,32}")
 
 private fun ids(scopes: Set<Scope>) = scopes.sortedBy { it.ordinal }.map { it.id }
+
+/** Where an MCP client reaches the API: what the caller says, http.publicUrl, or the address this request came to. */
+private fun ApiCall<*>.apiUrl(given: String?): String {
+    val url = given?.trim()?.removeSuffix("/")?.takeIf { it.isNotEmpty() }
+        ?: config.http.publicUrl.trim().removeSuffix("/").takeIf { it.isNotEmpty() }
+        ?: call.request.origin.let { "${it.scheme}://${it.serverHost}:${it.serverPort}${config.http.basePath}" }
+    if (!McpSetup.validUrl(url)) badRequest("apiUrl must be an http or https address without spaces or quotes")
+    return url
+}
 
 /** Refuses permissions the caller doesn't hold itself: whatever it makes gets as much as it has, never more. */
 fun ApiCall<*>.checkGrant(names: List<String>) {
