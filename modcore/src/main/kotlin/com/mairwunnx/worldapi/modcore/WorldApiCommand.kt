@@ -1,5 +1,6 @@
 package com.mairwunnx.worldapi.modcore
 
+import com.mairwunnx.worldapi.game.components
 import com.mojang.brigadier.Command
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
@@ -16,7 +17,7 @@ import net.minecraft.server.permissions.Permissions
 import java.time.Instant
 
 /**
- * `/worldapi [status | reload | connect | admin [group] | token create <name> [group] | list | revoke <name>]` on the
+ * `/worldapi [status | reload | connect | admin [group] | token create <name> [group] | list | revoke <name> | webhook | mcp <name> [group]]` on the
  * mods, for operators with `worldapi.admin` and for the owner of a singleplayer world, cheats or not. Paper's opens
  * chest menus; here everything answers in chat. A token and a panel code go to one player's chat only: the console
  * would write them to the log.
@@ -49,6 +50,25 @@ object WorldApiCommand {
                     .executes { run(it) { source, runtime -> admin(source, runtime, StringArgumentType.getString(it, "group")) } }),
         )
         .then(
+            Commands.literal("webhook")
+                .executes { run(it) { source, runtime -> webhook(source, runtime, emptyList()) } }
+                .then(Commands.argument("step", StringArgumentType.greedyString()).executes {
+                    run(it) { source, runtime -> webhook(source, runtime, StringArgumentType.getString(it, "step").split(' ').filter(String::isNotEmpty)) }
+                }),
+        )
+        .then(
+            Commands.literal("mcp").then(
+                Commands.argument("name", StringArgumentType.word())
+                    .executes { run(it) { source, runtime -> mcp(source, runtime, StringArgumentType.getString(it, "name"), "viewer") } }
+                    .then(Commands.argument("group", StringArgumentType.word())
+                        .suggests { _, builder ->
+                            Mod.runtime?.config?.get()?.auth?.groups?.keys?.filter { name -> name.startsWith(builder.remainingLowerCase) }?.forEach(builder::suggest)
+                            builder.buildFuture()
+                        }
+                        .executes { run(it) { source, runtime -> mcp(source, runtime, StringArgumentType.getString(it, "name"), StringArgumentType.getString(it, "group")) } }),
+            ),
+        )
+        .then(
             Commands.literal("token")
                 .then(Commands.literal("list").executes { run(it) { source, runtime -> tokens(runtime).forEach { line -> source.sendSystemMessage(Component.literal(line)) } } })
                 .then(Commands.literal("create").then(
@@ -70,6 +90,26 @@ object WorldApiCommand {
                         .executes { run(it) { source, runtime -> revoke(source, runtime, StringArgumentType.getString(it, "name")) } },
                 )),
         )
+
+    /** `/worldapi webhook [step…]`: the wizard; a secret goes through chat, so only a player may run it. */
+    private fun webhook(source: CommandSourceStack, runtime: Runtime, args: List<String>) {
+        val player = source.player ?: return source.sendFailure(Component.literal("Make webhooks in game: the console would write the secret to the log."))
+        runtime.wizard.command(player.uuid, player.gameProfile.name(), args)
+    }
+
+    /** `/worldapi mcp <name> [group]`: a token for an AI client, with a button per client that copies its setup. */
+    private fun mcp(source: CommandSourceStack, runtime: Runtime, name: String, group: String) {
+        val player = source.player ?: return source.sendFailure(Component.literal("Make MCP connections in game: the console would write the token to the log."))
+        val config = runtime.config.get()
+        when {
+            !NAME.matches(name) -> return source.sendFailure(Component.literal("Names are 1–32 letters, digits, dashes, or underscores."))
+            config.auth.tokens.any { it.name == name } || runtime.api.tokens.tokens.any { it.name == name } -> return source.sendFailure(Component.literal("A token named $name already exists."))
+            !config.auth.resolver.contains(group) -> return source.sendFailure(Component.literal("There is no group or permission $group."))
+        }
+        val token = runtime.api.tokens.issue(name, listOf(group), player.gameProfile.name(), null, kind = "mcp")
+        Logs.logger.info("${player.gameProfile.name()} made the MCP connection \"$name\" ($group)")
+        com.mairwunnx.worldapi.connections.McpChat.lines(name, group, token, config).components().forEach(source::sendSystemMessage)
+    }
 
     /** The owner of a singleplayer world, an operator, or whoever a permissions mod lets in. */
     fun allowed(source: CommandSourceStack): Boolean {

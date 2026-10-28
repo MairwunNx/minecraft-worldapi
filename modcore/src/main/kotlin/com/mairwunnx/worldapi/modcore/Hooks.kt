@@ -39,6 +39,11 @@ object Hooks {
     @JvmStatic fun respawned(player: ServerPlayer, alive: Boolean) = events { respawned(player, alive) }
     @JvmStatic fun advancement(player: ServerPlayer, advancement: AdvancementHolder) = events { advancement(player, advancement) }
     @JvmStatic fun chat(player: ServerPlayer, message: String) = events { chat(player, message) }
+
+    /** False when the webhook wizard takes the message, a pasted secret: the loader then cancels it before anyone sees it. */
+    @JvmStatic
+    fun allowChat(player: ServerPlayer, message: String): Boolean =
+        runCatching { Mod.runtime?.wizard?.chat(player.uuid, player.gameProfile.name(), message) != true }.getOrDefault(true)
     @JvmStatic fun command(player: ServerPlayer, command: String) = events { command(player, command) }
     @JvmStatic fun damaged(entity: LivingEntity, source: DamageSource, damage: Float) = events { damaged(entity, source, damage) }
     @JvmStatic fun entityDied(entity: LivingEntity, source: DamageSource) = events { entityDied(entity, source) }

@@ -22,9 +22,21 @@ interface TokenCommands {
     fun groupNames(): List<String>
 }
 
-/** `/worldapi [reload | status | admin [group] | token create|list|revoke]`, for operators with worldapi.admin; alone, it opens [HubMenu]. */
+/** Webhooks and MCP connections from the game; the plugin supplies them. */
+interface ConnectionCommands {
+    /** `/worldapi webhook [step…]`: the wizard in [com.mairwunnx.worldapi.connections.WebhookWizard]. */
+    fun webhook(player: Player, args: List<String>)
+
+    /** `/worldapi mcp <name> [group]`: a token for an AI client with its setup. */
+    fun mcp(player: Player, name: String, group: String?)
+}
+
+/** `/worldapi [reload | status | admin [group] | token create|list|revoke | webhook | mcp]`, for operators with worldapi.admin; alone, it opens [HubMenu]. */
 object WorldApiCommand {
-    fun build(reload: () -> Result<String>, status: () -> List<String>, tokens: TokenCommands, hub: (Player) -> Unit): LiteralCommandNode<CommandSourceStack> =
+    fun build(
+        reload: () -> Result<String>, status: () -> List<String>, tokens: TokenCommands, hub: (Player) -> Unit,
+        connections: ConnectionCommands,
+    ): LiteralCommandNode<CommandSourceStack> =
         Commands.literal("worldapi")
             .requires { it.sender.hasPermission("worldapi.admin") }
             // Alone, it opens the menu for a player and prints the status for the console.
@@ -87,7 +99,34 @@ object WorldApiCommand {
                             },
                     )),
             )
+            .then(
+                Commands.literal("webhook")
+                    .executes { context -> inGame(context.source.sender) { connections.webhook(it, emptyList()) } }
+                    .then(Commands.argument("step", StringArgumentType.greedyString()).executes { context ->
+                        inGame(context.source.sender) { connections.webhook(it, StringArgumentType.getString(context, "step").split(' ').filter(String::isNotEmpty)) }
+                    }),
+            )
+            .then(
+                Commands.literal("mcp").then(
+                    Commands.argument("name", StringArgumentType.word())
+                        .executes { context -> inGame(context.source.sender) { connections.mcp(it, StringArgumentType.getString(context, "name"), null) } }
+                        .then(Commands.argument("group", StringArgumentType.word())
+                            .suggests { _, builder ->
+                                tokens.groupNames().filter { it.startsWith(builder.remainingLowerCase) }.forEach(builder::suggest)
+                                builder.buildFuture()
+                            }
+                            .executes { context ->
+                                inGame(context.source.sender) { connections.mcp(it, StringArgumentType.getString(context, "name"), StringArgumentType.getString(context, "group")) }
+                            }),
+                ),
+            )
             .build()
+
+    /** Connections show secrets and take them through chat, so only a player in game may make them. */
+    private fun inGame(sender: org.bukkit.command.CommandSender, block: (Player) -> Unit): Int {
+        if (sender is Player) block(sender) else sender.sendMessage(Component.text("Do this in game: the console would write the secret to the log.", NamedTextColor.RED))
+        return Command.SINGLE_SUCCESS
+    }
 
     private fun admin(sender: org.bukkit.command.CommandSender, tokens: TokenCommands, group: String?): Int {
         // Like a token, the code goes to one player's chat; the console would log it.

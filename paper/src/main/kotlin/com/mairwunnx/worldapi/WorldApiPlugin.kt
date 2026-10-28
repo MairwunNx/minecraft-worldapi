@@ -35,6 +35,7 @@ import com.mairwunnx.worldapi.store.Store
 import com.mairwunnx.worldapi.tokens.TokenMenu
 import com.mairwunnx.worldapi.tokens.TokenStore
 import com.mairwunnx.worldapi.ws.WebSocketHub
+import com.mairwunnx.worldapi.bukkit.components
 import com.mairwunnx.worldapi.webhooks.WebhookStore
 import com.mairwunnx.worldapi.webhooks.Webhooks
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents
@@ -114,6 +115,7 @@ class WorldApiPlugin : JavaPlugin() {
 
         val windows = Windows(bus) { config.get().websocket.blockWindowSeconds }
         val listeners = Listeners(this, bus, history, api.experience, windows, vanished) { config.get().events.chat }
+        server.pluginManager.registerEvents(com.mairwunnx.worldapi.command.WizardChat { wizard }, this)
         server.pluginManager.registerEvents(listeners, this)
         server.pluginManager.registerEvents(api.commands, this)
         val taming = Taming(this, api.tamed, logger)
@@ -139,7 +141,7 @@ class WorldApiPlugin : JavaPlugin() {
 
         lifecycleManager.registerEventHandler(LifecycleEvents.COMMANDS) { event ->
             val tokens = tokenCommands(menu)
-            event.registrar().register(WorldApiCommand.build(::reload, ::status, tokens, hub(tokens)::open), "Open WorldAPI's menu, reload it, or manage tokens and panel codes")
+            event.registrar().register(WorldApiCommand.build(::reload, ::status, tokens, hub(tokens)::open, connections()), "Open WorldAPI's menu, reload it, or manage tokens and panel codes")
         }
 
         startHttp()
@@ -221,6 +223,32 @@ class WorldApiPlugin : JavaPlugin() {
     }
 
     private var hubMenu: com.mairwunnx.worldapi.command.HubMenu? = null
+
+    /** The webhook wizard; its answers go back to the player on the server thread. */
+    private val wizard by lazy {
+        com.mairwunnx.worldapi.connections.WebhookWizard({ api }, scope) { player, lines ->
+            server.scheduler.runTask(this, Runnable { server.getPlayer(player)?.let { online -> lines.components().forEach(online::sendMessage) } })
+        }
+    }
+
+    private fun connections() = object : com.mairwunnx.worldapi.command.ConnectionCommands {
+        override fun webhook(player: org.bukkit.entity.Player, args: List<String>) = wizard.command(player.uniqueId, player.name, args)
+
+        override fun mcp(player: org.bukkit.entity.Player, name: String, group: String?) {
+            val settings = config.get()
+            val chosen = group ?: "viewer"
+            val problem = when {
+                !Regex("[A-Za-z0-9_-]{1,32}").matches(name) -> "Names are 1–32 letters, digits, dashes, or underscores."
+                settings.auth.tokens.any { it.name == name } || api.tokens.tokens.any { it.name == name } -> "A token named $name already exists."
+                !settings.auth.resolver.contains(chosen) -> "There is no group or permission $chosen."
+                else -> null
+            }
+            if (problem != null) return player.sendMessage(net.kyori.adventure.text.Component.text(problem, net.kyori.adventure.text.format.NamedTextColor.RED))
+            val token = api.tokens.issue(name, listOf(chosen), player.name, null, kind = "mcp")
+            logger.info("${player.name} made the MCP connection \"$name\" ($chosen)")
+            com.mairwunnx.worldapi.connections.McpChat.lines(name, chosen, token, settings).components().forEach(player::sendMessage)
+        }
+    }
 
     /** The menu behind `/worldapi`, made once and registered for its clicks and chat prompts. */
     private fun hub(tokens: TokenCommands): com.mairwunnx.worldapi.command.HubMenu = hubMenu ?: com.mairwunnx.worldapi.command.HubMenu(this, object : com.mairwunnx.worldapi.command.HubActions {

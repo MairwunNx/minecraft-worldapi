@@ -36,6 +36,7 @@ class WorldApiMod(@Suppress("UNUSED_PARAMETER") modBus: IEventBus) {
 
         bus.addListener { event: PlayerEvent.PlayerLoggedInEvent -> (event.entity as? ServerPlayer)?.let(Hooks::joined) }
         bus.addListener { event: PlayerEvent.PlayerLoggedOutEvent -> (event.entity as? ServerPlayer)?.let(Hooks::left) }
+        bus.addListener(EventPriority.HIGHEST) { event: ServerChatEvent -> if (!Hooks.allowChat(event.player, event.rawText)) event.isCanceled = true }
         bus.addListener(EventPriority.LOWEST) { event: ServerChatEvent -> if (!event.isCanceled) Hooks.chat(event.player, event.rawText) }
         bus.addListener { event: PlayerEvent.PlayerRespawnEvent -> (event.entity as? ServerPlayer)?.let { Hooks.respawned(it, event.isEndConquered) } }
         bus.addListener { event: PlayerEvent.PlayerChangedDimensionEvent ->

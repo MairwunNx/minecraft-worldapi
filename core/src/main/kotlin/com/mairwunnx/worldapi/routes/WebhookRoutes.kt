@@ -25,13 +25,14 @@ import com.mairwunnx.worldapi.model.WebhookTopicInfo
 import com.mairwunnx.worldapi.model.WebhookView
 import com.mairwunnx.worldapi.webhooks.Addresses
 import com.mairwunnx.worldapi.webhooks.Messages
+import com.mairwunnx.worldapi.webhooks.DEFAULT_WEBHOOK_PERMISSIONS
 import com.mairwunnx.worldapi.webhooks.WebhookStore
+import com.mairwunnx.worldapi.webhooks.buildWebhook
+import com.mairwunnx.worldapi.webhooks.createWebhook
+import com.mairwunnx.worldapi.webhooks.result
 import com.mairwunnx.worldapi.webhooks.Webhooks
 import io.ktor.http.HttpStatusCode
 import java.time.Instant
-
-/** What a webhook sees unless its maker says otherwise: no coordinates and no chat, since it usually posts to a shared channel. */
-private val DEFAULT_PERMISSIONS = listOf("server:read", "players:read", "events:read")
 
 private const val GRANT = "A webhook gets only permissions its maker has, and changing or deleting one needs every permission it holds."
 
@@ -61,25 +62,9 @@ val webhookRoutes = endpoints("Webhooks", Scope.WEBHOOKS_MANAGE) {
         description = "Chat formats get a message in the webhook's language; `json` gets the event as the WebSocket sends it, signed with a secret " +
             "the answer shows once. It can't post to this machine or a private network unless config.yml allows it. $GRANT",
     ) { request ->
-        val store = stored()
-        if (!config.webhooks.enabled) conflict("webhooks_off", "Webhooks are off in config.yml")
-        if (api.webhooks.all().any { it.hook.name == request.name }) conflict("webhook_exists", "A webhook named ${request.name} exists")
-        val format = WebhookFormat.of(request.format) ?: badRequest("format must be one of ${WebhookFormat.entries.joinToString { it.id }}")
-        val permissions = request.permissions.ifEmpty { DEFAULT_PERMISSIONS }
-        checkGrant(permissions)
-        val hook = webhook {
-            Webhook(
-                name = request.name, format = format, url = request.url?.trim(), botToken = request.botToken?.trim(), chatId = request.chatId?.trim(),
-                topics = request.topics.distinct(), permissions = permissions, language = request.language,
-                secret = if (format == WebhookFormat.JSON) ConfigFile.newToken() else null, messages = request.messages,
-            )
-        }
-        checkTarget(hook)
-        auditTarget = hook.name
-        auditDetail = "${format.id}: ${hook.topics.joinToString()}"
-        store.add(hook, principal.name)
-        val test = if (request.test) result(api.webhooks.test(hook, fromConfig = false)) else null
-        WebhookCreated(view(hook, store.find(hook.name)), hook.secret, test)
+        auditTarget = request.name
+        auditDetail = "${request.format}: ${request.topics.joinToString()}"
+        api.createWebhook(request, principal.name, principal.scopes)
     }
 
     patch<WebhookPatch, WebhookView>(
@@ -88,9 +73,9 @@ val webhookRoutes = endpoints("Webhooks", Scope.WEBHOOKS_MANAGE) {
     ) { patch ->
         val store = stored()
         val current = madeHook(store)
-        val permissions = patch.permissions?.ifEmpty { DEFAULT_PERMISSIONS }
+        val permissions = patch.permissions?.ifEmpty { DEFAULT_WEBHOOK_PERMISSIONS }
         checkGrant(current.permissions + permissions.orEmpty())
-        val hook = webhook {
+        val hook = buildWebhook {
             current.copy(
                 topics = patch.topics?.distinct() ?: current.topics,
                 permissions = permissions ?: current.permissions,
@@ -146,22 +131,6 @@ private fun ApiCall<*>.madeHook(store: WebhookStore): Webhook {
     if (config.webhooks.hooks.any { it.name == name }) badRequest("$name lives in config.yml; change it there and run /worldapi reload", "config_webhook")
     return store.find(name)?.hook ?: notFound("webhook_not_found", "No webhook $name")
 }
-
-/** Builds a webhook, turning what its checks refuse into 400, and checks what the config file would. */
-private fun ApiCall<*>.webhook(build: () -> Webhook): Webhook {
-    val hook = runCatching(build).getOrElse { badRequest(it.message ?: "Invalid webhook", "invalid_webhook") }
-    hook.topics.filterNot(ConfigFile::knownTopic).takeIf { it.isNotEmpty() }?.let { badRequest("Unknown topics: ${it.joinToString()}", "unknown_topic") }
-    hook.messages.keys.filterNot(Messages.keys::contains).takeIf { it.isNotEmpty() }?.let { badRequest("Unknown messages: ${it.joinToString()}", "unknown_message") }
-    return hook
-}
-
-/** Refuses an address on this machine or a private network, unless config.yml allows them. */
-private fun ApiCall<*>.checkTarget(hook: Webhook) {
-    if (config.webhooks.allowPrivateAddresses) return
-    Addresses.refusal(hook.target)?.let { throw ApiException(HttpStatusCode.BadRequest, "private_address", "Webhooks can't post there: $it") }
-}
-
-private fun result(outcome: Webhooks.Outcome) = WebhookTestResult(outcome.ok, outcome.status, outcome.problem ?: outcome.status?.takeIf { !outcome.ok }?.let { "HTTP $it" })
 
 /** A webhook as clients see it: the secret part of its address hidden. */
 fun view(hook: Webhook, stored: WebhookStore.Stored?) = WebhookView(

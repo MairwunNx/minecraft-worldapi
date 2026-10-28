@@ -31,6 +31,7 @@ import com.mairwunnx.worldapi.store.History
 import com.mairwunnx.worldapi.store.Store
 import com.mairwunnx.worldapi.tokens.TokenStore
 import com.mairwunnx.worldapi.ws.WebSocketHub
+import com.mairwunnx.worldapi.game.components
 import com.mairwunnx.worldapi.webhooks.WebhookStore
 import com.mairwunnx.worldapi.webhooks.Webhooks
 import kotlinx.coroutines.CoroutineScope
@@ -75,6 +76,13 @@ class Runtime private constructor(
     val sampler = ModSampler(api, events, config::get)
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    /** The webhook wizard; its answers go back to the player on the server thread. */
+    val wizard by lazy {
+        com.mairwunnx.worldapi.connections.WebhookWizard({ api }, scope) { player, lines ->
+            server.execute { server.playerList.getPlayer(player)?.let { online -> lines.components().forEach(online::sendSystemMessage) } }
+        }
+    }
     var http: HttpServer<ModApi>? = null
         private set
 
