@@ -10,6 +10,7 @@ import com.mairwunnx.worldapi.game.biomeKey
 import com.mairwunnx.worldapi.game.blockState
 import com.mairwunnx.worldapi.game.blockView
 import com.mairwunnx.worldapi.game.chunkLoaded
+import com.mairwunnx.worldapi.game.data
 import com.mairwunnx.worldapi.game.loadBlockChunk
 import com.mairwunnx.worldapi.game.loadChunk
 import com.mairwunnx.worldapi.game.loadedChunks
@@ -32,7 +33,10 @@ import net.minecraft.core.QuartPos
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.resources.Identifier
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.world.entity.EntityTypes
 import net.minecraft.world.level.ChunkPos
+import net.minecraft.world.level.LightLayer
+import net.minecraft.world.level.NaturalSpawner
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.levelgen.Heightmap
 import net.minecraft.world.level.levelgen.WorldgenRandom
@@ -52,6 +56,33 @@ val blockRoutes = endpoints("Blocks", Scope.SERVER_READ) {
         loadBlockChunk(world, x, z)
         val inventories = seesInventories
         main { blockView(world, BlockPos(x, y, z), inventories) }
+    }
+
+    get(
+        "/worlds/{world}/blocks", "Every block in a box, as a palette of states and an index for each block",
+        description = "The box includes both corners; its volume can't pass limits.maxReadBlocks, and y is clipped to the world's height. " +
+            "`spawns=true` also lists where monsters could spawn, as the game decides for a zombie: no block light (in the Nether, any light), " +
+            "a floor with a full top that isn't glass, leaves, ice, magma, or a light source, and room to stand.",
+        query = areaParams,
+    ) {
+        val world = main { world() }
+        val box = areaBox()
+        val (withBlocks, withSpawns) = (bool("blocks") ?: true) to (bool("spawns") ?: false)
+        box.chunks.forEach { (cx, cz) -> loadChunk(world, cx, cz) }
+        main {
+            val clipped = box.clip(world.minY, world.maxHeight)
+            val area = AreaBuilder(world.worldName, clipped, withBlocks, withSpawns)
+            val lightLimit = world.dimensionType().monsterSpawnBlockLightLimit()
+            val pos = BlockPos.MutableBlockPos()
+            for (y in clipped.from.y..clipped.to.y) for (z in clipped.zs) for (x in clipped.xs) {
+                pos.set(x, y, z)
+                area.block(world.getBlockState(pos).data)
+                if (withSpawns && (lightLimit >= 15 || world.getBrightness(LightLayer.BLOCK, pos) <= lightLimit) && spawnable(world, pos)) {
+                    area.spawnable(x, y, z, world.getBrightness(LightLayer.SKY, pos))
+                }
+            }
+            area.build()
+        }
     }
 
     put<BlockSet, BlockView>("/worlds/{world}/blocks/{x}/{y}/{z}", "Set one block", Scope.WORLD_WRITE) { request ->
@@ -211,6 +242,13 @@ internal enum class ChunkSort(val id: String, val order: Comparator<ChunkSummary
     companion object {
         val ids = entries.map { it.id }
     }
+}
+
+/** Whether a zombie could spawn at [feet], light aside, by the game's own rules for its floor and the room it needs. Server thread. */
+private fun spawnable(world: ServerLevel, feet: BlockPos): Boolean {
+    fun clear(pos: BlockPos) = world.getBlockState(pos).let { NaturalSpawner.isValidEmptySpawnBlock(world, pos, it, it.fluidState, EntityTypes.ZOMBIE) }
+    val floor = feet.below()
+    return clear(feet) && clear(feet.above()) && world.getBlockState(floor).isValidSpawn(world, floor, EntityTypes.ZOMBIE)
 }
 
 internal fun ModCall.coordinates(): Triple<Int, Int, Int> {

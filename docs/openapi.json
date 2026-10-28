@@ -8566,6 +8566,143 @@
                 }
             }
         },
+        "/worlds/{world}/blocks": {
+            "get": {
+                "operationId": "getWorldsWorldBlocks",
+                "summary": "Every block in a box, as a palette of states and an index for each block",
+                "description": "The box includes both corners; its volume can't pass limits.maxReadBlocks, and y is clipped to the world's height. `spawns=true` also lists where monsters could spawn, as the game decides for a zombie: no block light (in the Nether, any light), a floor with a full top that isn't glass, leaves, ice, magma, or a light source, and room to stand.\n\nPermission: `server:read`.",
+                "tags": [
+                    "Blocks"
+                ],
+                "x-scope": "server:read",
+                "security": [
+                    {
+                        "bearer": [
+                            "server:read"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "world",
+                        "in": "path",
+                        "required": true,
+                        "description": "World name (`world_nether`) or key (`minecraft:the_nether`)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "required": true,
+                        "description": "One corner of the box, as `x,y,z`",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "required": true,
+                        "description": "The opposite corner, as `x,y,z`; the box includes both",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "blocks",
+                        "in": "query",
+                        "required": false,
+                        "description": "Send each block's palette index; false sends only the palette with counts. On by default",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "spawns",
+                        "in": "query",
+                        "required": false,
+                        "description": "List where monsters could spawn: dark blocks with a floor they may stand on",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BlockArea"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or unknown token",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The token lacks the permission",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit hit; see Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "The server thread didn't answer in time",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/worlds/{world}/blocks/fill": {
             "post": {
                 "operationId": "postWorldsWorldBlocksFill",
@@ -12934,6 +13071,74 @@
                 ],
                 "additionalProperties": false
             },
+            "BlockArea": {
+                "type": "object",
+                "properties": {
+                    "world": {
+                        "type": "string"
+                    },
+                    "from": {
+                        "$ref": "#/components/schemas/BlockPosition"
+                    },
+                    "to": {
+                        "$ref": "#/components/schemas/BlockPosition"
+                    },
+                    "sizeX": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "sizeY": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "sizeZ": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "palette": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PaletteEntry"
+                        }
+                    },
+                    "blocks": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    "spawnable": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {
+                            "$ref": "#/components/schemas/SpawnSpot"
+                        }
+                    },
+                    "spawnableTotal": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "format": "int32"
+                    }
+                },
+                "required": [
+                    "world",
+                    "from",
+                    "to",
+                    "sizeX",
+                    "sizeY",
+                    "sizeZ",
+                    "palette"
+                ],
+                "additionalProperties": false
+            },
             "BlockPosition": {
                 "type": "object",
                 "properties": {
@@ -16187,6 +16392,23 @@
                 },
                 "additionalProperties": false
             },
+            "PaletteEntry": {
+                "type": "object",
+                "properties": {
+                    "state": {
+                        "type": "string"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                },
+                "required": [
+                    "state",
+                    "count"
+                ],
+                "additionalProperties": false
+            },
             "ParticleRequest": {
                 "type": "object",
                 "properties": {
@@ -17793,6 +18015,34 @@
                 "required": [
                     "type",
                     "location"
+                ],
+                "additionalProperties": false
+            },
+            "SpawnSpot": {
+                "type": "object",
+                "properties": {
+                    "x": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "y": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "z": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "skyLight": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                },
+                "required": [
+                    "x",
+                    "y",
+                    "z",
+                    "skyLight"
                 ],
                 "additionalProperties": false
             },

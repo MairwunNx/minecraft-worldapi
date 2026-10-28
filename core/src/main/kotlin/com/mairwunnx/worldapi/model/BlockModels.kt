@@ -65,6 +65,46 @@ data class FillRequest(
 data class FillResult(val changed: Int, val volume: Int)
 
 @Serializable
+data class BlockArea(
+    val world: String,
+    /** The box's lowest corner, inside the world's height. */
+    val from: BlockPosition,
+    /** The box's highest corner. */
+    val to: BlockPosition,
+    val sizeX: Int,
+    val sizeY: Int,
+    val sizeZ: Int,
+    /** Every block state in the box, most common first. */
+    val palette: List<PaletteEntry>,
+    /**
+     * Each block's index in `palette`, layer by layer from the bottom: x changes fastest, then z, then y, so the block at
+     * x, y, z is at `((y - from.y) * sizeZ + (z - from.z)) * sizeX + (x - from.x)`. Absent with `blocks=false`.
+     */
+    val blocks: List<Int>? = null,
+    /** With `spawns=true`: where a zombie-sized monster could spawn, the first `maxSpawnSpots`. */
+    val spawnable: List<SpawnSpot>? = null,
+    /** With `spawns=true`: every such spot, listed or not. */
+    val spawnableTotal: Int? = null,
+)
+
+@Serializable
+data class PaletteEntry(
+    /** A full block state, such as `minecraft:oak_stairs[facing=east,half=bottom,shape=straight,waterlogged=false]`. */
+    val state: String,
+    val count: Int,
+)
+
+/** A block a monster could spawn in: dark enough, with a floor it may stand on and room for its height. */
+@Serializable
+data class SpawnSpot(
+    val x: Int,
+    val y: Int,
+    val z: Int,
+    /** Above 0, the open sky reaches it: monsters come there at night, or in a thunderstorm, but not in daylight. */
+    val skyLight: Int,
+)
+
+@Serializable
 data class BiomeView(
     val biome: String,
     val temperature: Double,

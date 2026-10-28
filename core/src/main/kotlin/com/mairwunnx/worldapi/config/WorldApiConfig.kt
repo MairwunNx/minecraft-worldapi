@@ -160,6 +160,8 @@ data class Events(
 data class Limits(
     val maxPageSize: Int = 500,
     val maxFillBlocks: Int = 32_768,
+    /** Blocks one area read (GET /worlds/{world}/blocks) may cover; it runs on the server thread. */
+    val maxReadBlocks: Int = 32_768,
     val maxSpawnCount: Int = 50,
     val maxMessageLength: Int = 512,
     val maxExplosionPower: Float = 10f,

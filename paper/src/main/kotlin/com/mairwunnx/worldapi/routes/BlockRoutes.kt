@@ -26,6 +26,9 @@ import org.bukkit.HeightMap
 import org.bukkit.Material
 import org.bukkit.World
 import org.bukkit.block.Block
+import org.bukkit.block.BlockFace
+import org.bukkit.block.BlockSupport
+import org.bukkit.Tag
 import org.bukkit.block.Container
 import org.bukkit.block.CreatureSpawner
 import org.bukkit.block.Jukebox
@@ -46,6 +49,30 @@ val blockRoutes = endpoints("Blocks", Scope.SERVER_READ) {
         loadBlockChunk(world, x, z)
         val inventories = seesInventories
         main { blockView(world.getBlockAt(x, y, z), inventories) }
+    }
+
+    get(
+        "/worlds/{world}/blocks", "Every block in a box, as a palette of states and an index for each block",
+        description = "The box includes both corners; its volume can't pass limits.maxReadBlocks, and y is clipped to the world's height. " +
+            "`spawns=true` also lists where monsters could spawn, as the game decides for a zombie: no block light (in the Nether, any light), " +
+            "a floor with a full top that isn't glass, leaves, ice, magma, or a light source, and room to stand.",
+        query = areaParams,
+    ) {
+        val world = world()
+        val box = areaBox()
+        val (withBlocks, withSpawns) = (bool("blocks") ?: true) to (bool("spawns") ?: false)
+        box.chunks.forEach { (cx, cz) -> loadChunk(world, cx, cz) }
+        main {
+            val clipped = box.clip(world.minHeight, world.maxHeight)
+            val area = AreaBuilder(world.name, clipped, withBlocks, withSpawns)
+            val lightLimit = if (world.environment == World.Environment.NETHER) 15 else 0
+            for (y in clipped.from.y..clipped.to.y) for (z in clipped.zs) for (x in clipped.xs) {
+                val block = world.getBlockAt(x, y, z)
+                area.block(block.blockData.asString)
+                if (withSpawns && block.lightFromBlocks <= lightLimit && spawnable(block)) area.spawnable(x, y, z, block.lightFromSky.toInt())
+            }
+            area.build()
+        }
     }
 
     put<BlockSet, BlockView>("/worlds/{world}/blocks/{x}/{y}/{z}", "Set one block", Scope.WORLD_WRITE) { request ->
@@ -173,6 +200,18 @@ internal enum class ChunkSort(val id: String, val order: Comparator<ChunkSummary
     companion object {
         val ids = entries.map { it.id }
     }
+}
+
+/** Floors the game never spawns monsters on, though their top is full: magma burns them, the rest set a light of 14 or more. */
+private val NO_SPAWN_FLOORS = setOf(Material.MAGMA_BLOCK, Material.BARRIER)
+
+/** Whether a zombie could spawn in [feet], light aside: room for its height, and a floor it may stand on. Server thread. */
+private fun spawnable(feet: Block): Boolean {
+    fun clear(block: Block) = block.isPassable && !block.isLiquid && !Tag.RAILS.isTagged(block.type)
+    if (!clear(feet) || !clear(feet.getRelative(BlockFace.UP))) return false
+    val floor = feet.getRelative(BlockFace.DOWN)
+    val data = floor.blockData
+    return data.isFaceSturdy(BlockFace.UP, BlockSupport.FULL) && data.isOccluding && data.lightEmission < 14 && floor.type !in NO_SPAWN_FLOORS
 }
 
 internal fun PaperCall.coordinates(): Triple<Int, Int, Int> {

@@ -143,6 +143,8 @@ extensions:
 limits:
   maxPageSize: 500
   maxFillBlocks: 32768
+  # Blocks one area read (GET /worlds/{world}/blocks) may cover; it runs on the server thread.
+  maxReadBlocks: 32768
   maxSpawnCount: 50
   maxMessageLength: 512
   maxExplosionPower: 10.0
