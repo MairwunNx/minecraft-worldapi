@@ -141,8 +141,11 @@ events:
 # A webhook sees what a token with its permissions would; by default no coordinates and no chat,
 # since a webhook usually posts to a shared channel. The log names a webhook, never its URL.
 webhooks:
+  # Off, no webhook sends anything, and none can be made.
+  enabled: true
   # Let webhooks made in game, in the panel, or through the API reach this machine or the local
-  # network. The ones listed below may always.
+  # network, and use plain http://. Off, they post over HTTPS to public addresses only.
+  # The ones listed below may always.
   allowPrivateAddresses: false
   # format: json, discord, slack, telegram, teams, or google_chat. language: en, ru, es, pt, or de.
   # A json webhook's secret signs each body: X-WorldAPI-Signature is sha256= and the HMAC of
