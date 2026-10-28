@@ -142,7 +142,8 @@ private val TOKEN_NAME = Regex("[A-Za-z0-9_-]{1,32}")
 
 private fun ids(scopes: Set<Scope>) = scopes.sortedBy { it.ordinal }.map { it.id }
 
-private fun ApiCall<*>.checkGrant(names: List<String>) {
+/** Refuses permissions the caller doesn't hold itself: whatever it makes gets as much as it has, never more. */
+fun ApiCall<*>.checkGrant(names: List<String>) {
     val unknown = names.filterNot(config.auth.resolver::contains)
     if (unknown.isNotEmpty()) badRequest("Unknown permissions or groups: ${unknown.joinToString()}")
     val wanted = config.auth.resolver.resolve(names)

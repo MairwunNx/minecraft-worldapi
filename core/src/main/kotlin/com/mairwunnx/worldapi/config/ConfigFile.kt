@@ -34,6 +34,12 @@ object ConfigFile {
     /** The secret config.yml's example shows, which signs nothing anyone can trust. */
     const val WEBHOOK_SECRET_EXAMPLE = "a-long-random-string"
 
+    /**
+     * A topic a webhook may name: WorldAPI's own, a pattern, or a plugin's, whose topics register as its plugin starts.
+     */
+    fun knownTopic(id: String) = id == "*" || id.startsWith("ext.") || Topic.of(id) != null ||
+        (id.endsWith(".*") && Topic.entries.any { it.id.startsWith(id.dropLast(1)) })
+
     fun parse(text: String): WorldApiConfig = validate(yaml.decodeFromString(WorldApiConfig.serializer(), text))
 
     fun defaultText(): String =
@@ -61,13 +67,14 @@ object ConfigFile {
             config.auth.tokens.filter { UNSET_VARIABLE.containsMatchIn(it.token) }.forEach {
                 add("auth.tokens.${it.name}: the token is a placeholder (${it.token.substringAfter("\${").substringBefore('}')}) that nothing filled in")
             }
-            config.webhooks.groupBy { it.name }.filter { it.value.size > 1 }.keys.forEach {
+            config.webhooks.hooks.groupBy { it.name }.filter { it.value.size > 1 }.keys.forEach {
                 add("webhooks: the name \"$it\" appears more than once")
             }
-            config.webhooks.forEach { hook ->
+            config.webhooks.hooks.forEach { hook ->
                 hook.permissions.filterNot(config.auth.resolver::contains).forEach { add("webhooks.${hook.name}: \"$it\" is neither a permission nor a group") }
                 // Plugins' topics register as their plugins start, so only WorldAPI's own are known now.
-                hook.topics.filter { !it.startsWith("ext.") && Topic.of(it) == null }.forEach { add("webhooks.${hook.name}: there is no topic \"$it\"") }
+                hook.topics.filterNot(::knownTopic).forEach { add("webhooks.${hook.name}: there is no topic \"$it\"") }
+                hook.messages.keys.filterNot(com.mairwunnx.worldapi.webhooks.Messages.keys::contains).forEach { add("webhooks.${hook.name}: there is no message \"$it\"") }
                 hook.secret?.let { secret ->
                     if (secret.length < 16 || secret == WEBHOOK_SECRET_EXAMPLE) add("webhooks.${hook.name}: the secret must be at least 16 characters, and not the example's")
                     if (UNSET_VARIABLE.containsMatchIn(secret)) add("webhooks.${hook.name}: the secret is a placeholder that nothing filled in")

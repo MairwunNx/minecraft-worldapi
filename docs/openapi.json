@@ -63,6 +63,9 @@
             "name": "Access control"
         },
         {
+            "name": "Webhooks"
+        },
+        {
             "name": "Scripts"
         },
         {
@@ -8323,6 +8326,644 @@
                 "responses": {
                     "204": {
                         "description": "Done"
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or unknown token",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The token lacks the permission",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit hit; see Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "The server thread didn't answer in time",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/webhooks": {
+            "get": {
+                "operationId": "getWebhooks",
+                "summary": "Every webhook: from config.yml and made in game, in the panel, or here",
+                "description": "URLs and bot tokens never show in full: they hold the service's secret.\n\nPermission: `webhooks:manage`.",
+                "tags": [
+                    "Webhooks"
+                ],
+                "x-scope": "webhooks:manage",
+                "security": [
+                    {
+                        "bearer": [
+                            "webhooks:manage"
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/WebhookView"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or unknown token",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The token lacks the permission",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit hit; see Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "The server thread didn't answer in time",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "operationId": "postWebhooks",
+                "summary": "Make a webhook: events to Discord, Slack, Telegram, Teams, Google Chat, or any URL as JSON",
+                "description": "Chat formats get a message in the webhook's language; `json` gets the event as the WebSocket sends it, signed with a secret the answer shows once. It can't post to this machine or a private network unless config.yml allows it. A webhook gets only permissions its maker has, and changing or deleting one needs every permission it holds.\n\nPermission: `webhooks:manage`.",
+                "tags": [
+                    "Webhooks"
+                ],
+                "x-scope": "webhooks:manage",
+                "security": [
+                    {
+                        "bearer": [
+                            "webhooks:manage"
+                        ]
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WebhookRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/WebhookCreated"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or unknown token",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The token lacks the permission",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit hit; see Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "The server thread didn't answer in time",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/webhooks/options": {
+            "get": {
+                "operationId": "getWebhooksOptions",
+                "summary": "What a webhook can be: formats, languages, topics, and the messages it may reword",
+                "description": "Permission: `webhooks:manage`.",
+                "tags": [
+                    "Webhooks"
+                ],
+                "x-scope": "webhooks:manage",
+                "security": [
+                    {
+                        "bearer": [
+                            "webhooks:manage"
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/WebhookOptions"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or unknown token",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The token lacks the permission",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit hit; see Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "The server thread didn't answer in time",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/webhooks/telegram/chats": {
+            "post": {
+                "operationId": "postWebhooksTelegramChats",
+                "summary": "Find the chats a Telegram bot can write to",
+                "description": "Write /start to the bot, or add it to a group or channel, then ask: the chats that wrote to it lately come back, newest first, and one's `id` goes into a webhook's `chatId`. Telegram keeps a bot's updates for a day.\n\nPermission: `webhooks:manage`.",
+                "tags": [
+                    "Webhooks"
+                ],
+                "x-scope": "webhooks:manage",
+                "security": [
+                    {
+                        "bearer": [
+                            "webhooks:manage"
+                        ]
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TelegramChatsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/TelegramChatView"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or unknown token",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The token lacks the permission",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit hit; see Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "The server thread didn't answer in time",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/webhooks/{name}": {
+            "patch": {
+                "operationId": "patchWebhooksName",
+                "summary": "Change what a webhook gets, its language or words, or pause it",
+                "description": "Webhooks in config.yml change only there. A webhook gets only permissions its maker has, and changing or deleting one needs every permission it holds.\n\nPermission: `webhooks:manage`.",
+                "tags": [
+                    "Webhooks"
+                ],
+                "x-scope": "webhooks:manage",
+                "security": [
+                    {
+                        "bearer": [
+                            "webhooks:manage"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "required": true,
+                        "description": "name",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WebhookPatch"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/WebhookView"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or unknown token",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The token lacks the permission",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit hit; see Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "The server thread didn't answer in time",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "deleteWebhooksName",
+                "summary": "Delete a webhook",
+                "description": "Webhooks in config.yml change only there. A webhook gets only permissions its maker has, and changing or deleting one needs every permission it holds.\n\nPermission: `webhooks:manage`.",
+                "tags": [
+                    "Webhooks"
+                ],
+                "x-scope": "webhooks:manage",
+                "security": [
+                    {
+                        "bearer": [
+                            "webhooks:manage"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "required": true,
+                        "description": "name",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Done"
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or unknown token",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The token lacks the permission",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit hit; see Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "The server thread didn't answer in time",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/webhooks/{name}/test": {
+            "post": {
+                "operationId": "postWebhooksNameTest",
+                "summary": "Send a webhook a test message",
+                "description": "Permission: `webhooks:manage`.",
+                "tags": [
+                    "Webhooks"
+                ],
+                "x-scope": "webhooks:manage",
+                "security": [
+                    {
+                        "bearer": [
+                            "webhooks:manage"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "required": true,
+                        "description": "name",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NoBody"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/WebhookTestResult"
+                                }
+                            }
+                        }
                     },
                     "400": {
                         "description": "Invalid request",
@@ -18553,6 +19194,38 @@
                 ],
                 "additionalProperties": false
             },
+            "TelegramChatView": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "title",
+                    "type"
+                ],
+                "additionalProperties": false
+            },
+            "TelegramChatsRequest": {
+                "type": "object",
+                "properties": {
+                    "botToken": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "botToken"
+                ],
+                "additionalProperties": false
+            },
             "TeleportRequest": {
                 "type": "object",
                 "properties": {
@@ -19002,6 +19675,317 @@
                     "weatherDurationTicks",
                     "thunderDurationTicks",
                     "clearWeatherDurationTicks"
+                ],
+                "additionalProperties": false
+            },
+            "WebhookCreated": {
+                "type": "object",
+                "properties": {
+                    "webhook": {
+                        "$ref": "#/components/schemas/WebhookView"
+                    },
+                    "secret": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "test": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/WebhookTestResult"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "webhook"
+                ],
+                "additionalProperties": false
+            },
+            "WebhookFormatInfo": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "title"
+                ],
+                "additionalProperties": false
+            },
+            "WebhookOptions": {
+                "type": "object",
+                "properties": {
+                    "enabled": {
+                        "type": "boolean"
+                    },
+                    "formats": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/WebhookFormatInfo"
+                        }
+                    },
+                    "languages": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "topics": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/WebhookTopicInfo"
+                        }
+                    },
+                    "messages": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "required": [
+                    "enabled",
+                    "formats",
+                    "languages",
+                    "topics",
+                    "messages"
+                ],
+                "additionalProperties": false
+            },
+            "WebhookPatch": {
+                "type": "object",
+                "properties": {
+                    "topics": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "permissions": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "language": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "enabled": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
+                    },
+                    "messages": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "additionalProperties": false
+            },
+            "WebhookRequest": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "format": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "botToken": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "chatId": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "topics": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "permissions": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "language": {
+                        "type": "string"
+                    },
+                    "messages": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "test": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "name",
+                    "format",
+                    "topics"
+                ],
+                "additionalProperties": false
+            },
+            "WebhookTestResult": {
+                "type": "object",
+                "properties": {
+                    "ok": {
+                        "type": "boolean"
+                    },
+                    "status": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "format": "int32"
+                    },
+                    "problem": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "ok"
+                ],
+                "additionalProperties": false
+            },
+            "WebhookTopicInfo": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "needs": {
+                        "type": "string"
+                    },
+                    "notable": {
+                        "type": "boolean"
+                    },
+                    "coordinates": {
+                        "type": "boolean"
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "needs",
+                    "notable",
+                    "coordinates"
+                ],
+                "additionalProperties": false
+            },
+            "WebhookView": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "format": {
+                        "type": "string"
+                    },
+                    "target": {
+                        "type": "string"
+                    },
+                    "topics": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "permissions": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "language": {
+                        "type": "string"
+                    },
+                    "enabled": {
+                        "type": "boolean"
+                    },
+                    "messages": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "signed": {
+                        "type": "boolean"
+                    },
+                    "source": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "createdBy": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "name",
+                    "format",
+                    "target",
+                    "topics",
+                    "permissions",
+                    "language",
+                    "enabled",
+                    "signed",
+                    "source"
                 ],
                 "additionalProperties": false
             },

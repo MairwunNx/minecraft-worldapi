@@ -43,9 +43,13 @@ class TestApi(config: com.mairwunnx.worldapi.config.WorldApiConfig) : AutoClosea
         tokens, ref, "test",
         tamed = com.mairwunnx.worldapi.stats.Tamed(store),
         accounts = com.mairwunnx.worldapi.admin.AdminAccounts(store),
+        webhooks = com.mairwunnx.worldapi.webhooks.Webhooks(ref::get, "test", java.util.logging.Logger.getAnonymousLogger(), com.mairwunnx.worldapi.webhooks.WebhookStore(store).apply { load() }),
     )
 
-    override fun close() = store.close()
+    override fun close() {
+        api.webhooks.close()
+        store.close()
+    }
 }
 
 /** A store on a SQLite file anywhere. */

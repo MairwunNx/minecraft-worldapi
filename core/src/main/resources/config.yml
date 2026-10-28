@@ -39,6 +39,7 @@ auth:
   #   files:read        server and plugin configs
   #   files:write       changing server and plugin configs
   #   tokens:manage     tokens, accounts, and the audit log
+  #   webhooks:manage   webhooks: events sent to Discord, Slack, Telegram, and other services
   #   code              Java scripts: arbitrary code on the server
   # The 2.x scopes still work: read is the viewer group, write:world and write:players are
   # world:write and players:write, and admin is the group below.
@@ -55,8 +56,8 @@ auth:
   groups:
     viewer: ["server:read", "players:read", "players:private", "events:read", "chat:read"]
     moderator: [viewer, "logs:read", "commands:read", "players:write", "players:moderate"]
-    admin: ["server:read", "players:read", "players:private", "events:read", "chat:read", "logs:read", "system:read", "world:write", "players:write", "players:moderate", "server:console", "commands:read", "server:control", "files:read", "tokens:manage"]
-    owner: ["server:read", "players:read", "players:private", "events:read", "chat:read", "logs:read", "system:read", "world:write", "players:write", "players:moderate", "server:console", "commands:read", "server:control", "files:read", "files:write", "tokens:manage", code]
+    admin: ["server:read", "players:read", "players:private", "events:read", "chat:read", "logs:read", "system:read", "world:write", "players:write", "players:moderate", "server:console", "commands:read", "server:control", "files:read", "tokens:manage", "webhooks:manage"]
+    owner: ["server:read", "players:read", "players:private", "events:read", "chat:read", "logs:read", "system:read", "world:write", "players:write", "players:moderate", "server:console", "commands:read", "server:control", "files:read", "files:write", "tokens:manage", "webhooks:manage", code]
 
   # Clients without a token may read these paths (under basePath). "*" matches one path segment,
   # "**" any number. Anonymous clients can never write, whatever this list says.
@@ -131,17 +132,29 @@ events:
   # Days to keep the event history and the audit log; 0 keeps them forever.
   retentionDays: 0
 
-# URLs that get events as they happen: a POST with the event as JSON, retried twice, then dropped.
+# Places that get events as they happen: Discord, Slack, Telegram, Microsoft Teams, Google Chat
+# (each as a message in the webhook's language), or any URL as JSON. Admins also make them in game
+# (/worldapi), in the panel, or through the API; those live in the database, not here.
 # A webhook sees what a token with its permissions would; by default no coordinates and no chat,
 # since a webhook usually posts to a shared channel. The log names a webhook, never its URL.
-# A secret signs each body: X-WorldAPI-Signature is sha256= and the HMAC of
-# X-WorldAPI-Timestamp, a dot, X-WorldAPI-Delivery, a dot, and the body.
-#   - name: deaths
-#     url: https://example.com/minecraft
-#     topics: [player.join, player.leave, player.death]
-#     permissions: [server:read, players:read, events:read]
-#     secret: a-long-random-string
-webhooks: []
+webhooks:
+  # Let webhooks made in game, in the panel, or through the API reach this machine or the local
+  # network. The ones listed below may always.
+  allowPrivateAddresses: false
+  # format: json, discord, slack, telegram, teams, or google_chat. language: en, ru, es, pt, or de.
+  # A json webhook's secret signs each body: X-WorldAPI-Signature is sha256= and the HMAC of
+  # X-WorldAPI-Timestamp, a dot, X-WorldAPI-Delivery, a dot, and the body.
+  #   - name: deaths
+  #     format: discord
+  #     url: https://discord.com/api/webhooks/…
+  #     topics: [player.join, player.leave, player.death]
+  #     language: en
+  #   - name: bot
+  #     format: telegram
+  #     botToken: "123456:ABC…"
+  #     chatId: "-1001234567890"
+  #     topics: [player.death, entity.boss_killed]
+  hooks: []
 
 # Other plugins' data, through the expansion API: their resources under
 # /extensions and their topics as ext.<namespace>.<event> (https://github.com/MairwunNx/minecraft-worldapi/wiki/Extensions).

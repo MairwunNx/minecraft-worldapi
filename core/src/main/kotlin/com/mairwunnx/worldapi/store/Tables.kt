@@ -122,4 +122,15 @@ object AdminSessions : Table("admin_sessions") {
     }
 }
 
-val TABLES = arrayOf(Events, Sessions, Audit, ExperienceGained, ExperienceBaseline, TamedAnimals, TamedSeed, Accounts, AdminSessions)
+/** Webhooks made in game, in the panel, or through the API; config.yml's own stay there. Added in 4.3. */
+object WebhookRows : Table("webhooks") {
+    val name = varchar("name", 32)
+    /** The webhook as JSON, its URL and secrets included: WorldAPI needs them to post. */
+    val data = largeText("data")
+    val createdAt = long("created_at")
+    val createdBy = text("created_by")
+
+    override val primaryKey = PrimaryKey(name)
+}
+
+val TABLES = arrayOf(Events, Sessions, Audit, ExperienceGained, ExperienceBaseline, TamedAnimals, TamedSeed, Accounts, AdminSessions, WebhookRows)

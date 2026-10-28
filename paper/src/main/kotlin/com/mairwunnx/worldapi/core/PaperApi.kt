@@ -45,7 +45,8 @@ class PaperApi(
     files: ServerFiles = ServerFiles(Path.of(""), Path.of("plugins", "WorldAPI"), Path.of("plugins", "WorldAPI", "backups")),
     /** The server's commands for GET /server/commands, rebuilt when plugins come and go. */
     val commands: com.mairwunnx.worldapi.commands.PaperCommands = com.mairwunnx.worldapi.commands.PaperCommands(server),
-) : WorldApi(main, history, bus, tokens, configRef, version, vanished, extensions, tamed, experience, accounts, icons, files) {
+    webhooks: com.mairwunnx.worldapi.webhooks.Webhooks = com.mairwunnx.worldapi.webhooks.Webhooks(configRef::get, version, java.util.logging.Logger.getLogger("WorldAPI")),
+) : WorldApi(main, history, bus, tokens, configRef, version, vanished, extensions, tamed, experience, accounts, icons, files, webhooks) {
     /** A restart with a countdown, scheduled through POST /server/restart. */
     val restart by lazy { paperRestart(server, main, CoroutineScope(SupervisorJob() + Dispatchers.Default)) }
 

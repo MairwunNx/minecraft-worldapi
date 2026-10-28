@@ -35,7 +35,8 @@ import com.mairwunnx.worldapi.store.Store
 import com.mairwunnx.worldapi.tokens.TokenMenu
 import com.mairwunnx.worldapi.tokens.TokenStore
 import com.mairwunnx.worldapi.ws.WebSocketHub
-import com.mairwunnx.worldapi.events.Webhooks
+import com.mairwunnx.worldapi.webhooks.WebhookStore
+import com.mairwunnx.worldapi.webhooks.Webhooks
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicReference
@@ -55,7 +56,6 @@ class WorldApiPlugin : JavaPlugin() {
     private lateinit var store: Store
     private lateinit var api: PaperApi
     private lateinit var hub: WebSocketHub
-    private lateinit var webhooks: Webhooks
     private var http: HttpServer<PaperApi>? = null
     private var stopConsole: (() -> Unit)? = null
     private var plan: AutoCloseable? = null
@@ -94,7 +94,8 @@ class WorldApiPlugin : JavaPlugin() {
         }
         api = PaperApi(server, main, history, bus, Statistics(server, main), Experience(store), scripts, tokens, config, pluginMeta.version, vanished, Extensions(bus, main, logger), Tamed(store), com.mairwunnx.worldapi.admin.AdminAccounts(store),
             com.mairwunnx.worldapi.admin.Icons(dataFolder.toPath().resolve("cache"), { server.minecraftVersion }, logger),
-            com.mairwunnx.worldapi.files.ServerFiles(java.nio.file.Path.of(""), dataFolder.toPath(), dataFolder.toPath().resolve("backups")))
+            com.mairwunnx.worldapi.files.ServerFiles(java.nio.file.Path.of(""), dataFolder.toPath(), dataFolder.toPath().resolve("backups")),
+            webhooks = Webhooks(config::get, pluginMeta.version, logger, WebhookStore(store).apply { load() }))
         warnLegacy(loaded)
         stopConsole = try {
             ConsoleAppender.install(api.console)
@@ -107,7 +108,7 @@ class WorldApiPlugin : JavaPlugin() {
 
         hub = WebSocketHub(config::get, { token -> http?.authenticate(token) }, Snapshots(server, main))
         bus.subscribe(hub)
-        webhooks = Webhooks(config::get, api.version, logger)
+        val webhooks = api.webhooks
         bus.subscribe(webhooks)
         bus.interest = { hub.wants(it) || webhooks.wants(it) }
 
@@ -165,7 +166,7 @@ class WorldApiPlugin : JavaPlugin() {
         api.restart.close()
         api.icons?.close()
         hub.closeAll(if (server.isStopping) "Server stopping" else "WorldAPI disabled")
-        webhooks.close()
+        api.webhooks.close()
         stopConsole?.invoke()
         stopConsole = null
         http?.stop()

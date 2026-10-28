@@ -26,6 +26,7 @@ enum class Scope(val id: String, val description: String) {
     FILES_READ("files:read", "Server and plugin configs"),
     FILES_WRITE("files:write", "Changing server and plugin configs; only the owner group has it unless you add it"),
     TOKENS_MANAGE("tokens:manage", "Tokens, accounts, and the audit log"),
+    WEBHOOKS_MANAGE("webhooks:manage", "Webhooks: events sent to Discord, Slack, Telegram, and other services"),
 
     /** Load and run Java code on the server. Only the owner group has it: it reaches past every other limit. */
     CODE("code", "Java scripts: arbitrary code on the server"),

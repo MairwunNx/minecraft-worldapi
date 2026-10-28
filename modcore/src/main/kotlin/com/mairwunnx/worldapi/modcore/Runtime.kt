@@ -31,7 +31,8 @@ import com.mairwunnx.worldapi.store.History
 import com.mairwunnx.worldapi.store.Store
 import com.mairwunnx.worldapi.tokens.TokenStore
 import com.mairwunnx.worldapi.ws.WebSocketHub
-import com.mairwunnx.worldapi.events.Webhooks
+import com.mairwunnx.worldapi.webhooks.WebhookStore
+import com.mairwunnx.worldapi.webhooks.Webhooks
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -314,10 +315,11 @@ class Runtime private constructor(
             val api = ModApi(
                 server, loader, main, history, bus, ModStatistics(server, main), Experience(store), tokens, config, vanished,
                 Extensions(bus, main, logger), Tamed(store), AdminAccounts(store), Icons(folder.resolve("cache"), { server.serverVersion }, logger), files, TickRate(),
+                Webhooks(config::get, loader.version, logger, WebhookStore(store).apply { load() }),
             )
             val hub = WebSocketHub(config::get, { token -> runtime.http?.authenticate(token) }, ModSnapshots(api))
             bus.subscribe(hub)
-            val webhooks = Webhooks(config::get, api.version, logger)
+            val webhooks = api.webhooks
             bus.subscribe(webhooks)
             bus.interest = { hub.wants(it) || webhooks.wants(it) }
             runtime = Runtime(server, loader, logger, configPath, config, store, api, hub, webhooks)

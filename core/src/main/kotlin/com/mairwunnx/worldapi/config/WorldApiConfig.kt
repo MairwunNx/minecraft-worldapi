@@ -2,6 +2,7 @@ package com.mairwunnx.worldapi.config
 
 import com.mairwunnx.worldapi.api.Groups
 import com.mairwunnx.worldapi.api.Scope
+import com.mairwunnx.worldapi.events.Topic
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
@@ -16,7 +17,7 @@ data class WorldApiConfig(
     val privacy: Privacy = Privacy(),
     val websocket: WebSocket = WebSocket(),
     val events: Events = Events(),
-    val webhooks: List<Webhook> = emptyList(),
+    val webhooks: WebhookSettings = WebhookSettings(),
     val extensions: Extensions = Extensions(),
     val limits: Limits = Limits(),
     val scripts: Scripts = Scripts(),
@@ -149,30 +150,108 @@ data class Extensions(
     val private: List<String> = emptyList(),
 )
 
-/** A URL that gets events as they happen; see [com.mairwunnx.worldapi.events.Webhooks]. */
+@Serializable
+data class WebhookSettings(
+    /** Off, no webhook sends anything, and none can be made. */
+    val enabled: Boolean = true,
+    /**
+     * Let webhooks made in game, in the panel, or through the API post to this machine or the local network. Off, they
+     * reach public addresses only, so a token with webhooks:manage can't make the server call what sits behind it.
+     * The webhooks listed here may always.
+     */
+    val allowPrivateAddresses: Boolean = false,
+    val hooks: List<Webhook> = emptyList(),
+)
+
+/** How a webhook writes an event: WorldAPI's JSON, or a message in a chat service's own format. */
+@Serializable
+enum class WebhookFormat(val id: String, val title: String) {
+    @SerialName("json") JSON("json", "JSON"),
+    @SerialName("discord") DISCORD("discord", "Discord"),
+    @SerialName("slack") SLACK("slack", "Slack"),
+    @SerialName("telegram") TELEGRAM("telegram", "Telegram"),
+    @SerialName("teams") TEAMS("teams", "Microsoft Teams"),
+    @SerialName("google_chat") GOOGLE_CHAT("google_chat", "Google Chat"),
+    ;
+
+    companion object {
+        fun of(id: String) = entries.firstOrNull { it.id == id }
+    }
+}
+
+/** Languages a webhook's messages come in. */
+val WEBHOOK_LANGUAGES = listOf("en", "ru", "es", "pt", "de")
+
+/** A place that gets events as they happen; see [com.mairwunnx.worldapi.webhooks.Webhooks]. */
 @Serializable
 data class Webhook(
     /** Names it in the log, which never shows the URL: Discord's and others' URLs hold a secret. */
     val name: String,
-    val url: String,
-    /** Topic ids, as on the WebSocket: `player.join`, `ext.mobosses.boss.spawned`. */
+    val format: WebhookFormat = WebhookFormat.JSON,
+    /** Where to POST; every format but `telegram` needs it. */
+    val url: String? = null,
+    /** For `telegram`: the bot's token from @BotFather, and the chat it writes to. */
+    val botToken: String? = null,
+    val chatId: String? = null,
+    /**
+     * Topic ids, as on the WebSocket: `player.join`, `ext.mobosses.boss.spawned`. `player.*` takes every topic under
+     * `player.`; `*` takes every notable one, which is what the event history records (joins, deaths, advancements,
+     * chat, raids, bosses, the server starting and stopping, and plugins' recorded events), not the noisy ones such as
+     * positions or blocks.
+     */
     val topics: List<String>,
     /**
      * What it may see, as a token's permissions and groups decide. A webhook usually posts to a shared channel, so the
      * default leaves out coordinates (players:private) and chat (chat:read).
      */
     val permissions: List<String> = listOf("server:read", "players:read", "events:read"),
+    /** The language of chat messages: en, ru, es, pt, or de. JSON carries data only. */
+    val language: String = "en",
     /**
-     * Signs each body: X-WorldAPI-Signature is `sha256=` and the HMAC of the X-WorldAPI-Timestamp header, a dot, the
-     * X-WorldAPI-Delivery header, a dot, and the body.
+     * For `json`: signs each body. X-WorldAPI-Signature is `sha256=` and the HMAC of the X-WorldAPI-Timestamp header,
+     * a dot, the X-WorldAPI-Delivery header, a dot, and the body.
      */
     val secret: String? = null,
+    /** Paused, it keeps its settings and sends nothing. */
+    val enabled: Boolean = true,
+    /**
+     * Its own words for chat messages, by the keys of `webhooks/messages_en.properties` (`player.join`,
+     * `player.death`, …), with the same `{player}`-style placeholders. The rest come in its language.
+     */
+    val messages: Map<String, String> = emptyMap(),
 ) {
+    /** Whether it takes [topic]. */
+    fun listens(topic: Topic): Boolean = enabled && topics.any { pattern ->
+        when {
+            pattern == "*" -> topic.recorded
+            pattern.endsWith(".*") -> topic.id.startsWith(pattern.dropLast(1))
+            else -> pattern == topic.id
+        }
+    }
+
     init {
-        require(name.matches(Regex("[A-Za-z0-9_-]{1,32}"))) { "A webhook's name takes letters, digits, - and _, up to 32: \"$name\"" }
-        require(url.startsWith("https://") || url.startsWith("http://")) { "Webhook $name: url must start with https:// or http://" }
-        require(runCatching { java.net.URI.create(url).host != null }.getOrDefault(false)) { "Webhook $name: url isn't a valid address" }
+        require(name.matches(NAME)) { "A webhook's name takes letters, digits, - and _, up to 32: \"$name\"" }
         require(topics.isNotEmpty()) { "Webhook $name lists no topics" }
+        require(language in WEBHOOK_LANGUAGES) { "Webhook $name: language must be one of ${WEBHOOK_LANGUAGES.joinToString()}" }
+        if (format == WebhookFormat.TELEGRAM) {
+            require(botToken != null && TELEGRAM_TOKEN.matches(botToken)) { "Webhook $name: botToken must be the token @BotFather gave, like 123456:ABC-DEF…" }
+            require(chatId != null && TELEGRAM_CHAT.matches(chatId)) { "Webhook $name: chatId must be a chat's number or a channel's @name" }
+        } else {
+            val url = requireNotNull(url) { "Webhook $name needs a url" }
+            require(url.startsWith("https://") || url.startsWith("http://")) { "Webhook $name: url must start with https:// or http://" }
+            require(runCatching { java.net.URI.create(url).host != null }.getOrDefault(false)) { "Webhook $name: url isn't a valid address" }
+        }
+        require(messages.values.all { it.length in 1..500 }) { "Webhook $name: a message takes 1 to 500 characters" }
+        require(secret == null || format == WebhookFormat.JSON) { "Webhook $name: only the json format is signed, so a secret fits it alone" }
+    }
+
+    /** Where it posts: the URL, or Telegram's API for its bot. Never logged. */
+    val target: String get() = if (format == WebhookFormat.TELEGRAM) "https://api.telegram.org/bot$botToken/sendMessage" else url!!
+
+    companion object {
+        val NAME = Regex("[A-Za-z0-9_-]{1,32}")
+        val TELEGRAM_TOKEN = Regex("[0-9]{3,20}:[A-Za-z0-9_-]{30,64}")
+        val TELEGRAM_CHAT = Regex("-?[0-9]{1,20}|@[A-Za-z0-9_]{5,32}")
     }
 }
 

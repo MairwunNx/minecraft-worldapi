@@ -54,7 +54,8 @@ class ModApi(
     files: ServerFiles,
     /** Ticks per second, measured here: the game keeps no averages of its own. */
     val ticks: TickRate,
-) : WorldApi(main, history, bus, tokens, configRef, loader.version, vanished, extensions, tamed, experience, accounts, icons, files) {
+    webhooks: com.mairwunnx.worldapi.webhooks.Webhooks,
+) : WorldApi(main, history, bus, tokens, configRef, loader.version, vanished, extensions, tamed, experience, accounts, icons, files, webhooks) {
     val commands = ModCommands(server, loader)
 
     override val changes = com.mairwunnx.worldapi.changes.Changes<com.mairwunnx.worldapi.game.BlockCopy> { config.limits.undoBlocks }

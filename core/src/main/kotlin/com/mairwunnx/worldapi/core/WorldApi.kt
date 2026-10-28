@@ -47,6 +47,8 @@ abstract class WorldApi(
     val icons: Icons?,
     /** The server folder, for /files. */
     val files: ServerFiles,
+    /** Webhooks from config.yml and the ones admins made. */
+    val webhooks: com.mairwunnx.worldapi.webhooks.Webhooks,
 ) {
     val config: WorldApiConfig get() = configRef.get()
 
