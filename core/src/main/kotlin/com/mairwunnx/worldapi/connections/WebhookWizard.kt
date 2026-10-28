@@ -21,20 +21,34 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
+/** A window with one text field that asks for a secret; the platform shows it as the game's dialog. */
+data class SecretPrompt(val nonce: String, val title: String, val text: String, val label: String, val button: String)
+
 /**
  * `/worldapi webhook`: an operator connects Discord, Slack, Telegram, Teams, or Google Chat from the game, by buttons in
- * chat. The webhook's URL or bot token is a secret, and the server writes every command to its log, so the operator
- * pastes it into chat instead: [chat] takes that message before anyone sees it. Operators hold every permission, as
- * `/worldapi` makes tokens with any, so what they make goes through the same checks as the API with all of them.
+ * chat. The webhook's URL or bot token is a secret: a command would land in the server's log, and chat in other plugins'
+ * hands, so the game's dialog asks for it ([ask]), and its answer comes back as a click action that no chat or command
+ * event sees ([answer]). Operators hold every permission, as `/worldapi` makes tokens with any, so what they make goes
+ * through the same checks as the API with all of them.
  */
-class WebhookWizard(private val api: () -> WorldApi, private val scope: CoroutineScope, private val reply: (UUID, List<ChatLine>) -> Unit) {
+class WebhookWizard(
+    private val api: () -> WorldApi,
+    private val scope: CoroutineScope,
+    private val reply: (UUID, List<ChatLine>) -> Unit,
+    private val ask: (UUID, SecretPrompt) -> Unit,
+) {
     private enum class Step { TOPICS, LANGUAGE, SECRET, CHAT }
 
-    private class Draft(val format: WebhookFormat, var step: Step, val started: Long = System.currentTimeMillis()) {
+    private class Draft(val format: WebhookFormat, var step: Step) {
+        /** Each step starts the 10 minutes again, so a slow trip to Discord's settings doesn't lose the draft. */
+        var touched: Long = System.currentTimeMillis()
         var topics: List<String> = emptyList()
         var permissions: List<String> = DEFAULT_WEBHOOK_PERMISSIONS
         var language = "en"
         var secret: String? = null
+
+        /** Ties a dialog's answer to this draft, so an old window can't fill it. */
+        var nonce: String = UUID.randomUUID().toString()
     }
 
     private val drafts = ConcurrentHashMap<UUID, Draft>()
@@ -60,6 +74,7 @@ class WebhookWizard(private val api: () -> WorldApi, private val scope: Coroutin
         "new" -> args.getOrNull(1)?.let { start(player, it) } ?: formats()
         "topics" -> topics(player, args.getOrNull(1))
         "language" -> language(player, args.getOrNull(1))
+        "ask" -> prompt(player, draft(player, Step.SECRET))
         "chats" -> { findChats(player); emptyList() }
         "chat" -> { chooseChat(player, name, args.getOrNull(1)); emptyList() }
         "cancel" -> { drafts.remove(player); listOf(Text("Cancelled.", Tone.HINT)) }
@@ -123,48 +138,48 @@ class WebhookWizard(private val api: () -> WorldApi, private val scope: Coroutin
         if (code !in WEBHOOK_LANGUAGES) return listOf(Text("Pick one of the buttons above", Tone.BAD))
         draft.language = code!!
         draft.step = Step.SECRET
-        val what = when (draft.format) {
-            WebhookFormat.DISCORD -> "the webhook URL (channel settings → Integrations → Webhooks → Copy Webhook URL)"
-            WebhookFormat.SLACK -> "the incoming webhook URL (api.slack.com/apps → Incoming Webhooks)"
-            WebhookFormat.TELEGRAM -> "the bot token from @BotFather"
-            WebhookFormat.TEAMS -> "the workflow's URL (channel → Workflows → “Post to a channel when a webhook request is received”)"
-            WebhookFormat.GOOGLE_CHAT -> "the webhook URL (space → Apps & integrations → Webhooks)"
-            WebhookFormat.JSON -> "the URL"
+        return prompt(player, draft)
+    }
+
+    /** Opens the window that asks for the URL or the bot token. */
+    private fun prompt(player: UUID, draft: Draft): List<ChatLine> {
+        draft.nonce = UUID.randomUUID().toString()
+        val (what, where) = when (draft.format) {
+            WebhookFormat.DISCORD -> "Webhook URL" to "Discord: channel settings → Integrations → Webhooks → New Webhook → Copy Webhook URL."
+            WebhookFormat.SLACK -> "Webhook URL" to "Slack: api.slack.com/apps → your app → Incoming Webhooks → Add New Webhook. Mattermost and Rocket.Chat take this format too."
+            WebhookFormat.TELEGRAM -> "Bot token" to "Telegram: write /newbot to @BotFather; it answers with the bot's token, like 123456:ABC-DEF…"
+            WebhookFormat.TEAMS -> "Workflow URL" to "Teams: the channel → Workflows → “Post to a channel when a webhook request is received”, then copy its URL."
+            WebhookFormat.GOOGLE_CHAT -> "Webhook URL" to "Google Chat: the space → Apps & integrations → Webhooks → Add."
+            WebhookFormat.JSON -> "URL" to "Any HTTPS address that takes JSON."
         }
+        ask(player, SecretPrompt(draft.nonce, "${draft.format.title} for WorldAPI", "$where Paste it here: it goes straight to WorldAPI, not into chat or the log.", what, "Connect"))
         return listOf(
-            Text("Now paste $what into chat. Only WorldAPI sees that message: nobody else, and not the log.", Tone.GOOD),
-            Buttons(listOf(Button("[Cancel]", "Stop here", run = "/worldapi webhook cancel"))),
+            Text("A window asks for the ${what.lowercase()}. Paste it there.", Tone.GOOD),
+            Buttons(listOf(Button("[Open it again]", "If you closed it", run = "/worldapi webhook ask"), Button("[Cancel]", "Stop here", run = "/worldapi webhook cancel"))),
         )
     }
 
-    /**
-     * Takes [message] when [player] is to paste a secret, so the platform cancels it before anyone sees it. Any thread:
-     * the rest runs off it.
-     */
-    fun chat(player: UUID, name: String, message: String): Boolean {
-        val draft = drafts[player]?.takeIf { it.step == Step.SECRET } ?: return false
-        if (expired(player, draft)) return false
-        val secret = message.trim()
+    /** What [player] typed into the window with [nonce]. Any thread: the rest runs off it. */
+    fun answer(player: UUID, name: String, nonce: String, text: String) {
+        val draft = drafts[player]?.takeIf { it.step == Step.SECRET && it.nonce == nonce && !expired(player, it) }
+            ?: return reply(player, listOf(Text("That window is out of date; start over with /worldapi webhook new", Tone.BAD)))
+        draft.touched = System.currentTimeMillis()
+        val secret = text.trim()
+        val again = Buttons(listOf(Button("[Try again]", "Open the window", run = "/worldapi webhook ask")))
         if (draft.format == WebhookFormat.TELEGRAM) {
-            if (!Webhook.TELEGRAM_TOKEN.matches(secret)) {
-                reply(player, listOf(Text("That isn't a bot token like 123456:ABC-DEF…; paste it again, or cancel.", Tone.BAD)))
-                return true
-            }
+            if (!Webhook.TELEGRAM_TOKEN.matches(secret)) return reply(player, listOf(Text("That isn't a bot token like 123456:ABC-DEF…", Tone.BAD), again))
             draft.secret = secret
             draft.step = Step.CHAT
-            reply(player, listOf(
-                Text("Got it. Now write /start to the bot in Telegram, or add it to a group or channel, then press:", Tone.GOOD),
+            return reply(player, listOf(
+                Text("Got it. Now write /start to the bot in Telegram, or add it to your group or channel, then press:", Tone.GOOD),
                 Buttons(listOf(Button("[Find chats]", "Ask Telegram where the bot can write", run = "/worldapi webhook chats"), Button("[Cancel]", "Stop here", run = "/worldapi webhook cancel"))),
             ))
-            return true
         }
         if (!secret.startsWith("https://") || secret.any(Char::isWhitespace)) {
-            reply(player, listOf(Text("That isn't a URL starting with https://; paste it again, or cancel.", Tone.BAD)))
-            return true
+            return reply(player, listOf(Text("That isn't a URL starting with https://.", Tone.BAD), again))
         }
         draft.secret = secret
         create(player, name, draft, url = secret)
-        return true
     }
 
     private fun findChats(player: UUID) {
@@ -175,7 +190,12 @@ class WebhookWizard(private val api: () -> WorldApi, private val scope: Coroutin
                     listOf(Text("The bot has no chats yet. Write /start to it, or add it to a group, then try again.", Tone.HINT),
                         Buttons(listOf(Button("[Find chats]", "Ask again", run = "/worldapi webhook chats"))))
                 } else {
-                    listOf(Text("Where should it post?"), Buttons(chats.take(8).map { Button("[${it.title}]", "${it.type} ${it.id}", run = "/worldapi webhook chat ${it.id}") }))
+                    // Anyone may write to a bot, so the type shows on the button: a private chat is one person's.
+                    val sorted = chats.sortedBy { if (it.type == "private") 1 else 0 }.take(8)
+                    listOf(
+                        Text("Where should it post? Pick your own group or channel: anyone who finds the bot can write to it too."),
+                        Buttons(sorted.map { Button("[${it.title} · ${it.type}]", "Chat ${it.id}", run = "/worldapi webhook chat ${it.id}") }),
+                    )
                 }
             }, { listOf(Text(it.message ?: "Telegram didn't answer", Tone.BAD)) })
             reply(player, lines)
@@ -240,11 +260,12 @@ class WebhookWizard(private val api: () -> WorldApi, private val scope: Coroutin
     private fun draft(player: UUID, step: Step): Draft {
         val draft = drafts[player]?.takeIf { !expired(player, it) } ?: throw IllegalStateException("Start with /worldapi webhook new")
         if (draft.step != step) throw IllegalStateException("Finish the step above first, or start over with /worldapi webhook new")
+        draft.touched = System.currentTimeMillis()
         return draft
     }
 
     private fun expired(player: UUID, draft: Draft): Boolean {
-        if (System.currentTimeMillis() - draft.started < 10 * 60_000) return false
+        if (System.currentTimeMillis() - draft.touched < 10 * 60_000) return false
         drafts.remove(player)
         return true
     }

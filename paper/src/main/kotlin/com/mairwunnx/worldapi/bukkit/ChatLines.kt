@@ -21,3 +21,30 @@ fun List<ChatLine>.components(): List<Component> = map { line ->
         })
     }
 }
+
+/**
+ * The game's dialog with one text field: what's typed in comes back to [answer] as a click action, which no chat or
+ * command event and no log sees. It answers once, within 10 minutes.
+ */
+fun secretDialog(prompt: com.mairwunnx.worldapi.connections.SecretPrompt, answer: (String) -> Unit): io.papermc.paper.dialog.Dialog =
+    io.papermc.paper.dialog.Dialog.create { factory ->
+        factory.empty()
+            .base(
+                io.papermc.paper.registry.data.dialog.DialogBase.builder(Component.text(prompt.title))
+                    .canCloseWithEscape(true)
+                    .body(listOf(io.papermc.paper.registry.data.dialog.body.DialogBody.plainMessage(Component.text(prompt.text))))
+                    .inputs(listOf(io.papermc.paper.registry.data.dialog.input.DialogInput.text("secret", Component.text(prompt.label)).width(300).maxLength(512).build()))
+                    .build(),
+            )
+            .type(
+                io.papermc.paper.registry.data.dialog.type.DialogType.notice(
+                    io.papermc.paper.registry.data.dialog.ActionButton.create(
+                        Component.text(prompt.button), null, 150,
+                        io.papermc.paper.registry.data.dialog.action.DialogAction.customClick(
+                            { view, _ -> answer(view.getText("secret").orEmpty()) },
+                            net.kyori.adventure.text.event.ClickCallback.Options.builder().uses(1).lifetime(java.time.Duration.ofMinutes(10)).build(),
+                        ),
+                    ),
+                ),
+            )
+    }

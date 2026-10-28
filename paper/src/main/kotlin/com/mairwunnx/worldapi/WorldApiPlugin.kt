@@ -36,6 +36,7 @@ import com.mairwunnx.worldapi.tokens.TokenMenu
 import com.mairwunnx.worldapi.tokens.TokenStore
 import com.mairwunnx.worldapi.ws.WebSocketHub
 import com.mairwunnx.worldapi.bukkit.components
+import com.mairwunnx.worldapi.bukkit.secretDialog
 import com.mairwunnx.worldapi.webhooks.WebhookStore
 import com.mairwunnx.worldapi.webhooks.Webhooks
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents
@@ -115,7 +116,6 @@ class WorldApiPlugin : JavaPlugin() {
 
         val windows = Windows(bus) { config.get().websocket.blockWindowSeconds }
         val listeners = Listeners(this, bus, history, api.experience, windows, vanished) { config.get().events.chat }
-        server.pluginManager.registerEvents(com.mairwunnx.worldapi.command.WizardChat { wizard }, this)
         server.pluginManager.registerEvents(listeners, this)
         server.pluginManager.registerEvents(api.commands, this)
         val taming = Taming(this, api.tamed, logger)
@@ -225,10 +225,18 @@ class WorldApiPlugin : JavaPlugin() {
     private var hubMenu: com.mairwunnx.worldapi.command.HubMenu? = null
 
     /** The webhook wizard; its answers go back to the player on the server thread. */
-    private val wizard by lazy {
-        com.mairwunnx.worldapi.connections.WebhookWizard({ api }, scope) { player, lines ->
-            server.scheduler.runTask(this, Runnable { server.getPlayer(player)?.let { online -> lines.components().forEach(online::sendMessage) } })
-        }
+    private val wizard: com.mairwunnx.worldapi.connections.WebhookWizard by lazy {
+        com.mairwunnx.worldapi.connections.WebhookWizard(
+            { api }, scope,
+            reply = { player, lines ->
+                server.scheduler.runTask(this, Runnable { server.getPlayer(player)?.let { online -> lines.components().forEach(online::sendMessage) } })
+            },
+            ask = { player, prompt ->
+                server.scheduler.runTask(this, Runnable {
+                    server.getPlayer(player)?.let { online -> online.showDialog(secretDialog(prompt) { text -> wizard.answer(player, online.name, prompt.nonce, text) }) }
+                })
+            },
+        )
     }
 
     private fun connections() = object : com.mairwunnx.worldapi.command.ConnectionCommands {

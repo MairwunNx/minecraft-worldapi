@@ -30,7 +30,6 @@ class WorldApiMod : ModInitializer {
 
         ServerPlayConnectionEvents.JOIN.register { handler, _, _ -> Hooks.joined(handler.player) }
         ServerPlayConnectionEvents.DISCONNECT.register { handler, _ -> Hooks.left(handler.player) }
-        ServerMessageEvents.ALLOW_CHAT_MESSAGE.register { message, sender, _ -> Hooks.allowChat(sender, message.signedContent()) }
         ServerMessageEvents.CHAT_MESSAGE.register { message, sender, _ -> Hooks.chat(sender, message.signedContent()) }
         ServerPlayerEvents.AFTER_RESPAWN.register { _, player, alive -> Hooks.respawned(player, alive) }
         ServerEntityLevelChangeEvents.AFTER_PLAYER_CHANGE_LEVEL.register { player, origin, destination -> Hooks.changedWorld(player, origin, destination) }

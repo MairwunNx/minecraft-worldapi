@@ -23,3 +23,23 @@ fun List<ChatLine>.components(): List<Component> = map { line ->
         }
     }
 }
+
+/**
+ * The game's dialog with one text field, as Paper shows it: its button sends what's typed as a click action named
+ * `worldapi:secret/<nonce>`, which [com.mairwunnx.worldapi.modcore.Hooks.dialogAnswer] takes before chat or a log sees it.
+ */
+fun secretDialog(prompt: com.mairwunnx.worldapi.connections.SecretPrompt): net.minecraft.server.dialog.Dialog {
+    val input = net.minecraft.server.dialog.Input(
+        "secret",
+        net.minecraft.server.dialog.input.TextInput(300, Component.literal(prompt.label), true, "", 512, java.util.Optional.empty()),
+    )
+    val common = net.minecraft.server.dialog.CommonDialogData(
+        Component.literal(prompt.title), java.util.Optional.empty(), true, false, net.minecraft.server.dialog.DialogAction.CLOSE,
+        listOf(net.minecraft.server.dialog.body.PlainMessage(Component.literal(prompt.text), 300)), listOf(input),
+    )
+    val send = net.minecraft.server.dialog.action.CustomAll(net.minecraft.resources.Identifier.fromNamespaceAndPath("worldapi", "secret/${prompt.nonce}"), java.util.Optional.empty())
+    return net.minecraft.server.dialog.NoticeDialog(
+        common,
+        net.minecraft.server.dialog.ActionButton(net.minecraft.server.dialog.CommonButtonData(Component.literal(prompt.button), 150), java.util.Optional.of(send)),
+    )
+}

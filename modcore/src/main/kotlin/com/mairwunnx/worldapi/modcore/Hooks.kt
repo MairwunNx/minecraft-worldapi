@@ -40,10 +40,15 @@ object Hooks {
     @JvmStatic fun advancement(player: ServerPlayer, advancement: AdvancementHolder) = events { advancement(player, advancement) }
     @JvmStatic fun chat(player: ServerPlayer, message: String) = events { chat(player, message) }
 
-    /** False when the webhook wizard takes the message, a pasted secret: the loader then cancels it before anyone sees it. */
+    /** A dialog's answer: true when it was WorldAPI's, such as the webhook wizard's secret, which then goes no further. */
     @JvmStatic
-    fun allowChat(player: ServerPlayer, message: String): Boolean =
-        runCatching { Mod.runtime?.wizard?.chat(player.uuid, player.gameProfile.name(), message) != true }.getOrDefault(true)
+    fun dialogAnswer(player: ServerPlayer, id: net.minecraft.resources.Identifier, payload: java.util.Optional<net.minecraft.nbt.Tag>): Boolean {
+        if (id.namespace != "worldapi" || !id.path.startsWith("secret/")) return false
+        val text = (payload.orElse(null) as? net.minecraft.nbt.CompoundTag)?.getStringOr("secret", "") ?: ""
+        runCatching { Mod.runtime?.wizard?.answer(player.uuid, player.gameProfile.name(), id.path.removePrefix("secret/"), text) }
+            .onFailure { Logs.logger.log(java.util.logging.Level.WARNING, "The webhook wizard failed", it) }
+        return true
+    }
     @JvmStatic fun command(player: ServerPlayer, command: String) = events { command(player, command) }
     @JvmStatic fun damaged(entity: LivingEntity, source: DamageSource, damage: Float) = events { damaged(entity, source, damage) }
     @JvmStatic fun entityDied(entity: LivingEntity, source: DamageSource) = events { entityDied(entity, source) }
