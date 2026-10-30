@@ -6,6 +6,7 @@ import com.mairwunnx.worldapi.api.notFound
 import com.mairwunnx.worldapi.model.PlayerRef
 import org.bukkit.OfflinePlayer
 import org.bukkit.Server
+import org.bukkit.Sound
 import org.bukkit.entity.Player
 
 // Whitelisted or banned players who never joined have no name of their own, but their profile does.
@@ -36,3 +37,6 @@ fun PaperCall.onlinePlayer(id: String = path("player")): Player {
     if (api.server.findKnown(id) != null) conflict("player_offline", "$id isn't online")
     notFound("player_not_found", "No player \"$id\" has played here")
 }
+
+/** A menu button's click, for this player's ears only. */
+fun Player.clickSound() = playSound(location, Sound.UI_BUTTON_CLICK, 0.5f, 1.2f)

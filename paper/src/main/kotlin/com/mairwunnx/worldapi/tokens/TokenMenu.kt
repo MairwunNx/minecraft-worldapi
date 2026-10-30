@@ -2,6 +2,7 @@ package com.mairwunnx.worldapi.tokens
 
 import com.mairwunnx.worldapi.api.Groups
 import com.mairwunnx.worldapi.api.Scope
+import com.mairwunnx.worldapi.bukkit.clickSound
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.event.ClickEvent
 import net.kyori.adventure.text.event.HoverEvent
@@ -117,16 +118,19 @@ class TokenMenu(
             in groupSlots.take(session.offered.size) -> {
                 val group = session.offered[groupSlots.indexOf(slot)]
                 if (!session.groups.remove(group)) session.groups += group
-                click(player)
+                player.clickSound()
                 render(session)
             }
             lifetimeSlot -> {
                 session.lifetime = (session.lifetime + 1) % lifetimes.size
-                click(player)
+                player.clickSound()
                 render(session)
             }
             createSlot -> if (session.groups.isNotEmpty()) create(session)
-            cancelSlot -> player.closeInventory()
+            cancelSlot -> {
+                player.clickSound()
+                player.closeInventory()
+            }
         }
     }
 
@@ -143,6 +147,8 @@ class TokenMenu(
         val token = try {
             store.issue(session.name, session.groups.toList(), player.name, expires)
         } catch (error: IllegalArgumentException) {
+            // A created token sounds its own chime below; a refused one only clicks.
+            player.clickSound()
             player.sendMessage(Component.text(error.message ?: "Couldn't create the token", NamedTextColor.RED))
             return
         }
@@ -157,8 +163,6 @@ class TokenMenu(
         )
         player.sendMessage(gray("Send it as \"Authorization: Bearer <token>\". Revoke with /worldapi token revoke ${session.name}."))
     }
-
-    private fun click(player: Player) = player.playSound(player.location, Sound.UI_BUTTON_CLICK, 0.4f, 1.4f)
 
     private fun gray(text: String) = Component.text(text, NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
 

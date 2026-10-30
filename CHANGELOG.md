@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.3.1
+
+- 🔊 **One click for every button.** Each button in `/worldapi` and the token menu that does something clicks for the player who pressed it, “Cancel” now included, with the same sound as Mo’Bosses’ menus. Glass panes and buttons that can’t act yet, such as “Create token” before you pick a group, stay silent.
+
 ## 4.3.0
 
 WorldAPI tells your Discord, Telegram, or Slack what happens on the server, and an AI agent connects in one click. Webhooks and MCP connections are made in game, in the admin panel, or through the API, and anything made through the API to the world can be undone.

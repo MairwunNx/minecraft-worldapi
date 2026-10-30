@@ -1,12 +1,12 @@
 package com.mairwunnx.worldapi.command
 
+import com.mairwunnx.worldapi.bukkit.clickSound
 import io.papermc.paper.event.player.AsyncChatEvent
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.TextDecoration
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
 import org.bukkit.Material
-import org.bukkit.Sound
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
@@ -149,7 +149,7 @@ class HubMenu(private val plugin: Plugin, private val actions: HubActions) : Lis
         event.isCancelled = true
         if (event.clickedInventory != view.window) return
         val action = (if (event.isShiftClick) view.shift[event.rawSlot] else null) ?: view.slots[event.rawSlot] ?: return
-        view.player.playSound(view.player.location, Sound.UI_BUTTON_CLICK, 0.4f, 1.4f)
+        view.player.clickSound()
         action()
     }
 
