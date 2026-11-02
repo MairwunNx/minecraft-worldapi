@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.3.2
+
+- ⬆️ **Updated libraries.** WorldAPI builds on Paper 26.3 build 237 and NeoForge 26.3.0.101, with Ktor 3.6.1, the SQLite driver 3.54.1.0 in the mods, and the admin panel's newest packages.
+
 ## 4.3.1
 
 - 🔊 **One click for every button.** Each button in `/worldapi` and the token menu that does something clicks for the player who pressed it, “Cancel” now included, with the same sound as Mo’Bosses’ menus. Glass panes and buttons that can’t act yet, such as “Create token” before you pick a group, stay silent.
