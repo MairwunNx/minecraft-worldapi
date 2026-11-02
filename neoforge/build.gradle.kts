@@ -8,7 +8,7 @@ plugins {
 }
 
 val minecraft = "26.3"
-val neoforgeVersion = "26.3.0.99"
+val neoforgeVersion = "26.3.0.101"
 val sqlite = "3.53.4.0"
 
 base {
