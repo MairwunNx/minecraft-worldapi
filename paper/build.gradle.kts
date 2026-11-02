@@ -16,19 +16,19 @@ plugins {
 val mods = providers.gradleProperty("worldapi.mods").map(String::toBoolean).getOrElse(false)
 val jarName = if (mods) "worldapi-paper" else "worldapi"
 
-val ktorVersion = "3.6.0"
+val ktorVersion = "3.6.1"
 
 dependencies {
     // What doesn't touch Bukkit: the HTTP server's pieces, the config, the store, the models. Shaded with its libraries.
     implementation(project(":core"))
     compileOnly("io.papermc.paper:paper-api:26.3.build.237-stable")
     // Paper ships the SQLite driver, so it stays out of the jar.
-    compileOnly("org.xerial:sqlite-jdbc:3.53.4.0")
+    compileOnly("org.xerial:sqlite-jdbc:3.54.1.0")
     // Plan is optional: its section shows on Plan's pages when Plan runs next to WorldAPI.
     compileOnly("com.djrapitops:plan-api:5.9-R1.3")
 
     testImplementation("io.papermc.paper:paper-api:26.3.build.237-stable")
-    testImplementation("org.xerial:sqlite-jdbc:3.53.4.0")
+    testImplementation("org.xerial:sqlite-jdbc:3.54.1.0")
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
     testImplementation("io.ktor:ktor-client-websockets:$ktorVersion")
     testImplementation(kotlin("test"))

@@ -31,7 +31,7 @@ dependencies {
     api("net.kyori:adventure-text-minimessage:5.2.0")
     api("net.kyori:adventure-text-serializer-gson:5.2.0") { exclude(group = "com.google.code.gson") }
     // Each mod carries the SQLite driver inside its jar; the game has none.
-    compileOnly("org.xerial:sqlite-jdbc:3.53.4.0")
+    compileOnly("org.xerial:sqlite-jdbc:3.54.1.0")
     // Mixins: Fabric Loader and NeoForge both bring Mixin and MixinExtras at runtime.
     compileOnly("net.fabricmc:sponge-mixin:0.17.5+mixin.0.8.7")
     compileOnly("io.github.llamalad7:mixinextras-common:0.5.5")

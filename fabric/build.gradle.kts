@@ -45,7 +45,7 @@ sourceSets.named("gametest") {
 // relocated as on Paper. The expansion API stays where it is: other mods compile against it.
 val shade: Configuration = configurations.create("shade")
 val nested: Configuration = configurations.create("nested")
-val sqlite = "3.53.4.0"
+val sqlite = "3.54.1.0"
 
 dependencies {
     minecraft("com.mojang:minecraft:$minecraft")

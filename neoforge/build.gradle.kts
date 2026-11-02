@@ -9,7 +9,7 @@ plugins {
 
 val minecraft = "26.3"
 val neoforgeVersion = "26.3.0.101"
-val sqlite = "3.53.4.0"
+val sqlite = "3.54.1.0"
 
 base {
     archivesName = "worldapi-neoforge"

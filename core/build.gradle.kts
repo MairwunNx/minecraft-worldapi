@@ -3,7 +3,7 @@ plugins {
     kotlin("plugin.serialization")
 }
 
-val ktorVersion = "3.6.0"
+val ktorVersion = "3.6.1"
 val exposedVersion = "1.6.0"
 
 // Everything that doesn't touch a game platform: no Bukkit, no Minecraft, no loader. paper builds on it now, and the mods
@@ -28,11 +28,11 @@ dependencies {
     // Compiles scripts on servers that run a JRE without javac.
     api("org.eclipse.jdt:ecj:3.46.100")
     // Every platform ships its own SQLite driver (Paper does), so it stays out of the jar.
-    compileOnly("org.xerial:sqlite-jdbc:3.53.4.0")
+    compileOnly("org.xerial:sqlite-jdbc:3.54.1.0")
     // Paper and the game log through Log4j, and both bring it; GET /server/logs hooks its root logger.
     compileOnly("org.apache.logging.log4j:log4j-core:2.26.1")
 
-    testImplementation("org.xerial:sqlite-jdbc:3.53.4.0")
+    testImplementation("org.xerial:sqlite-jdbc:3.54.1.0")
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
     testImplementation("io.ktor:ktor-client-websockets:$ktorVersion")
     testImplementation(kotlin("test"))
