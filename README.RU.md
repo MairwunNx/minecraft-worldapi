@@ -72,4 +72,11 @@
 - **[minecraft-exporter](https://github.com/MairwunNx/minecraft-exporter)** — метрики Prometheus из WorldAPI.
 - **[minecraft-grafana](https://github.com/MairwunNx/minecraft-grafana)** — дашборд Grafana для WorldAPI.
 
+## Раскрытие контента
+
+- 🤖 **Код от ИИ.** Большую часть кода написали ИИ-агенты.
+- 🔌 **ИИ-клиенты** подключаются по MCP с токеном, который выдаёте вы. Сам WorldAPI моделей не запускает.
+- 📣 **Вебхуки** отправляют события только туда, куда вы их направили: в Discord, Telegram и другие.
+- Телеметрии, платных функций и рекламы нет.
+
 > 🫡 Сделал Павел Ерохин (Pavel Erokhin), он же mairwunnx.

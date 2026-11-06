@@ -72,4 +72,11 @@ The [wiki](https://github.com/MairwunNx/minecraft-worldapi/wiki) has everything,
 - **[minecraft-exporter](https://github.com/MairwunNx/minecraft-exporter)** – Prometheus metrics from WorldAPI.
 - **[minecraft-grafana](https://github.com/MairwunNx/minecraft-grafana)** – the Grafana dashboard for WorldAPI.
 
+## Content disclosures
+
+- 🤖 **AI-generated code.** AI agents wrote much of the code.
+- 🔌 **AI clients** connect over MCP with a token you issue. WorldAPI runs no model itself.
+- 📣 **Webhooks** send events only where you point them: Discord, Telegram, and the rest.
+- No telemetry, paid features, or ads.
+
 > 🫡 Made by Pavel Erokhin (Павел Ерохин), aka mairwunnx.
