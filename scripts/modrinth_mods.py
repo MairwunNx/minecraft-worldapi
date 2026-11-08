@@ -1,9 +1,11 @@
-"""Upload the mods' jars to Modrinth as versions of the project, each marked to run on the client or the server.
+"""Upload every platform's jar to Modrinth as a version of the project, each with the environment it runs in.
 
 Standard library only: MODRINTH_TOKEN=… python3 -I scripts/modrinth_mods.py --version X.Y.Z --notes release-notes.md
-The release workflow runs it after `./gradlew build`. Minotaur can't set a version's `environment`, which Modrinth
-asks of every mod version (and refuses a version without while the project is in review), so the mods go up through
-Modrinth's v3 API here; Paper's jar still goes through Minotaur. A version already uploaded is skipped.
+The release workflow runs it after `./gradlew build` and Minotaur's sync of the description. Minotaur can't set a
+version's `environment`, which Modrinth asks of every version (and refuses a version without while the project is in
+review), so the jars go up through Modrinth's v3 API here: Paper's plugin on the server only, the mods on the client or
+the server. With `worldapi.mods` off in gradle.properties, only Paper's jar goes up, as X.Y.Z from worldapi-X.Y.Z.jar.
+A version already uploaded is skipped.
 """
 
 import argparse
@@ -20,12 +22,13 @@ ROOT = Path(__file__).resolve().parent.parent
 PROJECT = "worldapi"
 API = "https://api.modrinth.com"
 AGENT = "MairwunNx/minecraft-worldapi (github.com/MairwunNx)"
-MODS = {
-    # loader: its name on the version, the projects it can't run without, the ones it works with, and where it runs.
-    # WorldAPI runs on either side: on a dedicated server and under a singleplayer world. Players joining a server with
-    # it need nothing on their side, and Kotlin is inside the jar.
-    "fabric": ("Fabric", ["fabric-api"], ["luckperms"], "client_or_server"),
-    "neoforge": ("NeoForge", [], ["luckperms"], "client_or_server"),
+PLATFORMS = {
+    # module: its name on the version, its loaders, where it runs, the projects it can't run without, and the ones it
+    # works with. The mods run on either side: on a dedicated server and under a singleplayer world. Players joining a
+    # server with them need nothing on their side, and Kotlin is inside the jar.
+    "paper": ("Paper", ["paper", "purpur"], "server_only", [], []),
+    "fabric": ("Fabric", ["fabric"], "client_or_server", ["fabric-api"], ["luckperms"]),
+    "neoforge": ("NeoForge", ["neoforge"], "client_or_server", [], ["luckperms"]),
 }
 
 
@@ -65,16 +68,23 @@ def main():
     project = project_id(PROJECT, token)
     uploaded = {v["version_number"] for v in request("GET", f"/v2/project/{project}/version", token)}
 
-    for loader, (name, needs, works_with, environment) in MODS.items():
-        number = f"{args.version}+{loader}"
+    mods = re.search(r"^worldapi\.mods=true$", (ROOT / "gradle.properties").read_text(), re.M) is not None
+    for module, (name, loaders, environment, needs, works_with) in PLATFORMS.items():
+        if not mods and module != "paper":
+            continue
+        number = f"{args.version}+{module}" if mods else args.version
         if number in uploaded:
             print(f"{number}: already on Modrinth")
             continue
-        game = re.search(r'val minecraft = "([^"]+)"', (ROOT / loader / "build.gradle.kts").read_text()).group(1)
-        jar = ROOT / loader / "build/libs" / f"worldapi-{loader}-{args.version}.jar"
+        build = (ROOT / module / "build.gradle.kts").read_text()
+        game = re.search(r'val minecraft = "([^"]+)"|gameVersions\.addAll\("([^"]+)"\)', build)
+        game = game.group(1) or game.group(2)
+        jar_name = f"worldapi-{module}-{args.version}.jar" if mods else f"worldapi-{args.version}.jar"
+        jar = ROOT / module / "build/libs" / jar_name
         data = {
-            "name": f"WorldAPI {args.version} for {name}", "version_number": number, "changelog": notes,
-            "game_versions": [game], "loaders": [loader], "version_type": "release", "featured": True,
+            "name": f"WorldAPI {args.version} for {name}" if mods else f"WorldAPI {args.version}",
+            "version_number": number, "changelog": notes,
+            "game_versions": [game], "loaders": loaders, "version_type": "release", "featured": True,
             "project_id": project, "status": "listed", "environment": environment,
             "dependencies": [{"project_id": project_id(slug, token), "dependency_type": "required"} for slug in needs]
             + [{"project_id": project_id(slug, token), "dependency_type": "optional"} for slug in works_with],

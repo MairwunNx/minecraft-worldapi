@@ -105,12 +105,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
       - name: Publish to Modrinth
         if: inputs.modrinth
-        # Minotaur reads the project while it runs, which the configuration cache doesn't allow. With the mods on, it
-        # uploads X.Y.Z+paper; the mods go through Modrinth's v3 API as X.Y.Z+fabric and X.Y.Z+neoforge, since Minotaur
-        # can't set the environment Modrinth asks of a mod.
+        # The description through Minotaur, which reads the project while it runs, so not with the configuration
+        # cache; every jar through Modrinth's v3 API, which takes the environment Minotaur can't set and Modrinth
+        # refuses a version without while the project is in review. The script reads `worldapi.mods` itself.
         run: |
-          ./gradlew :paper:modrinth -PreleaseVersion="$VERSION" -PchangelogFile="$NOTES" --no-configuration-cache
-          if [[ "$MODS" == "true" ]]; then python3 -I scripts/modrinth_mods.py --version "$VERSION" --notes "$NOTES"; fi
+          ./gradlew :paper:modrinthSyncBody --no-configuration-cache
+          python3 -I scripts/modrinth_mods.py --version "$VERSION" --notes "$NOTES"
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
       - name: Publish to Hangar
