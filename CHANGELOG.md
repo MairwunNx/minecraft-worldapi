@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.5.0
+
+- 🧩 **Expansion API 2.** Plugins and mods share their data through `com.mairwunnx:worldapi-expansion` 2.0.0: an expansion declares its parameters, resources, and events as fields, and its events carry typed data. Plugins built against API 1 keep working.
+- 📋 **What a plugin's data looks like.** `GET /extensions` lists the parameters each resource reads and the shape of its answers and events, for plugins on API 2, so clients and AI agents know what to ask for.
+- 🔒 **Coordinates and vanished players in plugins' data.** WorldAPI leaves places out of a plugin's answers and events for clients that mustn't see coordinates, and hides a plugin's event while any player it names is vanished.
+
 ## 4.4.0
 
 - 📊 **bStats on Paper.** The Paper plugin reports to bStats which database WorldAPI keeps its history in, and how many REST requests and WebSocket connections it served. `metrics: false` in `config.yml` turns it off; the Fabric and NeoForge mods send nothing.
