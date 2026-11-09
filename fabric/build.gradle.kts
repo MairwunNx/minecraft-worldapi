@@ -12,7 +12,7 @@ plugins {
 
 val minecraft = "26.3"
 val loader = "0.20.1"
-val fabricApi = "0.165.0+26.3"
+val fabricApi = "0.165.2+26.3"
 
 // Once the mods are released, each platform's jar carries its name, as “Platforms” in CLAUDE.md says.
 base {
