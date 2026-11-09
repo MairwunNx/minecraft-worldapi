@@ -2,7 +2,12 @@ package com.mairwunnx.worldapi.expansion;
 
 import java.util.Map;
 
-/** One read of a {@link Resource}: its path parameters, the query, and who asks. Safe on any thread. */
+/**
+ * One read of a {@link Resource}: its path parameters, the query, and who asks. Safe on any thread.
+ *
+ * @deprecated Expansion API 1 stays for plugins built against it. New code extends {@link com.mairwunnx.worldapi.expansion.v2.Expansion}.
+ */
+@Deprecated
 public interface Request {
     /** A path parameter, like {@code player} in {@code players/{player}}. Throws for a name the path doesn't have. */
     String path(String name);

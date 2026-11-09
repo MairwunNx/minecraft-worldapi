@@ -12,7 +12,10 @@ import java.util.UUID;
  * <pre>{@code
  * WorldApiExpansions.publish("mobosses", Event.of("player.level_up", Map.of("level", 12)).player(id, name).world("world"));
  * }</pre>
+ *
+ * @deprecated Expansion API 1 stays for plugins built against it. New code extends {@link com.mairwunnx.worldapi.expansion.v2.Expansion}.
  */
+@Deprecated
 public final class Event {
     private final String name;
     private final Map<String, Object> data;

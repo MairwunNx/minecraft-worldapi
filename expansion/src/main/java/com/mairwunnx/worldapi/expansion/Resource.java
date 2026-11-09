@@ -10,7 +10,10 @@ package com.mairwunnx.worldapi.expansion;
  * }</pre>
  *
  * Instances are immutable: {@link #publicly()} and {@link #onServerThread()} return changed copies.
+ *
+ * @deprecated Expansion API 1 stays for plugins built against it. New code extends {@link com.mairwunnx.worldapi.expansion.v2.Expansion}.
  */
+@Deprecated
 public final class Resource {
     /**
      * Answers a request with plain Java values, which WorldAPI writes as JSON: maps, lists and arrays, strings, numbers,

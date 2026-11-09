@@ -1,16 +1,18 @@
 package com.mairwunnx.worldapi.expansion;
 
 /**
- * The version of the expansion API. An expansion returns {@link #VERSION} from {@link WorldApiExpansion#requiresApi()}:
- * the compiler copies the constant into the expansion's own class, so WorldAPI learns which version it was built against.
+ * The version of the expansion API. A 1.x expansion returns {@link #VERSION} from
+ * {@link WorldApiExpansion#requiresApi()}: the compiler copies the constant into the expansion's own class, so WorldAPI
+ * learns which version it was built against. Expansions of API 2 ({@link com.mairwunnx.worldapi.expansion.v2}) don't
+ * name a version.
  *
- * <p>Within a major version the API only grows: new methods on interfaces come with defaults, so an expansion built
- * against 1.0 runs on every WorldAPI with API 1.x. WorldAPI refuses an expansion that needs a newer minor or another
- * major, and says so in its log.
+ * <p>Within a major version the API only grows: new methods come with defaults, and nothing is removed. API 2 keeps
+ * API 1's classes, so an expansion built against 1.0 runs on every WorldAPI with API 1.x or 2.x. WorldAPI refuses one
+ * that needs a newer minor or another major, and says so in its log.
  */
 public final class ExpansionApi {
     /** This API's version, {@code major.minor.patch}. */
-    public static final String VERSION = "1.0.0";
+    public static final String VERSION = "2.0.0";
 
     private ExpansionApi() {}
 

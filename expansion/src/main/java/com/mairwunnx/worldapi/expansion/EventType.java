@@ -3,7 +3,10 @@ package com.mairwunnx.worldapi.expansion;
 /**
  * One kind of event an expansion publishes, like {@code boss.killed}. Clients subscribe to it as the topic
  * {@code ext.<id>.<name>}. Immutable: {@link #publicly()} and {@link #recorded()} return changed copies.
+ *
+ * @deprecated Expansion API 1 stays for plugins built against it. New code extends {@link com.mairwunnx.worldapi.expansion.v2.Expansion}.
  */
+@Deprecated
 public final class EventType {
     private final String name;
     private final String description;
