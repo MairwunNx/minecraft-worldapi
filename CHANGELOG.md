@@ -3,6 +3,7 @@
 ## 4.6.0
 
 - ✍️ **Plugins take requests, not only questions.** A plugin on expansion API 2.1 can offer actions: `POST` or `DELETE /extensions/<namespace>/<path>`, like spawning one of its bosses or putting a player into AFK. Each action needs the permission the plugin names, never answers a visitor without a token, and lands in the audit log. `GET /extensions` lists every action with its permission and the body it reads, and the MCP server calls them with `call_extension`.
+- 🧵 **The mods start beside Allay and Mo’Bosses.** On Fabric, WorldAPI's first start could read another mod's `config.yml` as its own and stay off. It now reads its defaults from a path of its own.
 
 ## 4.5.0
 

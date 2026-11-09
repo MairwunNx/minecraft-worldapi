@@ -6,11 +6,11 @@ import com.mairwunnx.worldapi.events.Topic
 import kotlinx.serialization.json.JsonPrimitive
 import java.util.Properties
 
-/** What a chat webhook writes for an event, in its language, from `webhooks/messages_<language>.properties`. */
+/** What a chat webhook writes for an event, in its language, from `worldapi/webhooks/messages_<language>.properties`. */
 object Messages {
     private val bundles: Map<String, Properties> = WEBHOOK_LANGUAGES.associateWith { language ->
         Properties().apply {
-            Messages::class.java.getResourceAsStream("/webhooks/messages_$language.properties")!!.reader(Charsets.UTF_8).use(::load)
+            Messages::class.java.getResourceAsStream("/worldapi/webhooks/messages_$language.properties")!!.reader(Charsets.UTF_8).use(::load)
         }
     }
 

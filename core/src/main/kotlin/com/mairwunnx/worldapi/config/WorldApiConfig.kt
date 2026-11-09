@@ -219,7 +219,7 @@ data class Webhook(
     /** Paused, it keeps its settings and sends nothing. */
     val enabled: Boolean = true,
     /**
-     * Its own words for chat messages, by the keys of `webhooks/messages_en.properties` (`player.join`,
+     * Its own words for chat messages, by the keys of `worldapi/webhooks/messages_en.properties` (`player.join`,
      * `player.death`, …), with the same `{player}`-style placeholders. The rest come in its language.
      */
     val messages: Map<String, String> = emptyMap(),

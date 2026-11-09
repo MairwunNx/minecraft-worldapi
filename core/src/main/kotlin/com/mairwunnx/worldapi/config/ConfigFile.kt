@@ -44,7 +44,7 @@ object ConfigFile {
     fun parse(text: String): WorldApiConfig = validate(yaml.decodeFromString(WorldApiConfig.serializer(), text))
 
     fun defaultText(): String =
-        ConfigFile::class.java.getResourceAsStream("/config.yml")!!.use { it.readBytes().decodeToString() }
+        ConfigFile::class.java.getResourceAsStream("/worldapi/config.yml")!!.use { it.readBytes().decodeToString() }
 
     fun newToken(): String = HexFormat.of().formatHex(ByteArray(32).also(SecureRandom()::nextBytes))
 
