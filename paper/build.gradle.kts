@@ -166,8 +166,9 @@ hangarPublish {
     }
 }
 
-// `smoke`: a tiny plugin with two expansions, for the smoke test only (`./gradlew :paper:smokeJar`, then
-// paper_smoke.py --plugin paper/build/libs/worldapi-smoke.jar). It compiles against the API alone, as any expansion does.
+// `smoke`: a tiny Kotlin plugin with expansions of API 2 and one of API 1, for the smoke test only (`./gradlew
+// :paper:smokeJar`, then paper_smoke.py --plugin paper/build/libs/worldapi-smoke.jar). It compiles against the API
+// alone, as any expansion does, and carries its own Kotlin, since WorldAPI's is relocated.
 val smoke: SourceSet = sourceSets.create("smoke")
 dependencies {
     "smokeCompileOnly"("io.papermc.paper:paper-api:26.3.build.245-stable")
@@ -177,5 +178,9 @@ tasks.register<Jar>("smokeJar") {
     description = "Builds the smoke test's expansion plugin."
     archiveFileName = "worldapi-smoke.jar"
     destinationDirectory = layout.buildDirectory.dir("libs")
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     from(smoke.output)
+    from(configurations["smokeRuntimeClasspath"].filter { it.name.startsWith("kotlin-stdlib") }.map(::zipTree)) {
+        exclude("META-INF/**")
+    }
 }
