@@ -1,6 +1,7 @@
 package com.mairwunnx.worldapi.extensions
 
 import com.mairwunnx.worldapi.api.ApiCall
+import com.mairwunnx.worldapi.api.Scope
 import com.mairwunnx.worldapi.core.MainThread
 import com.mairwunnx.worldapi.events.ApiEvent
 import com.mairwunnx.worldapi.events.EventBus
@@ -55,7 +56,31 @@ class Extensions(private val bus: EventBus, private val main: MainThread, privat
         override fun hashCode() = System.identityHashCode(key)
     }
 
-    class Namespace(val name: String, val plugin: Owner, val description: String, val resources: List<Resource>, val topics: List<Topic>)
+    /** One thing clients may do, `POST` or `DELETE` on a path, and the permission it needs. Never anonymous. */
+    class Action(
+        val method: String,
+        val path: String,
+        val description: String,
+        val permission: Scope,
+        val mainThread: Boolean,
+        val params: List<ExtensionParamInfo>,
+        val returns: JsonElement?,
+        /** Answers with the path's parameters, the query's, the body's fields, and the call they came with. */
+        val run: (path: Map<String, String>, query: Map<String, String>, body: JsonObject, call: ApiCall<*>) -> Any?,
+    ) {
+        private val pattern = Resource(path, description, false, mainThread) { _, _, _ -> null }
+
+        fun match(requested: List<String>): Map<String, String>? = pattern.match(requested)
+    }
+
+    class Namespace(
+        val name: String,
+        val plugin: Owner,
+        val description: String,
+        val resources: List<Resource>,
+        val topics: List<Topic>,
+        val actions: List<Action> = emptyList(),
+    )
 
     private val namespaces = ConcurrentHashMap<String, Namespace>()
 
@@ -67,7 +92,8 @@ class Extensions(private val bus: EventBus, private val main: MainThread, privat
         val owner = namespaces[namespace.name]?.plugin
         require(owner == null || owner == namespace.plugin) { "The namespace ${namespace.name} belongs to ${owner?.name}" }
         namespaces[namespace.name] = namespace
-        logger.info("${namespace.plugin.name} shares ${namespace.name}: ${namespace.resources.size} resources, ${namespace.topics.size} topics")
+        val actions = if (namespace.actions.isEmpty()) "" else ", ${namespace.actions.size} actions"
+        logger.info("${namespace.plugin.name} shares ${namespace.name}: ${namespace.resources.size} resources, ${namespace.topics.size} topics$actions")
     }
 
     fun unregister(name: String) {
@@ -88,9 +114,9 @@ class Extensions(private val bus: EventBus, private val main: MainThread, privat
 @Serializable
 data class ExtensionParamInfo(
     val name: String,
-    /** `path` or `query`. */
+    /** `path`, `query`, or `body`. */
     @SerialName("in") val where: String,
-    /** `integer`, `text`, `flag`, `choice`, or `player`, a name or a UUID. */
+    /** `integer`, `text`, `flag`, `choice`, `player` (a name or a UUID), or `place` (an object of `world`, `x`, `y`, and `z`). */
     val kind: String,
     val description: String,
     val min: Long? = null,
@@ -98,4 +124,6 @@ data class ExtensionParamInfo(
     /** What a missing value reads as. */
     val fallback: String? = null,
     val choices: List<String>? = null,
+    /** Whether a request without it answers 400; a path parameter always is. */
+    val required: Boolean = false,
 )

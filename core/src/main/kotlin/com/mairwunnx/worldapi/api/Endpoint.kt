@@ -86,8 +86,8 @@ class EndpointGroup<A : WorldApi>(val tag: String, val read: Scope) {
 
     inline fun <reified B, reified R> post(
         path: String, summary: String, scope: Scope, description: String? = null, query: List<QueryParam> = emptyList(),
-        status: HttpStatusCode = HttpStatusCode.OK, noinline handler: suspend ApiCall<A>.(B) -> R,
-    ) = add(HttpMethod.Post, path, summary, description, scope, query, serializer<B>(), responseOf<R>(), status) {
+        status: HttpStatusCode = HttpStatusCode.OK, orScopes: List<Scope> = emptyList(), noinline handler: suspend ApiCall<A>.(B) -> R,
+    ) = add(HttpMethod.Post, path, summary, description, scope, query, serializer<B>(), responseOf<R>(), status, orScopes) {
         @Suppress("UNCHECKED_CAST") handler(it as B)
     }
 
@@ -105,8 +105,8 @@ class EndpointGroup<A : WorldApi>(val tag: String, val read: Scope) {
 
     inline fun <reified R> delete(
         path: String, summary: String, scope: Scope, description: String? = null, query: List<QueryParam> = emptyList(),
-        noinline handler: suspend ApiCall<A>.() -> R,
-    ) = add(HttpMethod.Delete, path, summary, description, scope, query, null, responseOf<R>(), HttpStatusCode.OK) { handler() }
+        orScopes: List<Scope> = emptyList(), noinline handler: suspend ApiCall<A>.() -> R,
+    ) = add(HttpMethod.Delete, path, summary, description, scope, query, null, responseOf<R>(), HttpStatusCode.OK, orScopes) { handler() }
 
     @PublishedApi
     internal inline fun <reified R> responseOf(): KSerializer<*>? = if (R::class == Unit::class) null else serializer<R>()

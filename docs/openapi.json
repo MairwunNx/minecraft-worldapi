@@ -1286,6 +1286,270 @@
                         }
                     }
                 }
+            },
+            "post": {
+                "operationId": "postExtensionsNamespacePath",
+                "summary": "Does something through a plugin, as the plugin's action says",
+                "description": "Each action names the permission it needs and the body it reads in `GET /extensions`. Never anonymous; every call lands in the audit log.\n\nPermission: `server:read` or `server:read` or `players:read` or `players:private` or `events:read` or `chat:read` or `logs:read` or `system:read` or `world:write` or `players:write` or `players:moderate` or `server:console` or `commands:read` or `server:control` or `files:read` or `files:write` or `tokens:manage` or `webhooks:manage` or `code`.",
+                "tags": [
+                    "Extensions"
+                ],
+                "x-scope": "server:read",
+                "x-scopes-any": [
+                    "server:read",
+                    "server:read",
+                    "players:read",
+                    "players:private",
+                    "events:read",
+                    "chat:read",
+                    "logs:read",
+                    "system:read",
+                    "world:write",
+                    "players:write",
+                    "players:moderate",
+                    "server:console",
+                    "commands:read",
+                    "server:control",
+                    "files:read",
+                    "files:write",
+                    "tokens:manage",
+                    "webhooks:manage",
+                    "code"
+                ],
+                "security": [
+                    {
+                        "bearer": [
+                            "server:read"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "namespace",
+                        "in": "path",
+                        "required": true,
+                        "description": "namespace",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "path",
+                        "in": "path",
+                        "required": true,
+                        "description": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or unknown token",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The token lacks the permission",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit hit; see Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "The server thread didn't answer in time",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "deleteExtensionsNamespacePath",
+                "summary": "Takes something away or ends it through a plugin, as the plugin's action says",
+                "description": "Each action names the permission it needs and the query it reads in `GET /extensions`. Never anonymous; every call lands in the audit log.\n\nPermission: `server:read` or `server:read` or `players:read` or `players:private` or `events:read` or `chat:read` or `logs:read` or `system:read` or `world:write` or `players:write` or `players:moderate` or `server:console` or `commands:read` or `server:control` or `files:read` or `files:write` or `tokens:manage` or `webhooks:manage` or `code`.",
+                "tags": [
+                    "Extensions"
+                ],
+                "x-scope": "server:read",
+                "x-scopes-any": [
+                    "server:read",
+                    "server:read",
+                    "players:read",
+                    "players:private",
+                    "events:read",
+                    "chat:read",
+                    "logs:read",
+                    "system:read",
+                    "world:write",
+                    "players:write",
+                    "players:moderate",
+                    "server:console",
+                    "commands:read",
+                    "server:control",
+                    "files:read",
+                    "files:write",
+                    "tokens:manage",
+                    "webhooks:manage",
+                    "code"
+                ],
+                "security": [
+                    {
+                        "bearer": [
+                            "server:read"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "namespace",
+                        "in": "path",
+                        "required": true,
+                        "description": "namespace",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "path",
+                        "in": "path",
+                        "required": true,
+                        "description": "path",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or unknown token",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The token lacks the permission",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit hit; see Retry-After",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "The server thread didn't answer in time",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorBody"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/files": {
@@ -15767,6 +16031,37 @@
                 ],
                 "additionalProperties": false
             },
+            "ExtensionActionInfo": {
+                "type": "object",
+                "properties": {
+                    "method": {
+                        "type": "string"
+                    },
+                    "path": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "permission": {
+                        "type": "string"
+                    },
+                    "params": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ExtensionParamInfo"
+                        }
+                    },
+                    "returns": {}
+                },
+                "required": [
+                    "method",
+                    "path",
+                    "description",
+                    "permission"
+                ],
+                "additionalProperties": false
+            },
             "ExtensionInfo": {
                 "type": "object",
                 "properties": {
@@ -15792,6 +16087,12 @@
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/ExtensionTopicInfo"
+                        }
+                    },
+                    "actions": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ExtensionActionInfo"
                         }
                     }
                 },
@@ -15848,6 +16149,9 @@
                         "items": {
                             "type": "string"
                         }
+                    },
+                    "required": {
+                        "type": "boolean"
                     }
                 },
                 "required": [
