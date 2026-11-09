@@ -5,7 +5,7 @@ A Paper 26.3 plugin, and a Fabric and NeoForge mod for dedicated servers and sin
 ## Talking to the owner
 
 - Reply in Russian, address the owner as «вы». Quotes «ёлочки», nested „лапки“, an em dash with spaces « — ».
-- Code, comments, commit messages, and README.md are in English: curly quotes, an em dash without spaces or an en dash with spaces, never a hyphen as a dash.
+- Code, comments, commit messages, and README.md are in English: curly quotes, an en dash with spaces (never an em dash glued to the words or a hyphen as a dash), and no semicolon between clauses: a full stop, a comma, or a colon instead.
 
 ## How it fits together
 
