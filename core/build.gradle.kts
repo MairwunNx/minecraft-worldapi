@@ -4,7 +4,7 @@ plugins {
 }
 
 val ktorVersion = "3.6.1"
-val exposedVersion = "1.6.0"
+val exposedVersion = "1.6.1"
 
 // Everything that doesn't touch a game platform: no Bukkit, no Minecraft, no loader. paper builds on it now, and the mods
 // will through modcore, so another platform is only an adapter.
