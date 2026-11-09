@@ -65,6 +65,7 @@ object Hunting : Expansion("hunting", "Hunting", "Bosses and their hunters") {
 
     val hunters = resource("hunters", "The best hunters") { req -> List(req[limit]) { Hunter(PlayerRef(steve, "Steve"), it) } }.query(limit, sort).returnsListOf(Hunter::class.java).publicly()
     val card = resource("players/{player}", "A player’s card") { req -> mapOf("player" to req[player], "private" to req.can(Permission.PLAYERS_PRIVATE)) }.publicly()
+    val few = resource("few", "The three best hunters, or up to ten") { req -> List(req[limit]) { Hunter(PlayerRef(steve, "Steve"), it) } }.query(limit).orElse(limit, 3).between(limit, 1, 10).publicly()
     val lair = resource("lair", "Where the boss sleeps") { Lair("cave", Place("world", 1.0, 64.0, 2.0)) }.returns(Lair::class.java).publicly()
 
     val killed = event("boss.killed", BossKilled::class.java, "Players killed a boss").publicly().recorded()
@@ -121,7 +122,9 @@ class ExpansionV2Test {
         Registry.bind(host)
         Hunting.register()
         val namespace = assertNotNull(fake.api.extensions.namespace("hunting"))
-        assertEquals(listOf("hunters", "players/{player}", "lair"), namespace.resources.map { it.path })
+        assertEquals(listOf("hunters", "players/{player}", "few", "lair"), namespace.resources.map { it.path })
+        val few = namespace.resources[2].params.single()
+        assertEquals(listOf(1L, 10L, "3"), listOf(few.min, few.max, few.fallback))
         val params = namespace.resources[0].params
         assertEquals(listOf("limit" to "query", "sort" to "query"), params.map { it.name to it.where })
         assertEquals(listOf(1L, 50L, null), listOf(params[0].min, params[0].max, params[1].min))
@@ -151,6 +154,8 @@ class ExpansionV2Test {
         assertEquals(50, Json.parseToJsonElement(client.get("/api/v1/extensions/hunting/hunters?limit=900").bodyAsText()).jsonArray.size)
         assertEquals(HttpStatusCode.BadRequest, client.get("/api/v1/extensions/hunting/hunters?limit=five").status)
         assertEquals(HttpStatusCode.BadRequest, client.get("/api/v1/extensions/hunting/hunters?sort=deaths").status)
+        assertEquals(3, Json.parseToJsonElement(client.get("/api/v1/extensions/hunting/few").bodyAsText()).jsonArray.size)
+        assertEquals(10, Json.parseToJsonElement(client.get("/api/v1/extensions/hunting/few?limit=900").bodyAsText()).jsonArray.size)
 
         assertEquals("""{"player":{"uuid":"$steve","name":"Steve"},"private":false}""", client.get("/api/v1/extensions/hunting/players/Steve").bodyAsText())
         assertEquals("""{"player":{"uuid":"$steve","name":"Steve"},"private":true}""", client.get("/api/v1/extensions/hunting/players/$steve") { bearerAuth(read) }.bodyAsText())

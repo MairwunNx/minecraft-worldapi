@@ -80,20 +80,21 @@ class Expansions(
             val pathParams = params.filter { "{${it.name()}}" in resource.path() }
             Extensions.Resource(
                 resource.path(), resource.description(), resource.isPublic, resource.serverThread(),
-                params.map { param -> info(param, if (param in pathParams) "path" else "query") },
+                params.map { param -> info(param, if (param in pathParams) "path" else "query", Rules(resource::requires, resource::parse, resource::fallbackOf, resource::minOf, resource::maxOf)) },
                 resource.returns()?.let { if (resource.returnsList()) Schemas.listOf(it) else Schemas.of(it) },
-            ) { path, query, call -> handler.read(SecondRequest(params, path, query, call, players).checked()) }
+            ) { path, query, call -> handler.read(SecondRequest(params, path, query, call, players, rules = Rules(resource::requires, resource::parse, resource::fallbackOf, resource::minOf, resource::maxOf)).checked()) }
         }
         val actions = expansion.actions().map { action ->
             val permission = action.permission() ?: throw IllegalArgumentException("the action ${action.method()} ${action.path()} names no permission")
             val scope = Scope.entries.firstOrNull { it.id == permission.id() } ?: throw IllegalArgumentException("the action ${action.method()} ${action.path()} needs ${permission.id()}, which this WorldAPI doesn't know")
             val handler = action.handler()
             val params = action.params()
+            val rules = Rules(action::requires, action::parse, action::fallbackOf, action::minOf, action::maxOf)
             Extensions.Action(
                 action.method().name, action.path(), action.description(), scope, action.serverThread(),
-                action.pathParams().map { info(it, "path") } + action.queryParams().map { info(it, "query") } + action.bodyParams().map { info(it, "body") },
+                action.pathParams().map { info(it, "path", rules) } + action.queryParams().map { info(it, "query", rules) } + action.bodyParams().map { info(it, "body", rules) },
                 action.returns()?.let { if (action.returnsList()) Schemas.listOf(it) else Schemas.of(it) },
-            ) { path, query, body, call -> handler.read(SecondRequest(params, path, query, call, players, body).checked()) }
+            ) { path, query, body, call -> handler.read(SecondRequest(params, path, query, call, players, body, rules).checked()) }
         }
         Topic.forget(id)
         val topics = expansion.events().map { event ->
@@ -162,12 +163,12 @@ class Expansions(
         }
     }
 
-    private fun info(param: Param<*>, where: String) = ExtensionParamInfo(
+    private fun info(param: Param<*>, where: String, rules: Rules) = ExtensionParamInfo(
         param.name(), where, param.kind().name.lowercase(), param.description(),
-        param.min().takeIf { param.kind() == Param.Kind.INTEGER }, param.max().takeIf { param.kind() == Param.Kind.INTEGER },
-        param.fallback()?.let { if (it is Enum<*>) it.name.lowercase() else it.toString() },
+        rules.min(param).takeIf { param.kind() == Param.Kind.INTEGER }, rules.max(param).takeIf { param.kind() == Param.Kind.INTEGER },
+        rules.fallback(param)?.let { if (it is Enum<*>) it.name.lowercase() else it.toString() },
         param.choices().takeIf { param.kind() == Param.Kind.CHOICE },
-        param.isRequired() || where == "path",
+        rules.requires(param) || where == "path",
     )
 
     private companion object {
@@ -202,18 +203,20 @@ class SecondRequest(
     private val players: (String) -> PlayerRef?,
     /** An action's JSON body; empty for a resource. */
     private val body: JsonObject = JsonObject(emptyMap()),
+    /** What the resource or action says about its parameters beyond their declarations. */
+    private val rules: Rules = Rules.declared,
 ) : RequestV2 {
     /** Reads every parameter but players once, so a bad or missing value answers 400 even when the handler skips it. */
     fun checked() = apply {
-        params.forEach { if (it.kind() != Param.Kind.PLAYER) get(it) else if (it.isRequired() && raw(it).isNullOrEmpty()) throw IllegalArgumentException("${it.name()} is required") }
+        params.forEach { if (it.kind() != Param.Kind.PLAYER) get(it) else if (rules.requires(it) && raw(it).isNullOrEmpty()) throw IllegalArgumentException("${it.name()} is required") }
     }
 
     override fun <T> get(param: Param<T>): T {
         check(param in params) { "The resource doesn't declare the parameter ${param.name()}" }
         if (param.kind() == Param.Kind.PLACE) return param.type().cast(place(param))
         val raw = raw(param)
-        if (param.kind() != Param.Kind.PLAYER) return param.parse(raw)
-        if (raw.isNullOrEmpty()) return param.fallback()
+        if (param.kind() != Param.Kind.PLAYER) return param.type().cast(rules.parse(param, raw))
+        if (raw.isNullOrEmpty()) return param.type().cast(rules.fallback(param))
         val found = players(raw.trim()) ?: throw NoSuchElementException("No player \"$raw\" has played here")
         return param.type().cast(PlayerRefV2(UUID.fromString(found.uuid), found.name))
     }
@@ -228,7 +231,7 @@ class SecondRequest(
     private fun place(param: Param<*>): Place? {
         val field = body[param.name()]
         if (field == null || field is JsonNull) {
-            if (param.isRequired()) throw IllegalArgumentException("${param.name()} is required")
+            if (rules.requires(param)) throw IllegalArgumentException("${param.name()} is required")
             return null
         }
         val place = field as? JsonObject ?: throw IllegalArgumentException("${param.name()} must be an object of world, x, y, and z")
@@ -242,4 +245,21 @@ class SecondRequest(
     override fun seesCoordinates(): Boolean = call.seesCoordinates
 
     override fun can(permission: Permission): Boolean = Scope.entries.firstOrNull { it.id == permission.id() }?.let(call.principal::has) ?: false
+}
+
+/** What a resource or an action says about its parameters: required, a fallback, a whole number's range. */
+class Rules(
+    val requires: (Param<*>) -> Boolean,
+    private val read: (Param<Any?>, String?) -> Any?,
+    val fallback: (Param<*>) -> Any?,
+    val min: (Param<*>) -> Long,
+    val max: (Param<*>) -> Long,
+) {
+    @Suppress("UNCHECKED_CAST")
+    fun parse(param: Param<*>, raw: String?): Any? = read(param as Param<Any?>, raw)
+
+    companion object {
+        /** Each parameter as it was declared. */
+        val declared = Rules({ it.isRequired }, { param, raw -> param.parse(raw) }, { it.fallback() }, { it.min() }, { it.max() })
+    }
 }

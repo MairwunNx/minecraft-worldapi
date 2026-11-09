@@ -9,6 +9,7 @@ Actions: clients may now ask a plugin to do something, not only read it, with Wo
 - `Expansion.action(path, description, handler)` declares a `POST /extensions/<id>/<path>`, and `remove(...)` a `DELETE`, in the same one-line style as a resource. `Action.body(...)` names the JSON body's fields, `query(...)` the query's, and `permission(...)` the permission a client needs. Every action names one, and WorldAPI refuses an expansion with an action that doesn't. Actions never answer a visitor without a token and land in WorldAPI's audit log.
 - `place(name, description)`: a `Place` in an action's body, sent as `{"world", "x", "y", "z"}`.
 - `Param.required()`: a request without the parameter answers 400.
+- A resource or an action sets its own say on a parameter it shares with others: `required(param)`, `orElse(param, value)` for what a missing value reads as, and `between(param, min, max)` for a whole number's range. `GET /extensions` lists each resource's own.
 
 ## 2.0.0
 

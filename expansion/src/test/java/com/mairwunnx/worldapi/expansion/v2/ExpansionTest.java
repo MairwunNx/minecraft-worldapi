@@ -130,6 +130,35 @@ class ExpansionTest {
     }
 
     @Test
+    void aResourceOrActionSetsItsOwnRequiredFallbackAndRange() {
+        Bosses bosses = new Bosses();
+        Expansion local = new Expansion("local") {
+            final Param<Integer> limit = integer("limit", "How many", 1, 500, 10);
+            final Param<String> type = text("type", "A boss type");
+            final Resource board = resource("board", "", req -> null).query(limit).orElse(limit, 3).between(limit, 1, 50);
+            final Action spawn = action("spawn", "", req -> null).body(type).required(type).permission(Permission.WORLD_WRITE);
+        };
+        Resource board = local.resources().getFirst();
+        Param<?> limit = board.params().getFirst();
+        assertEquals(3, board.parse(limit, null));
+        assertEquals(50, board.parse(limit, "900"));
+        assertEquals(500, limit.parse("900"), "the declaration keeps its own range");
+        assertEquals(List.of(1L, 50L), List.of(board.minOf(limit), board.maxOf(limit)));
+        Action spawn = local.actions().getFirst();
+        assertTrue(spawn.requires(spawn.params().getFirst()));
+        assertEquals("type is required", assertThrows(IllegalArgumentException.class, () -> spawn.parse(spawn.params().getFirst(), null)).getMessage());
+        assertThrows(IllegalArgumentException.class, () -> new Expansion("x") {
+            final Param<String> q = text("q", "");
+            final Resource r = resource("r", "", req -> null).required(q);
+        });
+        assertThrows(IllegalArgumentException.class, () -> new Expansion("x") {
+            final Param<Integer> q = integer("q", "", 1, 5, 1);
+            final Resource r = resource("r", "", req -> null).query(q).between(q, 5, 1);
+        });
+        assertNotNull(bosses.hunters);
+    }
+
+    @Test
     void aRegisteredExpansionDoesntChange() {
         Bosses bosses = new Bosses();
         bosses.register();

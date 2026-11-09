@@ -38,7 +38,8 @@ public final class Param<T> {
     }
 
     /**
-     * The client must send it: a request without it answers 400. A path parameter is always there. Since API 2.1.
+     * The client must send it to every resource and action that reads it: a request without it answers 400. A path
+     * parameter is always there. {@link Resource#required} and {@link Action#required} ask it for one. Since API 2.1.
      */
     public Param<T> required() {
         expansion.checkOpen();
@@ -57,6 +58,14 @@ public final class Param<T> {
      * itself, since only the server knows them.
      */
     public T parse(String raw) {
+        return parse(raw, required, fallback, min, max);
+    }
+
+    /**
+     * Reads a client's value as one resource or action asks: its own say on whether it's required, what a missing value
+     * reads as, and a whole number's range. Since API 2.1.
+     */
+    public T parse(String raw, boolean required, T fallback, long min, long max) {
         if (raw == null || raw.isEmpty() && kind != Kind.FLAG) {
             if (required) throw new IllegalArgumentException(name + " is required");
             return fallback;

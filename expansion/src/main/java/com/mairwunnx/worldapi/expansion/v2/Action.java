@@ -25,6 +25,7 @@ public final class Action {
     private final List<Param<?>> query = new ArrayList<>();
     private final List<Param<?>> body = new ArrayList<>();
     private Permission permission;
+    private final Overrides overrides = new Overrides();
     private boolean serverThread;
     private Class<?> returns;
     private boolean returnsList;
@@ -50,6 +51,52 @@ public final class Action {
     public Action query(Param<?>... params) {
         add(query, params);
         return this;
+    }
+
+    /** The client must send these to this one, though others may read them as optional. Since API 2.1. */
+    public Action required(Param<?>... params) {
+        expansion.checkOpen();
+        overrides.required(path, params(), params);
+        return this;
+    }
+
+    /** What a missing value reads as here, whatever the parameter's own fallback: {@code .orElse(limit, 10)}. Since API 2.1. */
+    public <V> Action orElse(Param<V> param, V fallback) {
+        expansion.checkOpen();
+        overrides.fallback(path, params(), param, fallback);
+        return this;
+    }
+
+    /** A whole number's range here, whatever the parameter's own: {@code .between(limit, 1, 50)}. Since API 2.1. */
+    public Action between(Param<Integer> param, int min, int max) {
+        expansion.checkOpen();
+        overrides.range(path, params(), param, min, max);
+        return this;
+    }
+
+    /** Whether a request here must carry {@code param}. */
+    public boolean requires(Param<?> param) {
+        return overrides.requires(param);
+    }
+
+    /** What a missing {@code param} reads as here. */
+    public Object fallbackOf(Param<?> param) {
+        return overrides.fallbackOf(param);
+    }
+
+    /** The smallest whole number {@code param} takes here. */
+    public long minOf(Param<?> param) {
+        return overrides.minOf(param);
+    }
+
+    /** The largest whole number {@code param} takes here. */
+    public long maxOf(Param<?> param) {
+        return overrides.maxOf(param);
+    }
+
+    /** Reads a client's text for {@code param} as this one asks. */
+    public <V> V parse(Param<V> param, String raw) {
+        return overrides.parse(param, raw);
     }
 
     /**
