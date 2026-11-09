@@ -21,8 +21,8 @@ class BStats private constructor(private val metrics: Metrics) : AutoCloseable {
     }
 
     companion object {
-        /** WorldAPI's id on bstats.org; 0 until it's registered, and then nothing starts. */
-        const val BSTATS_ID = 0
+        /** WorldAPI's id on bstats.org, at bstats.org/plugin/bukkit/WorldAPI/35226; 0 keeps bStats off. */
+        const val BSTATS_ID = 35226
 
         /** Starts bStats unless [enabled] is false or the id is unset; null when it didn't start. */
         fun start(plugin: JavaPlugin, enabled: Boolean, database: DatabaseType, usage: Usage): BStats? {
