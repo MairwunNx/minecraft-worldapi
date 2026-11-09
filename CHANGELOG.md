@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.6.0
+
+- ✍️ **Plugins take requests, not only questions.** A plugin on expansion API 2.1 can offer actions: `POST` or `DELETE /extensions/<namespace>/<path>`, like spawning one of its bosses or putting a player into AFK. Each action needs the permission the plugin names, never answers a visitor without a token, and lands in the audit log. `GET /extensions` lists every action with its permission and the body it reads, and the MCP server calls them with `call_extension`.
+
 ## 4.5.0
 
 - 🧩 **Expansion API 2.** Plugins and mods share their data through `com.mairwunnx:worldapi-expansion` 2.0.0: an expansion declares its parameters, resources, and events as fields, and its events carry typed data. Plugins built against API 1 keep working.
