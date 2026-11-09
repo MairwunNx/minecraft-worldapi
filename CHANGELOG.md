@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.3.3
+
+- ⬆️ **Updated libraries.** WorldAPI builds on Paper 26.3 build 245 and Fabric API 0.165.2, with Exposed 1.6.1 and the admin panel's newest packages, i18next 27 among them.
+
 ## 4.3.2
 
 - ⬆️ **Updated libraries.** WorldAPI builds on Paper 26.3 build 237 and NeoForge 26.3.0.101, with Ktor 3.6.1, the SQLite driver 3.54.1.0 in the mods, and the admin panel's newest packages.
