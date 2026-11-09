@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.4.0
+
+- 📊 **bStats on Paper.** The Paper plugin reports to bStats which database WorldAPI keeps its history in, and how many REST requests and WebSocket connections it served. `metrics: false` in `config.yml` turns it off; the Fabric and NeoForge mods send nothing.
+
 ## 4.3.3
 
 - ⬆️ **Updated libraries.** WorldAPI builds on Paper 26.3 build 245 and Fabric API 0.165.2, with Exposed 1.6.1 and the admin panel's newest packages, i18next 27 among them.
