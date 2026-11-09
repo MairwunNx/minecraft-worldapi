@@ -46,6 +46,8 @@ class HttpServer<A : WorldApi>(
     private val endpoints: List<Endpoint<A>>,
     private val hub: WebSocketHub,
     private val logger: Logger,
+    /** Counts what the API serves, for bStats on Paper; the mods pass none. */
+    private val usage: Usage? = null,
 ) {
     val limiter = RateLimiter()
     val exposure = Exposure(logger)
@@ -143,6 +145,7 @@ class HttpServer<A : WorldApi>(
                 }
                 webSocket("/ws") {
                     val principal = guard(call, read = true, allowMissingToken = true)
+                    usage?.socket()
                     hub.serve(this, principal)
                 }
                 Panel.authRoutes(this, this@HttpServer, api)
@@ -165,6 +168,7 @@ class HttpServer<A : WorldApi>(
         route(endpoint.path, endpoint.method) {
             handle {
                 val principal = guard(call, read = !endpoint.writes, scope = endpoint.scope, orScopes = endpoint.orScopes)
+                usage?.request()
                 val apiCall = ApiCall(call, endpoint, api, principal)
                 var status = HttpStatusCode.InternalServerError
                 try {

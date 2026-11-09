@@ -2,6 +2,8 @@ package com.mairwunnx.worldapi
 
 import com.mairwunnx.worldapi.api.Scope
 import com.mairwunnx.worldapi.api.HttpServer
+import com.mairwunnx.worldapi.api.Usage
+import com.mairwunnx.worldapi.metrics.BStats
 import com.mairwunnx.worldapi.events.Vanished
 import com.mairwunnx.worldapi.command.TokenCommands
 import com.mairwunnx.worldapi.command.WorldApiCommand
@@ -61,6 +63,8 @@ class WorldApiPlugin : JavaPlugin() {
     private var http: HttpServer<PaperApi>? = null
     private var stopConsole: (() -> Unit)? = null
     private var plan: AutoCloseable? = null
+    private val usage = Usage()
+    private var metrics: BStats? = null
 
     override fun onEnable() {
         val configPath = dataFolder.toPath().resolve("config.yml")
@@ -146,6 +150,7 @@ class WorldApiPlugin : JavaPlugin() {
 
         startHttp()
         plan = Plan.start(this, api, { hub.size }, Routes.all.size)
+        metrics = BStats.start(this, loaded.metrics, loaded.database.type, usage)
         // The first tick means the worlds are loaded and the server is accepting players.
         server.scheduler.runTask(this, Runnable {
             taming.seed()
@@ -161,6 +166,8 @@ class WorldApiPlugin : JavaPlugin() {
         if (!::api.isInitialized) return
         plan?.close()
         plan = null
+        metrics?.close()
+        metrics = null
         api.bus.publish(ApiEvent(Topic.SERVER_STATUS, buildJsonObject { put("status", if (server.isStopping) "stopping" else "plugin_disabled") }))
         server.onlinePlayers.forEach { api.history.closeSession(it.uniqueId.toString(), Instant.now()) }
         api.scripts.unloadAll()
@@ -196,7 +203,7 @@ class WorldApiPlugin : JavaPlugin() {
         val settings = config.get().http
         val endpoints = Routes.all
         try {
-            http = HttpServer(api, endpoints, hub, logger).also { it.start() }
+            http = HttpServer(api, endpoints, hub, logger, usage).also { it.start() }
             logger.info("Listening on ${settings.host}:${settings.port}${settings.basePath} with ${endpoints.size} endpoints")
         } catch (error: Exception) {
             http = null

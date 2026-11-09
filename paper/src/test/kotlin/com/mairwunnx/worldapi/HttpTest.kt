@@ -2,6 +2,7 @@ package com.mairwunnx.worldapi
 
 import com.mairwunnx.worldapi.api.HttpServer
 import com.mairwunnx.worldapi.api.Scope
+import com.mairwunnx.worldapi.api.Usage
 import com.mairwunnx.worldapi.api.endpoints
 import com.mairwunnx.worldapi.api.notFound
 import com.mairwunnx.worldapi.api.string
@@ -13,6 +14,7 @@ import com.mairwunnx.worldapi.config.Token
 import com.mairwunnx.worldapi.config.WorldApiConfig
 import com.mairwunnx.worldapi.store.Audit
 import com.mairwunnx.worldapi.ws.WebSocketHub
+import io.ktor.client.plugins.websocket.webSocket
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
 import io.ktor.client.request.header
@@ -68,12 +70,30 @@ class HttpTest {
         get<Echo>("/broken", "Always fails") { error("boom") }
     }
 
-    private fun test(block: suspend ApplicationTestBuilder.(TestApi) -> Unit) = TestApi(config).use { fake ->
+    private fun test(usage: Usage? = null, block: suspend ApplicationTestBuilder.(TestApi) -> Unit) = TestApi(config).use { fake ->
         val hub = WebSocketHub(fake.ref::get, { null }) { _, _ -> emptyList() }
         testApplication {
-            application { HttpServer(fake.api, routes, hub, Logger.getAnonymousLogger()).configure(this) }
+            application { HttpServer(fake.api, routes, hub, Logger.getAnonymousLogger(), usage).configure(this) }
             block(fake)
         }
+    }
+
+    @Test
+    fun `usage counts requests endpoints served and WebSocket connections`() {
+        val usage = Usage()
+        test(usage) {
+            client.get("/api/v1/public")
+            client.get("/api/v1/private") { bearerAuth(read) }
+            client.get("/api/v1/missing") { bearerAuth(read) }
+            // Refused before an endpoint runs: not served.
+            client.get("/api/v1/private")
+            client.get("/api/v1/nowhere")
+            createClient { install(io.ktor.client.plugins.websocket.WebSockets) }.webSocket("/api/v1/ws") {}
+        }
+        assertEquals(3, usage.drainRequests())
+        assertEquals(0, usage.drainRequests())
+        assertEquals(1, usage.drainSockets())
+        assertEquals(0, usage.drainSockets())
     }
 
     private fun code(body: String) = Json.parseToJsonElement(body).jsonObject["error"]!!.jsonObject["code"]!!.jsonPrimitive.content

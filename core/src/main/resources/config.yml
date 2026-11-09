@@ -283,3 +283,6 @@ database:
   #   user: worldapi
   #   password: "secret"
   #   properties: { sslMode: verify-full }
+
+# false turns bStats off for WorldAPI; Paper only.
+metrics: true

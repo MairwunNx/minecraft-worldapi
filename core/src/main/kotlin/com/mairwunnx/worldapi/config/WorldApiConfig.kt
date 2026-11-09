@@ -23,6 +23,8 @@ data class WorldApiConfig(
     val scripts: Scripts = Scripts(),
     val panel: PanelSettings = PanelSettings(),
     val database: DatabaseSettings = DatabaseSettings(),
+    /** Anonymous usage counts to bStats; Paper only. */
+    val metrics: Boolean = true,
 )
 
 @Serializable

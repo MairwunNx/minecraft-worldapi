@@ -26,6 +26,8 @@ dependencies {
     compileOnly("org.xerial:sqlite-jdbc:3.54.1.0")
     // Plan is optional: its section shows on Plan's pages when Plan runs next to WorldAPI.
     compileOnly("com.djrapitops:plan-api:5.9-R1.3")
+    // Anonymous usage counts; bStats insists on being relocated, which the shadow jar does.
+    implementation("org.bstats:bstats-bukkit:3.2.1")
 
     testImplementation("io.papermc.paper:paper-api:26.3.build.245-stable")
     testImplementation("org.xerial:sqlite-jdbc:3.54.1.0")
@@ -112,7 +114,7 @@ tasks.shadowJar {
     }
     listOf(
         "kotlin", "kotlinx", "io.ktor", "com.charleskorn.kaml", "it.krzeminski.snakeyaml", "okio", "net.thauvin", "com.typesafe.config",
-        "org.jetbrains.exposed", "com.zaxxer.hikari", "org.postgresql", "org.mariadb.jdbc",
+        "org.jetbrains.exposed", "com.zaxxer.hikari", "org.postgresql", "org.mariadb.jdbc", "org.bstats",
     )
         .forEach { relocate(it, "com.mairwunnx.worldapi.libs.$it") }
     // ECJ stays where it is: it finds its message bundles by package name, and nothing else ships it.
