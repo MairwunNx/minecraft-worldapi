@@ -26,6 +26,13 @@ import java.util.concurrent.CompletableFuture
  * for with [GameTestHelper.succeedWhen].
  */
 object Api {
+    /**
+     * How long a test that calls WorldAPI may wait, in ticks: 30 seconds at full speed. A call answers on its own threads,
+     * so the wait is the HTTP server's, not the game's: a busy CI runner warming Ktor up for the first requests can take
+     * seconds. The helper checks every tick, so a passing test still ends as soon as WorldAPI answers.
+     */
+    const val TICKS = 600
+
     private val client = HttpClient.newHttpClient()
 
     class Answer(val status: Int, val body: String) {

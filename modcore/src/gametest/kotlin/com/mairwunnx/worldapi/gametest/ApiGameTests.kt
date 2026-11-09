@@ -23,7 +23,7 @@ import net.minecraft.world.level.block.Blocks
 class ApiGameTests {
     private val JsonObject.text get() = this.mapValues { it.value.toString() }
 
-    @GameTest(maxTicks = 100)
+    @GameTest(maxTicks = Api.TICKS)
     fun serverSaysWhereItRuns(helper: GameTestHelper) {
         val loader = Mod.loader.id
         helper.expect(Api.get("/server")) { answer ->
@@ -38,14 +38,14 @@ class ApiGameTests {
         }
     }
 
-    @GameTest(maxTicks = 100)
+    @GameTest(maxTicks = Api.TICKS)
     fun worldsAnswerToPaperNames(helper: GameTestHelper) {
         helper.expect(Api.get("/worlds/world_nether")) { answer ->
             if (answer.status != 200 || answer.json.jsonObject["key"]?.jsonPrimitive?.content != "minecraft:the_nether") "world_nether isn't the Nether" else null
         }
     }
 
-    @GameTest(maxTicks = 100)
+    @GameTest(maxTicks = Api.TICKS)
     fun blocksRoundTrip(helper: GameTestHelper) {
         val pos = helper.absolutePos(BlockPos(1, 1, 1))
         helper.expect(Api.call("PUT", "/worlds/overworld/blocks/${pos.x}/${pos.y}/${pos.z}", """{"block":"minecraft:oak_stairs[facing=east]"}""")) { answer ->
@@ -59,7 +59,7 @@ class ApiGameTests {
         }
     }
 
-    @GameTest(maxTicks = 100)
+    @GameTest(maxTicks = Api.TICKS)
     fun playersShowAndChange(helper: GameTestHelper) {
         val player = Api.player(helper)
         val name = player.gameProfile.name()
@@ -74,7 +74,7 @@ class ApiGameTests {
         }
     }
 
-    @GameTest(maxTicks = 100)
+    @GameTest(maxTicks = Api.TICKS)
     fun inventoriesTakeItems(helper: GameTestHelper) {
         val player = Api.player(helper)
         helper.expect(Api.call("POST", "/players/${player.uuid}/inventory/give", """{"item":{"type":"minecraft:diamond","amount":70}}""")) { answer ->
@@ -88,7 +88,7 @@ class ApiGameTests {
         }
     }
 
-    @GameTest(maxTicks = 100)
+    @GameTest(maxTicks = Api.TICKS)
     fun entitiesSpawnWhereAsked(helper: GameTestHelper) {
         val at = helper.absoluteVec(net.minecraft.world.phys.Vec3(2.5, 2.0, 2.5))
         helper.expect(Api.call("POST", "/worlds/overworld/entities", """{"type":"minecraft:pig","location":{"world":"overworld","x":${at.x},"y":${at.y},"z":${at.z}}}""")) { answer ->
@@ -102,7 +102,7 @@ class ApiGameTests {
         }
     }
 
-    @GameTest(maxTicks = 200)
+    @GameTest(maxTicks = Api.TICKS)
     fun joinsReachTheHistory(helper: GameTestHelper) {
         val player = Api.player(helper)
         player.connection.disconnect(net.minecraft.network.chat.Component.literal("done"))
@@ -119,7 +119,7 @@ class ApiGameTests {
         }
     }
 
-    @GameTest(maxTicks = 100)
+    @GameTest(maxTicks = Api.TICKS)
     fun commandsKnowTheirMods(helper: GameTestHelper) {
         helper.expect(Api.get("/server/commands?plugin=worldapi")) { answer ->
             val names = answer.body
@@ -127,7 +127,7 @@ class ApiGameTests {
         }
     }
 
-    @GameTest(maxTicks = 100)
+    @GameTest(maxTicks = Api.TICKS)
     fun scriptsSayTheyArePaperOnly(helper: GameTestHelper) {
         val owner = Mod.runtime!!.api.tokens.issue("scripts-${System.nanoTime()}", listOf("owner"), "test", null)
         helper.expect(Api.call("GET", "/scripts", headers = mapOf("Authorization" to "Bearer $owner"), auth = false)) { answer ->
@@ -135,7 +135,7 @@ class ApiGameTests {
         }
     }
 
-    @GameTest(maxTicks = 100)
+    @GameTest(maxTicks = Api.TICKS)
     fun playersShowWhatTheyLookAt(helper: GameTestHelper) {
         val player = Api.player(helper)
         // A wall of gold in front, south of the player, who looks straight south.
@@ -153,7 +153,7 @@ class ApiGameTests {
         }
     }
 
-    @GameTest(maxTicks = 100)
+    @GameTest(maxTicks = Api.TICKS)
     fun idleTimeStartsAtJoin(helper: GameTestHelper) {
         val player = Api.player(helper)
         helper.expect(Api.get("/players/online")) { answer ->
@@ -168,7 +168,7 @@ class ApiGameTests {
         }
     }
 
-    @GameTest(maxTicks = 100)
+    @GameTest(maxTicks = Api.TICKS)
     fun moderatorsCantMakeOperators(helper: GameTestHelper) {
         val moderator = Mod.runtime!!.api.tokens.issue("moderator-${System.nanoTime()}", listOf("moderator"), "test", null)
         val ops = Api.call("PATCH", "/server/ops", """{"add":["Steve"]}""", headers = mapOf("Authorization" to "Bearer $moderator"), auth = false)
@@ -177,21 +177,21 @@ class ApiGameTests {
         }
     }
 
-    @GameTest(maxTicks = 100)
+    @GameTest(maxTicks = Api.TICKS)
     fun theConsoleKeepsWorldApiPermissions(helper: GameTestHelper) {
         helper.expect(Api.call("POST", "/server/commands", """{"command":"lp user Steve permission set worldapi.admin true"}""")) { answer ->
             if (answer.status != 403 || "protected_permission" !in answer.body) "the console handed out worldapi.admin" else null
         }
     }
 
-    @GameTest(maxTicks = 100)
+    @GameTest(maxTicks = Api.TICKS)
     fun expansionsFromOtherModsAnswer(helper: GameTestHelper) {
         helper.expect(Api.get("/extensions/test_found/echo/hello")) { answer ->
             if (answer.status != 200 || "\"hello\"" !in answer.body) "the test mod's expansion didn't answer" else null
         }
     }
 
-    @GameTest(maxTicks = 100)
+    @GameTest(maxTicks = Api.TICKS)
     fun anonymousClientsGetNoCoordinates(helper: GameTestHelper) {
         val player = Api.player(helper)
         helper.expect(Api.call("GET", "/players/online", auth = false)) { answer ->
