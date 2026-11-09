@@ -5,13 +5,14 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * A parameter of a resource's path or query, declared once on the {@link Expansion} and read with {@link Request#get}.
- * A path takes it by name, like {@code {player}}; a query takes it through {@link Resource#query}. Its kind, range, and
- * description go into {@code GET /extensions}, so clients and the MCP server learn what a resource accepts.
+ * A parameter of a path, a query, or an action's body, declared once on the {@link Expansion} and read with
+ * {@link Request#get}. A path takes it by name, like {@code {player}}, a query through {@link Resource#query} or
+ * {@link Action#query}, and a body through {@link Action#body}. Its kind, range, and description go into
+ * {@code GET /extensions}, so clients and the MCP server learn what a resource or an action accepts.
  */
 public final class Param<T> {
     /** How WorldAPI reads the text a client sends. */
-    public enum Kind { INTEGER, TEXT, FLAG, CHOICE, PLAYER }
+    public enum Kind { INTEGER, TEXT, FLAG, CHOICE, PLAYER, PLACE }
 
     private final Expansion expansion;
     private final String name;
@@ -22,6 +23,7 @@ public final class Param<T> {
     private final long min;
     private final long max;
     private final List<String> choices;
+    private boolean required;
 
     Param(Expansion expansion, String name, String description, Kind kind, Class<T> type, T fallback, long min, long max, List<String> choices) {
         this.expansion = expansion;
@@ -36,12 +38,29 @@ public final class Param<T> {
     }
 
     /**
+     * The client must send it: a request without it answers 400. A path parameter is always there. Since API 2.1.
+     */
+    public Param<T> required() {
+        expansion.checkOpen();
+        required = true;
+        return this;
+    }
+
+    /** Whether a request without it answers 400. */
+    public boolean isRequired() {
+        return required;
+    }
+
+    /**
      * Reads a client's value: {@link #fallback()} when it's missing. A whole number outside the range is kept inside it.
      * Throws {@link IllegalArgumentException}, which answers 400, for a value that doesn't fit. WorldAPI reads players
      * itself, since only the server knows them.
      */
     public T parse(String raw) {
-        if (raw == null || raw.isEmpty() && kind != Kind.FLAG) return fallback;
+        if (raw == null || raw.isEmpty() && kind != Kind.FLAG) {
+            if (required) throw new IllegalArgumentException(name + " is required");
+            return fallback;
+        }
         String value = raw.trim();
         return type.cast(switch (kind) {
             case INTEGER -> {
@@ -64,6 +83,7 @@ public final class Param<T> {
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException(name + " must be one of " + String.join(", ", choices)));
             case PLAYER -> throw new UnsupportedOperationException("WorldAPI reads players");
+            case PLACE -> throw new UnsupportedOperationException("WorldAPI reads places");
         });
     }
 
@@ -87,7 +107,7 @@ public final class Param<T> {
         return type;
     }
 
-    /** What a missing value reads as: null for text, players, and choices without one, false for a flag. */
+    /** What a missing value reads as: null for text, players, places, and choices without one, false for a flag. */
     public T fallback() {
         return fallback;
     }

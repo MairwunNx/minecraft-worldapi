@@ -2,6 +2,14 @@
 
 `com.mairwunnx:worldapi-expansion` on Maven Central. Within a major version the API only grows: an expansion built against an older version runs on every newer WorldAPI of that major. The wiki's “Expansions” says how to use it.
 
+## 2.1.0
+
+Actions: clients may now ask a plugin to do something, not only read it, with WorldAPI 4.6.0.
+
+- `Expansion.action(path, description, handler)` declares a `POST /extensions/<id>/<path>`, and `remove(...)` a `DELETE`, in the same one-line style as a resource. `Action.body(...)` names the JSON body's fields, `query(...)` the query's, and `permission(...)` the permission a client needs. Every action names one, and WorldAPI refuses an expansion with an action that doesn't. Actions never answer a visitor without a token and land in WorldAPI's audit log.
+- `place(name, description)`: a `Place` in an action's body, sent as `{"world", "x", "y", "z"}`.
+- `Param.required()`: a request without the parameter answers 400.
+
 ## 2.0.0
 
 API 2, in the package `com.mairwunnx.worldapi.expansion.v2`. An expansion is a class or a Kotlin `object`, and its fields declare what it shares, the way Exposed declares a table's columns. The compiler now ties an event to its declaration and its data. API 1 stays in its package for plugins built against it.

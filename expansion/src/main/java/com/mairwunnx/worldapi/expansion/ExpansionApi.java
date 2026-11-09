@@ -12,7 +12,7 @@ package com.mairwunnx.worldapi.expansion;
  */
 public final class ExpansionApi {
     /** This API's version, {@code major.minor.patch}. */
-    public static final String VERSION = "2.0.0";
+    public static final String VERSION = "2.1.0";
 
     private ExpansionApi() {}
 

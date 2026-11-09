@@ -7,7 +7,7 @@ plugins {
 // The expansion API: plain Java with no dependencies, so a plugin or mod in any language can use it and WorldAPI's own
 // Kotlin stays private. WorldAPI's jars carry these classes as they are; expansions compile against the published jar.
 // It has its own version, apart from WorldAPI's.
-version = (findProperty("expansionVersion") as String?)?.takeIf { it.isNotBlank() } ?: "2.0.0"
+version = (findProperty("expansionVersion") as String?)?.takeIf { it.isNotBlank() } ?: "2.1.0"
 
 java {
     toolchain { languageVersion = JavaLanguageVersion.of(25) }

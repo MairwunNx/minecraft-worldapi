@@ -41,6 +41,7 @@ public abstract class Expansion {
     private final List<Param<?>> params = new ArrayList<>();
     private final List<Resource> resources = new ArrayList<>();
     private final List<Event<?>> events = new ArrayList<>();
+    private final List<Action> actions = new ArrayList<>();
     private volatile boolean frozen;
 
     /**
@@ -103,6 +104,11 @@ public abstract class Expansion {
         return List.copyOf(resources);
     }
 
+    /** Every action it declared, in order. Since API 2.1. */
+    public final List<Action> actions() {
+        return List.copyOf(actions);
+    }
+
     /** Every event it declared, in order. */
     public final List<Event<?>> events() {
         return List.copyOf(events);
@@ -126,17 +132,49 @@ public abstract class Expansion {
      */
     protected final Resource resource(String path, String description, Resource.Handler handler) {
         checkOpen();
-        String trimmed = Names.check(Names.PATH, path, "resource path").replaceAll("^/|/$", "");
+        String trimmed = trim(path);
         if (resources.stream().anyMatch(it -> it.path().equals(trimmed))) throw new IllegalArgumentException(id + " declares " + trimmed + " twice");
-        List<Param<?>> pathParams = Names.pathParams(trimmed).stream().map(param -> params.stream()
-            .filter(it -> it.name().equals(param))
-            .findFirst()
-            .orElseThrow(() -> new IllegalArgumentException("Declare the parameter " + param + " before " + trimmed)))
-            .<Param<?>>map(it -> it)
-            .toList();
-        Resource resource = new Resource(this, trimmed, description, handler, pathParams);
+        Resource resource = new Resource(this, trimmed, description, handler, pathParams(trimmed));
         resources.add(resource);
         return resource;
+    }
+
+    /**
+     * An action clients call with {@code POST /extensions/<id>/<path>} and a JSON body: something your plugin does on
+     * request, like spawning a boss. Name its {@link Action#permission}. Since API 2.1.
+     */
+    protected final Action action(String path, String description, Resource.Handler handler) {
+        return add(Action.Method.POST, path, description, handler);
+    }
+
+    /**
+     * An action clients call with {@code DELETE /extensions/<id>/<path>}: something your plugin takes away or ends on
+     * request, like a player's AFK. Name its {@link Action#permission}. Since API 2.1.
+     */
+    protected final Action remove(String path, String description, Resource.Handler handler) {
+        return add(Action.Method.DELETE, path, description, handler);
+    }
+
+    private Action add(Action.Method method, String path, String description, Resource.Handler handler) {
+        checkOpen();
+        String trimmed = trim(path);
+        if (actions.stream().anyMatch(it -> it.method() == method && it.path().equals(trimmed))) throw new IllegalArgumentException(id + " declares " + method + " " + trimmed + " twice");
+        Action action = new Action(this, method, trimmed, description, handler, pathParams(trimmed));
+        actions.add(action);
+        return action;
+    }
+
+    private static String trim(String path) {
+        return Names.check(Names.PATH, path, "path").replaceAll("^/|/$", "");
+    }
+
+    private List<Param<?>> pathParams(String path) {
+        return Names.pathParams(path).stream().map(param -> params.stream()
+            .filter(it -> it.name().equals(param))
+            .findFirst()
+            .orElseThrow(() -> new IllegalArgumentException("Declare the parameter " + param + " before " + path)))
+            .<Param<?>>map(it -> it)
+            .toList();
     }
 
     /** A whole number, {@code fallback} when it's missing, kept between {@code min} and {@code max}. */
@@ -167,6 +205,14 @@ public abstract class Expansion {
      */
     protected final Param<PlayerRef> player(String name, String description) {
         return param(new Param<>(this, name, description, Param.Kind.PLAYER, PlayerRef.class, null, 0, 0, List.of()));
+    }
+
+    /**
+     * A place in an action's body, sent as {@code {"world": "world", "x": 0, "y": 64, "z": 0}}, null when it's missing.
+     * Since API 2.1.
+     */
+    protected final Param<Place> place(String name, String description) {
+        return param(new Param<>(this, name, description, Param.Kind.PLACE, Place.class, null, 0, 0, List.of()));
     }
 
     private <T> Param<T> param(Param<T> param) {

@@ -101,6 +101,35 @@ class ExpansionTest {
     }
 
     @Test
+    void actionsDeclareTheirBodyAndPermission() {
+        Expansion afks = new Expansion("afks") {
+            final Param<PlayerRef> player = player("player", "A player");
+            final Param<String> reason = text("reason", "Why").required();
+            final Param<Place> at = place("at", "Where");
+            final Action enter = action("players/{player}/afk", "Puts a player into AFK", req -> null).body(reason, at).permission(Permission.PLAYERS_MODERATE).onServerThread();
+            final Action leave = remove("players/{player}/afk", "Takes a player out of AFK", req -> null).permission(Permission.PLAYERS_MODERATE);
+        };
+        List<Action> actions = afks.actions();
+        assertEquals(List.of(Action.Method.POST, Action.Method.DELETE), actions.stream().map(Action::method).toList());
+        assertEquals(List.of("player", "reason", "at"), actions.getFirst().params().stream().map(Param::name).toList());
+        assertEquals(Permission.PLAYERS_MODERATE, actions.get(1).permission());
+        assertTrue(actions.getFirst().serverThread());
+        assertEquals("reason is required", assertThrows(IllegalArgumentException.class, () -> afks.params().get(1).parse(null)).getMessage());
+        assertThrows(IllegalArgumentException.class, () -> new Expansion("x") {
+            final Param<String> q = text("q", "");
+            final Action a = remove("a", "", req -> null).body(q);
+        });
+        assertThrows(IllegalArgumentException.class, () -> new Expansion("x") {
+            final Param<Place> at = place("at", "");
+            final Action a = action("a", "", req -> null).query(at);
+        });
+        assertThrows(IllegalArgumentException.class, () -> new Expansion("x") {
+            final Action a = action("a", "", req -> null);
+            final Action b = action("a", "", req -> null);
+        });
+    }
+
+    @Test
     void aRegisteredExpansionDoesntChange() {
         Bosses bosses = new Bosses();
         bosses.register();
