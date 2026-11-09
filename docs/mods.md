@@ -1,6 +1,6 @@
 # WorldAPI on Fabric and NeoForge
 
-The design of WorldAPI 4.2.0 on the mods, as built on 2026-10-25. It says how WorldAPI runs as a mod: on a dedicated Fabric or NeoForge server it behaves as the Paper plugin does; in singleplayer it serves the world you play, so an AI agent through minecraft-mcp can read it while you play.
+The design of WorldAPI 4.2.0 on the mods, as built on 2026-10-25. It says how WorldAPI runs as a mod: on a dedicated Fabric or NeoForge server it behaves as the Paper plugin does. In singleplayer it serves the world you play, so an AI agent through minecraft-mcp can read it while you play.
 
 ## Modules
 
@@ -17,7 +17,7 @@ A world route keeps one declaration per platform, and `ParityTest` builds the Op
 
 ## Lifecycle
 
-The game starts a server for each world you open and stops it when you leave; one game may do that many times. WorldAPI builds everything for a server at `SERVER_STARTING` and closes it at `SERVER_STOPPED`: the HTTP server, the WebSocket hub, the store, the expansions' binding. Nothing outlives a server, so leaving a world frees the port and its database.
+The game starts a server for each world you open and stops it when you leave, and one game may do that many times. WorldAPI builds everything for a server at `SERVER_STARTING` and closes it at `SERVER_STOPPED`: the HTTP server, the WebSocket hub, the store, the expansions' binding. Nothing outlives a server, so leaving a world frees the port and its database.
 
 - **Port.** A dedicated server binds `http.host:http.port`, as on Paper. A singleplayer world binds `127.0.0.1` and tries `http.port`, then the next nine ports, so a second game or a second world in another launcher instance still starts. The chosen port goes into the log and the discovery file.
 - **Discovery.** While a world is open, WorldAPI writes `~/.worldapi/local/<port>.json` (mode 600): the URL, the token, the world's name, the game's process id, and when it started. It removes the file when the server stops, and a client skips files whose process is gone. minecraft-mcp reads this folder when `WORLDAPI_URL` is unset.
@@ -28,10 +28,10 @@ The game starts a server for each world you open and stops it when you leave; on
 | What | Where | Why |
 |---|---|---|
 | `config.yml` with the generated token | `config/worldapi/` of the game | One token and port for every world, so MCP's setup never changes |
-| History, sessions, audit log, experience, issued tokens, panel accounts | `<save>/worldapi/worldapi.db` | Each world its own story; it moves with the save |
+| History, sessions, audit log, experience, issued tokens, panel accounts | `<save>/worldapi/worldapi.db` | Each world its own story, moving with the save |
 | Backups of `/files` writes, the icon cache | `config/worldapi/backups/`, `config/worldapi/cache/` | Not the world's: shared and safe to delete |
 
-A copied world carries its history and issued tokens, which is what copying means. A renamed world keeps its data, since the folder moves. A deleted world takes its data with it. A dedicated mod server keeps the data in `world/worldapi/` as well; the database settings apply to it, while a singleplayer world always uses SQLite in its save.
+A copied world carries its history and issued tokens, which is what copying means. A renamed world keeps its data, since the folder moves. A deleted world takes its data with it. A dedicated mod server keeps the data in `world/worldapi/` as well. The database settings apply to it, while a singleplayer world always uses SQLite in its save.
 
 ## Worlds and files
 
@@ -43,14 +43,14 @@ A copied world carries its history and issued tokens, which is what copying mean
 
 ## Singleplayer and LAN
 
-- **Who you are.** The world's owner may run `/worldapi`, cheats or not; the generated token is the `admin` group's, as on Paper.
+- **Who you are.** The world's owner may run `/worldapi`, cheats or not. The generated token is the `admin` group's, as on Paper.
 - **Cheats.** The token's permissions decide, as on a server: an agent with `world:write` builds in a world without cheats too. `/server`'s `cheats` tells clients whether the world allows commands, so an agent can say so before it acts.
 - **LAN guests** are players like on any server: they show in `/players`, their events stream, and they never reach the API, which listens on `127.0.0.1` only. `/server` says `lan: true` while the world is open to LAN.
-- **No console.** There is no server console in a singleplayer game; `/server/logs` reads the game's log, console commands run as the server, and restarting or stopping answers 409 `not_on_integrated`: you leave a world in game.
+- **No console.** There is no server console in a singleplayer game: `/server/logs` reads the game's log, console commands run as the server, and restarting or stopping answers 409 `not_on_integrated`: you leave a world in game.
 
 ## Security on localhost
 
-- The first start generates the token into `config/worldapi/config.yml`, as on Paper. In singleplayer, the first world you open greets you in chat; `/worldapi connect` shows the address, a button that copies the token, and one that copies the MCP setup line.
+- The first start generates the token into `config/worldapi/config.yml`, as on Paper. In singleplayer, the first world you open greets you in chat, and `/worldapi connect` shows the address, a button that copies the token, and one that copies the MCP setup line.
 - `/worldapi admin` gives a code for a panel account in this world, with a link that fills it in, as Paper's token menu does.
 - DNS rebinding: when the server listens on a loopback address, WorldAPI answers only requests whose `Host` names the loopback (`localhost`, `127.0.0.1`, `[::1]`, with any port), and refuses a browser's `Origin` from elsewhere unless `cors.allowedOrigins` names it. This guards Paper too, when it listens on loopback.
 
@@ -60,9 +60,9 @@ A copied world carries its history and issued tokens, which is what copying mean
 
 - `platform`: `paper`, `fabric`, or `neoforge`.
 - `side`: `dedicated` or `integrated`.
-- `lan`: whether a singleplayer world is open to LAN; `false` on a dedicated server.
+- `lan`: whether a singleplayer world is open to LAN, `false` on a dedicated server.
 - `cheats`: whether commands are allowed, `true` on a dedicated server.
-- `paused`: whether a singleplayer game is paused; the tick rate and TPS then read as frozen.
+- `paused`: whether a singleplayer game is paused. The tick rate and TPS then read as frozen.
 
 `/server/plugins` lists the loader's mods (without the game and the loader themselves), with versions, authors, and `folder` under `config/`. Bans, the whitelist, and operators work on every server the game runs, singleplayer included. Making operators needs `server:console` on every platform, and the console refuses commands naming `worldapi.*`, as 4.1.1 decided.
 
@@ -81,12 +81,12 @@ Locating structures, the seed, building, giving, and teleporting already have en
 ## Monitoring
 
 - minecraft-exporter adds `platform` and `side` labels to `minecraft_info`, and a `kind` label (`plugin` or `mod`) to `minecraft_plugin_enabled`. No metric changes its name, so the exporter's release is a minor one.
-- It adds `minecraft_paused` too. The dashboard gets hidden `$multiplayer` and `$singleplayer` variables from `minecraft_info`'s `side`. The rows that mean nothing alone (players, plugins and the console, chat and events) repeat over `$multiplayer`, which is empty for `integrated`, so they disappear in singleplayer; a “Your world” row over `$singleplayer` shows the game's state, play time, level, deaths, diamonds, advancements, health and food, and the mods instead. Status reads “Paused” while the game is.
+- It adds `minecraft_paused` too. The dashboard gets hidden `$multiplayer` and `$singleplayer` variables from `minecraft_info`'s `side`. The rows that mean nothing alone (players, plugins and the console, chat and events) repeat over `$multiplayer`, which is empty for `integrated`, so they disappear in singleplayer. A “Your world” row over `$singleplayer` shows the game's state, play time, level, deaths, diamonds, advancements, health and food, and the mods instead. Status reads “Paused” while the game is.
 - Singleplayer: WorldAPI listens on `127.0.0.1` and checks `Host`, so a container can't reach it. The exporter runs beside the game (its binary), and `examples/singleplayer/compose.yaml` in minecraft-exporter runs Prometheus and Grafana with the dashboard, scraping `host.docker.internal:10059`.
 
 ## Expansions
 
-`ExpansionMods` finds services through the game's class loader, and each server binds the host at start and unbinds at stop; a game test checks a test mod's expansion on both loaders. The expansion API stays as it is; `Request` gains nothing.
+`ExpansionMods` finds services through the game's class loader, and each server binds the host at start and unbinds at stop. A game test checks a test mod's expansion on both loaders. The expansion API stays as it is, and `Request` gains nothing.
 
 ## Releases
 
