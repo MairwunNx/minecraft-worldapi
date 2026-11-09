@@ -18,6 +18,8 @@ data class ApiEvent(
     val at: Instant = Instant.now(),
     /** About a vanished player: only admin clients get it, live or from the history. */
     val hidden: Boolean = false,
+    /** Every other player the event names, by UUID: one of them vanished hides it too. */
+    val others: Set<String> = emptySet(),
 ) {
     fun view(id: Long? = null) = EventView(id, topic.id, at.toString(), at.toEpochMilli(), player, world, data)
 }
@@ -52,7 +54,7 @@ class EventBus(private val history: History, private val vanished: Vanished = Va
 
     /** An event about a vanished player is hidden from everyone but admin clients. */
     private fun mark(event: ApiEvent) =
-        if (!event.hidden && event.player?.uuid?.let { it in vanished } == true) event.copy(hidden = true) else event
+        if (!event.hidden && (event.player?.uuid?.let { it in vanished } == true || event.others.any { it in vanished })) event.copy(hidden = true) else event
 
     fun wanted(topic: Topic) = topic.recorded || interest(topic)
 

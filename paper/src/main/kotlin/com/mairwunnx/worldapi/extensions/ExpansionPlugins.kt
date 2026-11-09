@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.mairwunnx.worldapi.extensions
 
 import com.mairwunnx.worldapi.expansion.WorldApiExpansion
@@ -15,7 +17,8 @@ import java.util.logging.Logger
 val Plugin.owner get() = Extensions.Owner(name, this) { pluginMeta.version }
 
 /**
- * Expansions plugins name in `META-INF/services/com.mairwunnx.worldapi.expansion.WorldApiExpansion`, found in each
+ * Expansions plugins name in `META-INF/services/com.mairwunnx.worldapi.expansion.v2.Expansion` (API 2, see
+ * [ExpansionServices]) or `META-INF/services/com.mairwunnx.worldapi.expansion.WorldApiExpansion` (API 1), found in each
  * plugin's own jar when it's enabled (and in every plugin already on when WorldAPI starts), and taken out again with
  * every expansion of a plugin when it's disabled. A plugin that registers in code needs only the last part.
  */
@@ -38,6 +41,15 @@ class ExpansionPlugins(private val self: Plugin, private val expansions: Expansi
     private fun scan(plugin: Plugin) {
         if (!scanned.add(plugin.name)) return
         val loader = plugin.javaClass.classLoader
+        try {
+            // The plugin's own classes only: the loaders above it are everyone's.
+            ExpansionServices.find(loader) { it.classLoader === loader }.forEach { found ->
+                found.expansion.mapCatching { it.register() }
+                    .onFailure { logger.warning("Couldn't start ${plugin.name}'s expansion ${found.name}: ${it.message ?: it.javaClass.simpleName}") }
+            }
+        } catch (error: Throwable) {
+            logger.warning("Couldn't read ${plugin.name}'s expansions: ${error.message ?: error.javaClass.simpleName}")
+        }
         try {
             ServiceLoader.load(WorldApiExpansion::class.java, loader).stream()
                 // The plugin's own classes only: the loaders above it are everyone's.

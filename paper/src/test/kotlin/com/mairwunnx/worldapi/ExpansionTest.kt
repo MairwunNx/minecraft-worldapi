@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.mairwunnx.worldapi
 
 import com.mairwunnx.worldapi.api.HttpServer
@@ -50,7 +52,7 @@ class ExpansionTest {
     }
     private val bosses = fakePlugin()
     private val other = fakePlugin()
-    private val owners = mutableMapOf<WorldApiExpansion, Plugin>()
+    private val owners = mutableMapOf<Class<*>, Plugin>()
     private val host = Expansions(fake.api.extensions, logger) { (owners[it] ?: bosses).owner }
 
     @AfterTest
@@ -61,7 +63,7 @@ class ExpansionTest {
         fake.close()
     }
 
-    private class Bosses(
+    private open class Bosses(
         private val id: String = "mobosses",
         private val api: String = ExpansionApi.VERSION,
         private val events: List<EventType> = listOf(EventType.of("boss.killed", "A boss died").publicly().recorded(), EventType.of("boss.spawned", "")),
@@ -71,7 +73,7 @@ class ExpansionTest {
         override fun description() = "Bosses"
         override fun events() = events
         override fun resources() = listOf(
-            Resource.of("hunters", "The best hunters; ?limit=1..50", { request ->
+            Resource.of("hunters", "The best hunters", { request ->
                 List(request.query("limit", 2, 1, 50)) { mapOf("place" to it + 1) }
             }).publicly(),
             Resource.of("players/{player}", "A card", { request ->
@@ -81,6 +83,9 @@ class ExpansionTest {
             Resource.of("bosses", "Where the bosses are", { request -> mapOf("coordinates" to request.seesCoordinates()) }).onServerThread(),
         )
     }
+
+    /** The same expansion from another plugin's classes. */
+    private class OtherBosses : Bosses(id = "taken")
 
     @Test
     fun `an expansion becomes a namespace with resources and topics`() {
@@ -115,7 +120,8 @@ class ExpansionTest {
     @Test
     fun `nobody takes another plugin's namespace`() {
         WorldApiExpansions.bind(host)
-        WorldApiExpansions.register(Bosses(id = "taken").also { owners[it] = other })
+        owners[OtherBosses::class.java] = other
+        WorldApiExpansions.register(OtherBosses())
         WorldApiExpansions.register(Bosses(id = "taken"))
         assertTrue(fake.api.extensions.namespace("taken")!!.plugin.key === other)
         assertTrue("belongs to" in warnings.single())

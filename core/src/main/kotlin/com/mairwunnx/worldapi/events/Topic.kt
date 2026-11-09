@@ -1,6 +1,7 @@
 package com.mairwunnx.worldapi.events
 
 import com.mairwunnx.worldapi.api.Scope
+import kotlinx.serialization.json.JsonElement
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -19,7 +20,15 @@ class Topic private constructor(
     /** For a plugin's topic: its namespace, and whether the plugin lets anonymous clients see it. */
     val extension: Extension? = null,
 ) {
-    class Extension(val namespace: String, val public: Boolean, val description: String)
+    class Extension(
+        val namespace: String,
+        val public: Boolean,
+        val description: String,
+        /** The shape of its data, from an API 2 expansion's record; null for API 1's maps. */
+        val data: JsonElement? = null,
+        /** Keys of its data that hold a place, besides [locationKeys]: anonymous clients don't get them unless privacy allows. */
+        val coordinateKeys: Set<String> = emptySet(),
+    )
 
     override fun toString() = id
 
@@ -89,8 +98,11 @@ class Topic private constructor(
          * A plugin's event topic. Its data may carry coordinates, so anonymous clients get it without
          * them, as with WorldAPI's own topics marked COORDINATES.
          */
-        fun extension(namespace: String, event: String, recorded: Boolean, public: Boolean, description: String): Topic =
-            Topic("ext.$namespace.$event", recorded = recorded, privacy = Privacy.COORDINATES, extension = Extension(namespace, public, description))
+        fun extension(
+            namespace: String, event: String, recorded: Boolean, public: Boolean, description: String,
+            data: JsonElement? = null, coordinateKeys: Set<String> = emptySet(),
+        ): Topic =
+            Topic("ext.$namespace.$event", recorded = recorded, privacy = Privacy.COORDINATES, extension = Extension(namespace, public, description, data, coordinateKeys))
                 .also { extensions[it.id] = it }
 
         /** Drops a namespace's topics, when its plugin stops. */

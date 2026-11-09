@@ -20,6 +20,7 @@ import com.mairwunnx.worldapi.events.Snapshots
 import com.mairwunnx.worldapi.events.Topic
 import com.mairwunnx.worldapi.events.Windows
 import com.mairwunnx.worldapi.expansion.WorldApiExpansions
+import com.mairwunnx.worldapi.expansion.v2.Registry
 import com.mairwunnx.worldapi.extensions.ExpansionPlugins
 import com.mairwunnx.worldapi.extensions.Expansions
 import com.mairwunnx.worldapi.extensions.Extensions
@@ -53,6 +54,9 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.bukkit.plugin.java.JavaPlugin
+import com.mairwunnx.worldapi.bukkit.findKnown
+import com.mairwunnx.worldapi.bukkit.ref
+import java.util.concurrent.TimeUnit
 
 class WorldApiPlugin : JavaPlugin() {
     private val config = AtomicReference<WorldApiConfig>()
@@ -125,10 +129,15 @@ class WorldApiPlugin : JavaPlugin() {
         val taming = Taming(this, api.tamed, logger)
         server.pluginManager.registerEvents(taming, this)
         // The expansion API: an expansion belongs to the plugin whose class loader loaded it.
-        val expansions = Expansions(api.extensions, logger) { expansion ->
-            (server.pluginManager.plugins.firstOrNull { it.javaClass.classLoader === expansion.javaClass.classLoader } ?: this).owner
+        // A player parameter looks the player up on the server thread, where Bukkit wants it.
+        val players = { id: String ->
+            if (server.isPrimaryThread) server.findKnown(id)?.ref() else server.scheduler.callSyncMethod(this) { server.findKnown(id)?.ref() }.get(5, TimeUnit.SECONDS)
+        }
+        val expansions = Expansions(api.extensions, logger, players) { type ->
+            (server.pluginManager.plugins.firstOrNull { it.javaClass.classLoader === type.classLoader } ?: this).owner
         }
         WorldApiExpansions.bind(expansions)
+        Registry.bind(expansions)
         val expansionPlugins = ExpansionPlugins(this, expansions, logger)
         server.pluginManager.registerEvents(expansionPlugins, this)
         expansionPlugins.scanAll()
@@ -172,6 +181,7 @@ class WorldApiPlugin : JavaPlugin() {
         server.onlinePlayers.forEach { api.history.closeSession(it.uniqueId.toString(), Instant.now()) }
         api.scripts.unloadAll()
         WorldApiExpansions.bind(null)
+        Registry.bind(null)
         api.restart.close()
         api.icons?.close()
         hub.closeAll(if (server.isStopping) "Server stopping" else "WorldAPI disabled")

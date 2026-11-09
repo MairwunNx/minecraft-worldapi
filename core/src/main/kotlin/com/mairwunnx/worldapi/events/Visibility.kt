@@ -41,15 +41,16 @@ class Visibility(private val principal: Principal, private val config: WorldApiC
 
     fun redact(view: EventView, topic: Topic): EventView {
         if (coordinates || topic.privacy != Topic.Privacy.COORDINATES) return view
-        return view.copy(data = strip(view.data))
+        val keys = topic.extension?.coordinateKeys?.let { Topic.locationKeys + it } ?: Topic.locationKeys
+        return view.copy(data = strip(view.data, keys))
     }
 
     /** Location keys at any depth: a plugin's event may tuck them inside an object or a list. */
-    private fun strip(value: JsonObject): JsonObject = JsonObject(value.filterKeys { it !in Topic.locationKeys }.mapValues { (_, it) -> strip(it) })
+    private fun strip(value: JsonObject, keys: Set<String>): JsonObject = JsonObject(value.filterKeys { it !in keys }.mapValues { (_, it) -> strip(it, keys) })
 
-    private fun strip(value: JsonElement): JsonElement = when (value) {
-        is JsonObject -> strip(value)
-        is JsonArray -> JsonArray(value.map(::strip))
+    private fun strip(value: JsonElement, keys: Set<String>): JsonElement = when (value) {
+        is JsonObject -> strip(value, keys)
+        is JsonArray -> JsonArray(value.map { strip(it, keys) })
         else -> value
     }
 }

@@ -1184,7 +1184,7 @@
             "get": {
                 "operationId": "getExtensionsNamespacePath",
                 "summary": "One resource of a plugin, read from the plugin as it is now",
-                "description": "Query parameters pass through to the plugin; each resource documents its own.\n\nPermission: `server:read`.",
+                "description": "Query parameters pass through to the plugin; `GET /extensions` lists what each resource reads.\n\nPermission: `server:read`.",
                 "tags": [
                     "Extensions"
                 ],
@@ -15805,6 +15805,59 @@
                 ],
                 "additionalProperties": false
             },
+            "ExtensionParamInfo": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "in": {
+                        "type": "string"
+                    },
+                    "kind": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "min": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "format": "int64"
+                    },
+                    "max": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "format": "int64"
+                    },
+                    "fallback": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "choices": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "required": [
+                    "name",
+                    "in",
+                    "kind",
+                    "description"
+                ],
+                "additionalProperties": false
+            },
             "ExtensionResourceInfo": {
                 "type": "object",
                 "properties": {
@@ -15816,7 +15869,14 @@
                     },
                     "public": {
                         "type": "boolean"
-                    }
+                    },
+                    "params": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ExtensionParamInfo"
+                        }
+                    },
+                    "returns": {}
                 },
                 "required": [
                     "path",
@@ -15839,7 +15899,8 @@
                     },
                     "recorded": {
                         "type": "boolean"
-                    }
+                    },
+                    "data": {}
                 },
                 "required": [
                     "topic",

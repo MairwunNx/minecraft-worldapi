@@ -6,6 +6,9 @@ import com.mairwunnx.worldapi.events.ApiEvent
 import com.mairwunnx.worldapi.events.EventBus
 import com.mairwunnx.worldapi.events.Topic
 import com.mairwunnx.worldapi.model.PlayerRef
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import java.util.concurrent.ConcurrentHashMap
 import java.util.logging.Logger
@@ -23,6 +26,10 @@ class Extensions(private val bus: EventBus, private val main: MainThread, privat
         val public: Boolean,
         /** Run the function on the server thread; otherwise it runs on a worker and must be thread-safe. */
         val mainThread: Boolean,
+        /** The parameters an API 2 expansion declared; API 1 names none. */
+        val params: List<ExtensionParamInfo> = emptyList(),
+        /** The shape of the answer, when the expansion named its record. */
+        val returns: JsonElement? = null,
         /** Answers with the path's parameters, the query's, and the call they came with. */
         val read: (path: Map<String, String>, query: Map<String, String>, call: ApiCall<*>) -> Any?,
     ) {
@@ -69,10 +76,26 @@ class Extensions(private val bus: EventBus, private val main: MainThread, privat
     }
 
     /** A plugin's event, on its way to the history and to WebSocket clients, from the server thread. */
-    fun publish(namespace: String, event: String, data: JsonObject, player: PlayerRef?, world: String?) {
+    fun publish(namespace: String, event: String, data: JsonObject, player: PlayerRef?, world: String?, others: Set<String> = emptySet()) {
         val registered = namespaces[namespace] ?: throw IllegalArgumentException("The namespace $namespace isn't registered")
         val topic = registered.topics.firstOrNull { it.id == "ext.$namespace.$event" } ?: throw IllegalArgumentException("$namespace has no event $event")
-        val apiEvent = ApiEvent(topic, data, player, world)
+        val apiEvent = ApiEvent(topic, data, player, world, others = others)
         main.execute { bus.publish(apiEvent) }
     }
 }
+
+/** One parameter of a resource, as `GET /extensions` lists it. */
+@Serializable
+data class ExtensionParamInfo(
+    val name: String,
+    /** `path` or `query`. */
+    @SerialName("in") val where: String,
+    /** `integer`, `text`, `flag`, `choice`, or `player`, a name or a UUID. */
+    val kind: String,
+    val description: String,
+    val min: Long? = null,
+    val max: Long? = null,
+    /** What a missing value reads as. */
+    val fallback: String? = null,
+    val choices: List<String>? = null,
+)

@@ -5,6 +5,7 @@ import com.mairwunnx.worldapi.api.ApiException
 import com.mairwunnx.worldapi.api.endpoints
 import com.mairwunnx.worldapi.api.notFound
 import com.mairwunnx.worldapi.events.Visibility
+import com.mairwunnx.worldapi.extensions.ExtensionParamInfo
 import com.mairwunnx.worldapi.extensions.JsonValues
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
@@ -16,10 +17,25 @@ import kotlinx.serialization.json.JsonElement
 import java.util.concurrent.CompletionStage
 
 @Serializable
-data class ExtensionResourceInfo(val path: String, val description: String, val public: Boolean)
+data class ExtensionResourceInfo(
+    val path: String,
+    val description: String,
+    val public: Boolean,
+    /** What it reads from the path and the query; empty for an expansion of API 1. */
+    val params: List<ExtensionParamInfo> = emptyList(),
+    /** The shape of the answer as JSON Schema, when the expansion names it. */
+    val returns: JsonElement? = null,
+)
 
 @Serializable
-data class ExtensionTopicInfo(val topic: String, val description: String, val public: Boolean, val recorded: Boolean)
+data class ExtensionTopicInfo(
+    val topic: String,
+    val description: String,
+    val public: Boolean,
+    val recorded: Boolean,
+    /** The shape of the event's data as JSON Schema; null for an expansion of API 1. */
+    val data: JsonElement? = null,
+)
 
 @Serializable
 data class ExtensionInfo(
@@ -42,15 +58,15 @@ val extensionRoutes = endpoints("Extensions", Scope.SERVER_READ) {
             ExtensionInfo(
                 namespace.name, namespace.plugin.name, namespace.plugin.version, namespace.description,
                 namespace.resources.filter { !principal.anonymous || (it.public && !visibility.hidden(namespace.name, "${namespace.name}/${it.path}")) }
-                    .map { ExtensionResourceInfo(it.path, it.description, it.public) },
-                namespace.topics.filter(visibility::allows).map { topic -> topic.extension!!.let { ExtensionTopicInfo(topic.id, it.description, it.public, topic.recorded) } },
+                    .map { ExtensionResourceInfo(it.path, it.description, it.public, it.params, it.returns) },
+                namespace.topics.filter(visibility::allows).map { topic -> topic.extension!!.let { ExtensionTopicInfo(topic.id, it.description, it.public, topic.recorded, it.data) } },
             )
         }.filter { !principal.anonymous || it.resources.isNotEmpty() || it.topics.isNotEmpty() }
     }
 
     get<JsonElement>(
         "/extensions/{namespace}/{path...}", "One resource of a plugin, read from the plugin as it is now",
-        description = "Query parameters pass through to the plugin; each resource documents its own.",
+        description = "Query parameters pass through to the plugin; `GET /extensions` lists what each resource reads.",
     ) {
         if (!config.extensions.enabled) notFound("extension_not_found", "Extensions are off")
         val name = path("namespace")
@@ -76,7 +92,7 @@ val extensionRoutes = endpoints("Extensions", Scope.SERVER_READ) {
             val why = if (principal.anonymous) "" else ": ${error.message}"
             throw ApiException(HttpStatusCode.BadGateway, "extension_failed", "${namespace.plugin.name} couldn't answer$why")
         }
-        JsonValues.of(value)
+        JsonValues.of(value, places = seesCoordinates)
     }
 }
 

@@ -20,6 +20,7 @@ import com.mairwunnx.worldapi.events.Windows
 import com.mairwunnx.worldapi.events.Topic
 import com.mairwunnx.worldapi.events.Vanished
 import com.mairwunnx.worldapi.expansion.WorldApiExpansions
+import com.mairwunnx.worldapi.expansion.v2.Registry
 import com.mairwunnx.worldapi.extensions.Expansions
 import com.mairwunnx.worldapi.extensions.Extensions
 import com.mairwunnx.worldapi.files.ServerFiles
@@ -51,6 +52,11 @@ import java.time.Instant
 import java.util.concurrent.atomic.AtomicReference
 import java.util.logging.Level
 import java.util.logging.Logger
+import com.mairwunnx.worldapi.game.findKnown
+import com.mairwunnx.worldapi.model.PlayerRef
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.TimeUnit
+import java.util.function.Supplier
 
 /**
  * WorldAPI for one server the game runs: a dedicated server for as long as it runs, or the server under a singleplayer
@@ -105,9 +111,15 @@ class Runtime private constructor(
             logger.warning("Can't read the console, so GET /server/logs stays empty: $error")
             null
         }
-        val host = Expansions(api.extensions, logger) { expansion -> ownerOf(expansion.javaClass) }
+        // A player parameter looks the player up on the server thread, which owns the player list.
+        val players = { id: String ->
+            val find = Supplier { server.findKnown(id)?.let { PlayerRef(it.uuid.toString(), it.name) } }
+            if (server.isSameThread) find.get() else CompletableFuture.supplyAsync(find, server).get(5, TimeUnit.SECONDS)
+        }
+        val host = Expansions(api.extensions, logger, players, ::ownerOf)
         expansions = host
         WorldApiExpansions.bind(host)
+        Registry.bind(host)
         startHttp()
         scope.launch {
             while (isActive) {
@@ -261,6 +273,7 @@ class Runtime private constructor(
         api.bus.publish(ApiEvent(Topic.SERVER_STATUS, buildJsonObject { put("status", "stopping") }))
         server.playerList.players.forEach { api.history.closeSession(it.uuid.toString(), Instant.now()) }
         WorldApiExpansions.bind(null)
+        Registry.bind(null)
         api.restart.close()
         api.icons?.close()
         hub.closeAll(if (server.isSingleplayer) "The world closed" else "Server stopping")
