@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.6.1
+
+- ⬆️ **Updated libraries.** WorldAPI builds on Paper 26.3 build 253, Fabric API 0.166.2, and NeoForge 26.3.0.103, with kotlinx.serialization 1.13.0 and the admin panel's newest packages.
+
 ## 4.6.0
 
 - ✍️ **Plugins take requests, not only questions.** A plugin on expansion API 2.1 can offer actions: `POST` or `DELETE /extensions/<namespace>/<path>`, like spawning one of its bosses or putting a player into AFK. Each action needs the permission the plugin names, never answers a visitor without a token, and lands in the audit log. `GET /extensions` lists every action with its permission and the body it reads, and the MCP server calls them with `call_extension`.

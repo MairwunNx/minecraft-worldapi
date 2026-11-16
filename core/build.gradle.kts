@@ -16,7 +16,7 @@ dependencies {
     api("io.ktor:ktor-server-websockets:$ktorVersion")
     api("io.ktor:ktor-server-cors:$ktorVersion")
     api("io.ktor:ktor-server-status-pages:$ktorVersion")
-    api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
+    api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.13.0")
     api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
     api("com.charleskorn.kaml:kaml:0.104.0")
     api("org.jetbrains.exposed:exposed-core:$exposedVersion")
