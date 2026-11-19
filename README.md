@@ -1,5 +1,7 @@
 # WorldAPI
 
+![WorldAPI: your Minecraft server on HTTP](https://raw.githubusercontent.com/MairwunNx/minecraft-worldapi/master/media/hero.webp)
+
 <p align="center">
   <a href="https://modrinth.com/plugin/worldapi"><img alt="Modrinth" src="https://img.shields.io/modrinth/dt/worldapi?logo=modrinth&label=Modrinth&color=00AF5C"></a>
   <a href="https://hangar.papermc.io/MairwunNx/WorldAPI"><img alt="Hangar" src="https://img.shields.io/hangar/dt/WorldAPI?label=Hangar&color=1E88E5"></a>
