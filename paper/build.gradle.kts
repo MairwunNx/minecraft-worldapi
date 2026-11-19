@@ -156,6 +156,14 @@ hangarPublish {
         channel = "Release"
         apiKey = providers.environmentVariable("HANGAR_TOKEN")
         changelog = releaseNotes
+        // The project page follows MODRINTH.md, as Modrinth's does, with a line for the mod, which Hangar doesn't carry; the release syncs it with the version.
+        pages {
+            resourcePage(providers.provider {
+                val page = rootProject.file("MODRINTH.md").readText()
+                val at = page.indexOf("\n## ")
+                page.substring(0, at) + "\n\n> Playing with Fabric or NeoForge? The mod is on [Modrinth](https://modrinth.com/mod/worldapi).\n" + page.substring(at)
+            })
+        }
         platforms {
             register(Platforms.PAPER) {
                 // The jar is over Hangar's 15 MB limit, so Hangar links to the GitHub release instead.
