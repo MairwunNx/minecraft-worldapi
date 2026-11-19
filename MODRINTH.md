@@ -1,5 +1,7 @@
 # WorldAPI
 
+![WorldAPI: your Minecraft server on the web](https://raw.githubusercontent.com/MairwunNx/minecraft-worldapi/master/media/hero.webp)
+
 🌍 **WorldAPI** puts your Minecraft server on HTTP, or the world you play alone. Drop one jar into Paper, Fabric, or NeoForge, and sites, bots, and AI agents can read the world, the players, and their statistics, follow what happens live, and, with a token, run the game.
 
 ## What you get
