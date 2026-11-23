@@ -21,7 +21,7 @@ val ktorVersion = "3.6.1"
 dependencies {
     // What doesn't touch Bukkit: the HTTP server's pieces, the config, the store, the models. Shaded with its libraries.
     implementation(project(":core"))
-    compileOnly("io.papermc.paper:paper-api:26.3.build.253-stable")
+    compileOnly("io.papermc.paper:paper-api:26.3.build.259-stable")
     // Paper ships the SQLite driver, so it stays out of the jar.
     compileOnly("org.xerial:sqlite-jdbc:3.54.1.0")
     // Plan is optional: its section shows on Plan's pages when Plan runs next to WorldAPI.
@@ -29,7 +29,7 @@ dependencies {
     // Anonymous usage counts; bStats insists on being relocated, which the shadow jar does.
     implementation("org.bstats:bstats-bukkit:3.2.1")
 
-    testImplementation("io.papermc.paper:paper-api:26.3.build.253-stable")
+    testImplementation("io.papermc.paper:paper-api:26.3.build.259-stable")
     testImplementation("org.xerial:sqlite-jdbc:3.54.1.0")
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
     testImplementation("io.ktor:ktor-client-websockets:$ktorVersion")
@@ -179,7 +179,7 @@ hangarPublish {
 // alone, as any expansion does, and carries its own Kotlin, since WorldAPI's is relocated.
 val smoke: SourceSet = sourceSets.create("smoke")
 dependencies {
-    "smokeCompileOnly"("io.papermc.paper:paper-api:26.3.build.253-stable")
+    "smokeCompileOnly"("io.papermc.paper:paper-api:26.3.build.259-stable")
     "smokeCompileOnly"(project(":expansion"))
 }
 tasks.register<Jar>("smokeJar") {

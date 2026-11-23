@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.6.2
+
+- ⬆️ **Updated libraries.** WorldAPI builds on Paper 26.3 build 259 and NeoForge 26.3.0.115, with the admin panel's newest packages.
+
 ## 4.6.1
 
 - ⬆️ **Updated libraries.** WorldAPI builds on Paper 26.3 build 253, Fabric API 0.166.2, and NeoForge 26.3.0.103, with kotlinx.serialization 1.13.0 and the admin panel's newest packages.
