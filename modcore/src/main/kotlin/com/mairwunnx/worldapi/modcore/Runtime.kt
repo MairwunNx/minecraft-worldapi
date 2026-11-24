@@ -16,6 +16,7 @@ import com.mairwunnx.worldapi.events.EventBus
 import com.mairwunnx.worldapi.events.ModEvents
 import com.mairwunnx.worldapi.events.ModSampler
 import com.mairwunnx.worldapi.events.ModSnapshots
+import com.mairwunnx.worldapi.events.Whispers
 import com.mairwunnx.worldapi.events.Windows
 import com.mairwunnx.worldapi.events.Topic
 import com.mairwunnx.worldapi.events.Vanished
@@ -77,7 +78,7 @@ class Runtime private constructor(
     private val windows = Windows(api.bus) { config.get().websocket.blockWindowSeconds }
 
     /** The game's moments as WorldAPI events; [Hooks] hands them in. */
-    val events = ModEvents(server, loader, api.bus, api.history, api.experience, api.tamed, windows, api.vanished) { config.get().events.chat }
+    val events = ModEvents(server, loader, api.bus, api.history, api.experience, api.tamed, windows, api.vanished, { config.get().events.chat }, Whispers { config.get().events })
 
     /** State without events of its own, polled every tick. */
     val sampler = ModSampler(api, events, config::get)

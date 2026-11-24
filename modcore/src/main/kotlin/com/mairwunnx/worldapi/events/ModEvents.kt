@@ -1,6 +1,8 @@
 package com.mairwunnx.worldapi.events
 
+import com.mairwunnx.worldapi.api.ApiJson
 import com.mairwunnx.worldapi.game.Names
+import com.mairwunnx.worldapi.model.PlayerRef
 import com.mairwunnx.worldapi.game.plain
 import com.mairwunnx.worldapi.game.playedBefore
 import com.mairwunnx.worldapi.game.ref
@@ -57,6 +59,7 @@ class ModEvents(
     private val windows: Windows,
     private val vanished: Vanished,
     private val chatEnabled: () -> Boolean,
+    private val whispers: Whispers,
 ) {
     private val joinedAt = ConcurrentHashMap<UUID, Long>()
     private val lastDamage = ConcurrentHashMap<UUID, Long>()
@@ -90,6 +93,7 @@ class ModEvents(
         history.closeSession(player.uuid.toString(), Instant.now())
         val since = joinedAt.remove(player.uuid)
         Names.forget(player.uuid)
+        whispers.forget(player.uuid.toString())
         publish(player.event(Topic.PLAYER_LEAVE, buildJsonObject {
             put("reason", if (kicked.remove(player.uuid)) "kicked" else "disconnected")
             since?.let { put("sessionSeconds", (System.currentTimeMillis() - it) / 1000) }
@@ -153,12 +157,28 @@ class ModEvents(
     /** From any thread: a loader may hand chat in off the server thread, and the bus and the store are safe from there. */
     fun chat(player: ServerPlayer, message: String) {
         if (!chatEnabled()) return
-        publish(ApiEvent(Topic.PLAYER_CHAT, buildJsonObject { put("message", message) }, player.ref(), player.level().worldName, player.uuid.toString()))
+        // The game sends chat to everyone; a mod that keeps it to some players has no shared way to say so.
+        publish(ApiEvent(Topic.PLAYER_CHAT, buildJsonObject {
+            put("message", message)
+            put("channel", "public")
+        }, player.ref(), player.level().worldName, player.uuid.toString()))
     }
 
     fun command(player: ServerPlayer, command: String) {
+        whispers.parse(player.uuid.toString(), command) { id -> online(id)?.ref() }?.let { whisper ->
+            publish(ApiEvent(Topic.PLAYER_WHISPER, buildJsonObject {
+                put("message", whisper.message)
+                put("recipient", ApiJson.encodeToJsonElement(PlayerRef.serializer(), whisper.recipient))
+            }, player.ref(), player.level().worldName, player.uuid.toString(), others = setOf(whisper.recipient.uuid)))
+        }
         if (!bus.wanted(Topic.PLAYER_COMMAND)) return
         publish(player.event(Topic.PLAYER_COMMAND, buildJsonObject { put("command", command.removePrefix("/")) }))
+    }
+
+    /** An online player by UUID or exact name. */
+    private fun online(id: String): ServerPlayer? {
+        val uuid = runCatching { UUID.fromString(id) }.getOrNull()
+        return if (uuid != null) server.playerList.getPlayer(uuid) else server.playerList.getPlayerByName(id)
     }
 
     fun changedWorld(player: ServerPlayer, from: ServerLevel, to: ServerLevel, origin: Vec3?) {

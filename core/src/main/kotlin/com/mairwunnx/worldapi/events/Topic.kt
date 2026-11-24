@@ -35,8 +35,9 @@ class Topic private constructor(
     /**
      * What an anonymous client needs to see this topic. COORDINATES strips location fields;
      * COORDINATES_ONLY means the topic is nothing but a location, so it is hidden entirely.
+     * PRIVATE is between two players, such as a private message: anonymous clients never get it, whatever privacy allows.
      */
-    enum class Privacy { NONE, COORDINATES, COORDINATES_ONLY, CHAT, INVENTORIES }
+    enum class Privacy { NONE, COORDINATES, COORDINATES_ONLY, CHAT, INVENTORIES, PRIVATE }
 
     companion object {
         private val builtIns = ArrayList<Topic>()
@@ -53,6 +54,8 @@ class Topic private constructor(
         val PLAYER_RESPAWN = builtIn("player.respawn", privacy = Privacy.COORDINATES)
         val PLAYER_ADVANCEMENT = builtIn("player.advancement", recorded = true)
         val PLAYER_CHAT = builtIn("player.chat", recorded = true, privacy = Privacy.CHAT, scope = Scope.CHAT_READ)
+        // A private message is a command a player typed, which logs:read already shows.
+        val PLAYER_WHISPER = builtIn("player.whisper", recorded = true, privacy = Privacy.PRIVATE, scope = Scope.LOGS_READ)
         val PLAYER_COMMAND = builtIn("player.command", scope = Scope.LOGS_READ)
         val PLAYER_MOVE = builtIn("player.move", state = true, privacy = Privacy.COORDINATES_ONLY)
         val PLAYER_WORLD_CHANGE = builtIn("player.world_change")

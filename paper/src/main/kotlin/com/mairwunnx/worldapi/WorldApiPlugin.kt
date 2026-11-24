@@ -18,6 +18,7 @@ import com.mairwunnx.worldapi.events.Listeners
 import com.mairwunnx.worldapi.events.Sampler
 import com.mairwunnx.worldapi.events.Snapshots
 import com.mairwunnx.worldapi.events.Topic
+import com.mairwunnx.worldapi.events.Whispers
 import com.mairwunnx.worldapi.events.Windows
 import com.mairwunnx.worldapi.expansion.WorldApiExpansions
 import com.mairwunnx.worldapi.expansion.v2.Registry
@@ -123,7 +124,7 @@ class WorldApiPlugin : JavaPlugin() {
         bus.interest = { hub.wants(it) || webhooks.wants(it) }
 
         val windows = Windows(bus) { config.get().websocket.blockWindowSeconds }
-        val listeners = Listeners(this, bus, history, api.experience, windows, vanished) { config.get().events.chat }
+        val listeners = Listeners(this, bus, history, api.experience, windows, vanished, { config.get().events.chat }, Whispers { config.get().events })
         server.pluginManager.registerEvents(listeners, this)
         server.pluginManager.registerEvents(api.commands, this)
         val taming = Taming(this, api.tamed, logger)

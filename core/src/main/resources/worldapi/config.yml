@@ -132,6 +132,12 @@ websocket:
 events:
   # Record chat in the event history and stream it over the WebSocket.
   chat: false
+  # Record private messages (/msg Alex hi, /r hi) in the event history and stream them over the
+  # WebSocket, as player.whisper. Tokens and panel accounts with logs:read see them, never visitors.
+  whispers: false
+  # Commands that send a private message, the player's name first, and commands that answer the last one.
+  whisperCommands: [msg, tell, w, whisper, m, pm, dm, t, emsg, etell, ewhisper, message]
+  replyCommands: [r, reply, er, ereply]
   # Days to keep the event history and the audit log; 0 keeps them forever.
   retentionDays: 0
 

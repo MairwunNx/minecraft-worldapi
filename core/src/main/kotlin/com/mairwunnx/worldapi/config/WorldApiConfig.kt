@@ -227,7 +227,8 @@ data class Webhook(
     /** Whether it takes [topic]. */
     fun listens(topic: Topic): Boolean = enabled && topics.any { pattern ->
         when {
-            pattern == "*" -> topic.recorded
+            // Private messages go only to a webhook that names them.
+            pattern == "*" -> topic.recorded && topic.privacy != Topic.Privacy.PRIVATE
             // A pattern leaves out what would flood a channel or post what players type into commands; name those to get them.
             pattern.endsWith(".*") -> topic.id.startsWith(pattern.dropLast(1)) && !topic.state && topic.scope != com.mairwunnx.worldapi.api.Scope.LOGS_READ
             else -> pattern == topic.id
@@ -264,6 +265,12 @@ data class Webhook(
 data class Events(
     /** Record chat in the history and stream it over the WebSocket. Off by default: chat is private. */
     val chat: Boolean = false,
+    /** Record private messages players send with [whisperCommands] and [replyCommands], as `player.whisper`. Off by default. */
+    val whispers: Boolean = false,
+    /** Commands that send a private message, the player's name first: `/msg Alex hi`. */
+    val whisperCommands: List<String> = listOf("msg", "tell", "w", "whisper", "m", "pm", "dm", "t", "emsg", "etell", "ewhisper", "message"),
+    /** Commands that answer the last private message: `/r hi`. */
+    val replyCommands: List<String> = listOf("r", "reply", "er", "ereply"),
     /** Days to keep event history and audit records; 0 keeps them forever. */
     val retentionDays: Int = 0,
 )

@@ -18,6 +18,7 @@ class Visibility(private val principal: Principal, private val config: WorldApiC
             return if (principal.anonymous) extension.public && !hidden(extension.namespace, topic.id) else principal.has(topic.scope)
         }
         if (topic == Topic.PLAYER_CHAT && !config.events.chat) return false
+        if (topic == Topic.PLAYER_WHISPER && !config.events.whispers) return false
         if (principal.anonymous && topic.id !in config.websocket.anonymousTopics) return false
         // Anonymous clients get chat and the like through privacy settings, not permissions.
         if (!principal.anonymous && !principal.has(topic.scope)) return false
@@ -27,6 +28,7 @@ class Visibility(private val principal: Principal, private val config: WorldApiC
             Topic.Privacy.COORDINATES_ONLY -> coordinates
             Topic.Privacy.CHAT -> !principal.anonymous || privacy.chat
             Topic.Privacy.INVENTORIES -> inventories
+            Topic.Privacy.PRIVATE -> !principal.anonymous
         }
     }
 

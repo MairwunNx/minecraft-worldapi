@@ -1,7 +1,10 @@
 package com.mairwunnx.worldapi.events
 
 import com.mairwunnx.worldapi.events.Vanished
+import com.mairwunnx.worldapi.api.ApiJson
 import com.mairwunnx.worldapi.bukkit.check
+import com.mairwunnx.worldapi.bukkit.findOnline
+import com.mairwunnx.worldapi.model.PlayerRef
 import com.mairwunnx.worldapi.bukkit.isVanished
 import com.mairwunnx.worldapi.bukkit.plain
 import com.mairwunnx.worldapi.bukkit.uuidOrNull
@@ -15,6 +18,7 @@ import io.papermc.paper.event.player.PlayerTradeEvent
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 import org.bukkit.entity.ElderGuardian
 import org.bukkit.entity.EnderDragon
@@ -73,6 +77,7 @@ class Listeners(
     private val windows: Windows,
     private val vanished: Vanished,
     private val chatEnabled: () -> Boolean,
+    private val whispers: Whispers,
 ) : Listener {
     private val server = plugin.server
     private val joinedAt = ConcurrentHashMap<UUID, Long>()
@@ -106,6 +111,7 @@ class Listeners(
     fun onQuit(event: PlayerQuitEvent) {
         val player = event.player
         history.closeSession(player.uniqueId.toString(), Instant.now())
+        whispers.forget(player.uniqueId.toString())
         val since = joinedAt.remove(player.uniqueId)
         publish(player.event(Topic.PLAYER_LEAVE, buildJsonObject {
             put("reason", event.reason.name.lowercase())
@@ -171,14 +177,28 @@ class Listeners(
     fun onChat(event: AsyncChatEvent) {
         if (!chatEnabled()) return
         val player = event.player
-        // Runs off the server thread; the bus and the store are safe to call from here.
-        publish(ApiEvent(Topic.PLAYER_CHAT, buildJsonObject { put("message", event.message().plain()) }, player.ref(), player.world.name, player.uniqueId.toString()))
+        // Runs off the server thread; the bus, the store, and the vanished set are safe to call from here.
+        val heard = event.viewers().filterIsInstance<Player>().filter { it.uniqueId !in vanished }
+        // A chat plugin that keeps a line to the players nearby, or to a channel, leaves the others out of its viewers.
+        val local = server.onlinePlayers.any { it.uniqueId !in vanished && it !in heard }
+        publish(ApiEvent(Topic.PLAYER_CHAT, buildJsonObject {
+            put("message", event.message().plain())
+            put("channel", if (local) "local" else "public")
+            if (local) putJsonArray("heard") { heard.filter { it != player }.forEach { add(ApiJson.encodeToJsonElement(PlayerRef.serializer(), it.ref())) } }
+        }, player.ref(), player.world.name, player.uniqueId.toString()))
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     fun onCommand(event: PlayerCommandPreprocessEvent) {
+        val player = event.player
+        whispers.parse(player.uniqueId.toString(), event.message) { id -> server.findOnline(id)?.ref() }?.let { whisper ->
+            publish(ApiEvent(Topic.PLAYER_WHISPER, buildJsonObject {
+                put("message", whisper.message)
+                put("recipient", ApiJson.encodeToJsonElement(PlayerRef.serializer(), whisper.recipient))
+            }, player.ref(), player.world.name, player.uniqueId.toString(), others = setOf(whisper.recipient.uuid)))
+        }
         if (!bus.wanted(Topic.PLAYER_COMMAND)) return
-        publish(event.player.event(Topic.PLAYER_COMMAND, buildJsonObject { put("command", event.message.removePrefix("/")) }))
+        publish(player.event(Topic.PLAYER_COMMAND, buildJsonObject { put("command", event.message.removePrefix("/")) }))
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
