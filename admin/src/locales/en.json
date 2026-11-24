@@ -367,7 +367,18 @@
     "text": "What players write, newest first: the history, then live messages as they come.",
     "noAccess": "Your account can’t read the chat.",
     "off": "Live chat is off on this server. Turn on events.chat in WorldAPI’s config.yml to record and stream it.",
+    "textPrivate": "What players write, newest first: the history, then live messages as they come. Private messages show when WorldAPI records them (events.whispers in config.yml).",
     "filter": "Filter by player or text",
+    "player": "Player",
+    "playerHint": "A player's lines and the private messages sent to them",
+    "channel": "Channel",
+    "channels": {
+      "all": "All chat",
+      "public": "Public",
+      "local": "Local",
+      "private": "Private"
+    },
+    "heard": "Heard by: {{players}}",
     "none": "No chat recorded.",
     "older": "Older messages",
     "server": "Server",
