@@ -952,8 +952,8 @@
         "/events": {
             "get": {
                 "operationId": "getEvents",
-                "summary": "Event history: joins, deaths, advancements, skipped nights, boss kills, and more",
-                "description": "Newest first by default. Recorded types: `player.join`, `player.leave`, `player.kick`, `player.death`, `player.advancement`, `player.chat`, `world.night_skipped`, `entity.boss_killed`, `raid.start`, `raid.finish`, `server.status`. With `text`, a page reads at most 20,000 events: it may hold fewer items than `limit` and still have a `nextCursor` to search on.\n\nPermission: `events:read`.",
+                "summary": "Event history: joins, deaths, advancements, chat, skipped nights, boss kills, and more",
+                "description": "Newest first by default. Recorded types: `player.join`, `player.leave`, `player.kick`, `player.death`, `player.advancement`, `player.chat`, `player.whisper`, `world.night_skipped`, `entity.boss_killed`, `raid.start`, `raid.finish`, `server.status`. With `text` or `words`, a page reads at most 20,000 events: it may hold fewer items than `limit` and still have a `nextCursor` to search on.\n\nPermission: `events:read`.",
                 "tags": [
                     "Events"
                 ],
@@ -994,15 +994,6 @@
                         }
                     },
                     {
-                        "name": "player",
-                        "in": "query",
-                        "required": false,
-                        "description": "Only events of this player, by UUID or name",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
                         "name": "from",
                         "in": "query",
                         "required": false,
@@ -1021,6 +1012,55 @@
                         }
                     },
                     {
+                        "name": "text",
+                        "in": "query",
+                        "required": false,
+                        "description": "Only events whose data holds this, ignoring case: words in chat, a death message, an advancement. Needs players:private, since it matches coordinates too",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "words",
+                        "in": "query",
+                        "required": false,
+                        "description": "Only events holding any of these words, separated by commas, or every one with `match=all`. Ignores case, accents, ё, and colors. Needs players:private, as `text` does",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "match",
+                        "in": "query",
+                        "required": false,
+                        "description": "Whether an event needs any of `text` and `words` or all of them",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "any",
+                                "all"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "player",
+                        "in": "query",
+                        "required": false,
+                        "description": "Only events of this player, by UUID or name",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "involving",
+                        "in": "query",
+                        "required": false,
+                        "description": "Only events of this player, by UUID or name, and private messages sent to them",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
                         "name": "order",
                         "in": "query",
                         "required": false,
@@ -1031,15 +1071,6 @@
                                 "newest",
                                 "oldest"
                             ]
-                        }
-                    },
-                    {
-                        "name": "text",
-                        "in": "query",
-                        "required": false,
-                        "description": "Only events whose data holds this, ignoring case: words in chat, a death message, an advancement. Needs players:private, since it matches coordinates too",
-                        "schema": {
-                            "type": "string"
                         }
                     }
                 ],
@@ -13673,7 +13704,7 @@
                 "tags": [
                     "Events"
                 ],
-                "description": "Upgrade to a WebSocket. Authenticate with the Authorization header, or send `{\"op\":\"auth\",\"token\":\"…\"}` as the first message. Never put the token in the URL.\n\nThen subscribe: `{\"op\":\"subscribe\",\"topics\":[\"player.join\",\"world.time\"],\"filter\":{\"player\":\"Steve\"}}`. The server answers `subscribed`, a `snapshot` of the current state where a topic has one, then `event` messages as things happen. `heartbeat` arrives every few seconds; `dropped` says how many events a slow client missed.\n\nTopics: `player.join`, `player.leave`, `player.kick`, `player.death`, `player.respawn`, `player.advancement`, `player.chat`, `player.command`, `player.move`, `player.world_change`, `player.portal`, `player.health`, `player.damage`, `player.kill`, `player.inventory`, `player.gamemode`, `player.level_up`, `player.sleep`, `player.fish`, `player.craft`, `player.enchant`, `player.trade`, `world.time`, `world.weather`, `world.night_skipped`, `world.lightning`, `world.load`, `world.unload`, `entity.boss_killed`, `entity.death`, `entity.explode`, `raid.start`, `raid.finish`, `block.break`, `block.place`, `server.performance`, `server.status`, `server.plugin`, `server.console`, `script.log`.\n\nPermission: `events:read`; each topic may need its own, such as `chat:read` or `logs:read`.",
+                "description": "Upgrade to a WebSocket. Authenticate with the Authorization header, or send `{\"op\":\"auth\",\"token\":\"…\"}` as the first message. Never put the token in the URL.\n\nThen subscribe: `{\"op\":\"subscribe\",\"topics\":[\"player.join\",\"world.time\"],\"filter\":{\"player\":\"Steve\"}}`. The server answers `subscribed`, a `snapshot` of the current state where a topic has one, then `event` messages as things happen. `heartbeat` arrives every few seconds; `dropped` says how many events a slow client missed.\n\nTopics: `player.join`, `player.leave`, `player.kick`, `player.death`, `player.respawn`, `player.advancement`, `player.chat`, `player.whisper`, `player.command`, `player.move`, `player.world_change`, `player.portal`, `player.health`, `player.damage`, `player.kill`, `player.inventory`, `player.gamemode`, `player.level_up`, `player.sleep`, `player.fish`, `player.craft`, `player.enchant`, `player.trade`, `world.time`, `world.weather`, `world.night_skipped`, `world.lightning`, `world.load`, `world.unload`, `entity.boss_killed`, `entity.death`, `entity.explode`, `raid.start`, `raid.finish`, `block.break`, `block.place`, `server.performance`, `server.status`, `server.plugin`, `server.console`, `script.log`.\n\nPermission: `events:read`; each topic may need its own, such as `chat:read` or `logs:read`.",
                 "x-scope": "events:read",
                 "responses": {
                     "101": {

@@ -12,6 +12,7 @@ import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.less
+import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.core.lowerCase
 import org.jetbrains.exposed.v1.core.max
 import org.jetbrains.exposed.v1.core.min
@@ -22,6 +23,7 @@ import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.update
 import java.time.Instant
+import java.util.UUID
 
 data class StoredEvent(
     val id: Long,
@@ -46,6 +48,8 @@ data class EventQuery(
     val oldestFirst: Boolean = false,
     /** Events recorded while their player was vanished; only admin clients ask for them. */
     val includeHidden: Boolean = false,
+    /** Events of this player, by UUID or name, and private messages to them. */
+    val involving: String? = null,
 )
 
 data class Session(val id: Long, val playerUuid: String, val playerName: String, val joinedAt: Long, val leftAt: Long?, val closedByRestart: Boolean)
@@ -68,15 +72,26 @@ class History(private val store: Store) {
         }
     }
 
-    suspend fun events(query: EventQuery): List<StoredEvent> = store.read {
-        val where = buildList {
-            if (query.types.isNotEmpty()) add(Events.type inList query.types)
-            query.player?.let { add((Events.playerUuid eq it) or (Events.playerName.lowerCase() eq it.lowercase())) }
-            query.from?.let { add(Events.at greaterEq it) }
-            query.to?.let { add(Events.at less it) }
-            query.before?.let { add(if (query.oldestFirst) Events.id greater it else Events.id less it) }
-            if (!query.includeHidden) add(Events.hidden eq false)
+    private fun where(query: EventQuery) = buildList {
+        if (query.types.isNotEmpty()) add(Events.type inList query.types)
+        query.player?.let { add((Events.playerUuid eq it) or (Events.playerName.lowerCase() eq it.lowercase())) }
+        query.from?.let { add(Events.at greaterEq it) }
+        query.to?.let { add(Events.at less it) }
+        query.before?.let { add(if (query.oldestFirst) Events.id greater it else Events.id less it) }
+        if (!query.includeHidden) add(Events.hidden eq false)
+        query.involving?.let { who ->
+            var op: Op<Boolean> = (Events.playerUuid eq who) or (Events.playerName.lowerCase() eq who.lowercase())
+            // A private message names its recipient in its data: by UUID, which a name leads to through their own events.
+            val uuid = runCatching { UUID.fromString(who).toString() }.getOrNull()
+                ?: Events.select(Events.playerUuid).where { Events.playerName.lowerCase() eq who.lowercase() }
+                    .orderBy(Events.id, SortOrder.DESC).limit(1).firstOrNull()?.get(Events.playerUuid)
+            if (uuid != null) op = op or ((Events.type eq "player.whisper") and (Events.data like "%\"recipient\":{\"uuid\":\"$uuid\"%"))
+            add(op)
         }
+    }
+
+    suspend fun events(query: EventQuery): List<StoredEvent> = store.read {
+        val where = where(query)
         Events.selectAll()
             .apply { if (where.isNotEmpty()) where(where.reduce(Op<Boolean>::and)) }
             .orderBy(Events.id, if (query.oldestFirst) SortOrder.ASC else SortOrder.DESC)
@@ -84,12 +99,15 @@ class History(private val store: Store) {
             .map { it.toEvent() }
     }
 
+    suspend fun searchEvents(query: EventQuery, text: String, scanLimit: Int = 20_000): Pair<List<StoredEvent>, Long?> =
+        searchEvents(query, TextMatch(listOf(text)), scanLimit)
+
     /**
-     * Events whose data holds [text], ignoring case in any language. SQLite lowers only ASCII, so the history is read in
-     * batches and matched here; past [scanLimit] rows it stops and answers the last id it read, to go on from there.
+     * Events whose values hold [match]'s words, ignoring case and accents in any language. SQLite lowers only ASCII, so
+     * the history is read in batches and matched here; past [scanLimit] rows it stops and answers the last id it read,
+     * to go on from there.
      */
-    suspend fun searchEvents(query: EventQuery, text: String, scanLimit: Int = 20_000): Pair<List<StoredEvent>, Long?> {
-        val needle = text.lowercase()
+    suspend fun searchEvents(query: EventQuery, match: TextMatch, scanLimit: Int = 20_000): Pair<List<StoredEvent>, Long?> {
         val found = mutableListOf<StoredEvent>()
         var before = query.before
         var scanned = 0
@@ -98,7 +116,7 @@ class History(private val store: Store) {
             if (batch.isEmpty()) return found to null
             scanned += batch.size
             for (event in batch) {
-                if (needle !in event.data.toString().lowercase()) continue
+                if (match.hits(event.data) == null) continue
                 found += event
                 if (found.size == query.limit) return found to null
             }

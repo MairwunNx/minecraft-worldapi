@@ -1,6 +1,8 @@
 package com.mairwunnx.worldapi
 
+import com.mairwunnx.worldapi.api.ApiJson
 import com.mairwunnx.worldapi.config.DatabaseSettings
+import com.mairwunnx.worldapi.model.PlayerRef
 import com.mairwunnx.worldapi.config.DatabaseType
 import com.mairwunnx.worldapi.stats.Experience
 import com.mairwunnx.worldapi.store.AuditEntry
@@ -8,6 +10,7 @@ import com.mairwunnx.worldapi.store.EventQuery
 import com.mairwunnx.worldapi.store.History
 import com.mairwunnx.worldapi.store.Store
 import com.mairwunnx.worldapi.store.TABLES
+import com.mairwunnx.worldapi.store.TextMatch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -23,6 +26,7 @@ import java.time.Instant
 import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -74,6 +78,30 @@ class StoreTest {
             assertEquals(1, first.first.size)
             val rest = runBlocking { history.searchEvents(EventQuery(limit = 10, before = first.second), "алмазы", scanLimit = 1) }
             assertEquals("Где АЛМАЗЫ?", rest.first.single().data["message"]!!.jsonPrimitive.content)
+        }
+    }
+
+    @Test
+    fun `involving finds a player's events and the private messages sent to them`() {
+        Store(DatabaseSettings(file = Files.createTempFile("worldapi", ".db").toString()), tempFolder()).use { store ->
+            val history = History(store)
+            val alex = UUID.randomUUID().toString()
+            val steve = UUID.randomUUID().toString()
+            fun whisper(at: Long, from: String, name: String, to: String, toName: String) = history.record(
+                "player.whisper", Instant.ofEpochMilli(at), from, name, "world",
+                buildJsonObject {
+                    put("message", "hi")
+                    put("recipient", ApiJson.encodeToJsonElement(PlayerRef.serializer(), PlayerRef(to, toName)))
+                },
+            )
+            history.record("player.join", Instant.ofEpochMilli(1_000), alex, "Alex", "world", JsonObject(emptyMap()))
+            whisper(2_000, steve, "Steve", alex, "Alex")
+            whisper(3_000, alex, "Alex", steve, "Steve")
+            history.record("player.join", Instant.ofEpochMilli(4_000), steve, "Steve", "world", JsonObject(emptyMap()))
+            val byName = runBlocking { history.events(EventQuery(involving = "alex", oldestFirst = true)) }.map { it.at }
+            assertEquals(listOf(1_000L, 2_000L, 3_000L), byName)
+            val byUuid = runBlocking { history.events(EventQuery(involving = steve, types = listOf("player.whisper"), oldestFirst = true)) }.map { it.at }
+            assertEquals(listOf(2_000L, 3_000L), byUuid)
         }
     }
 
