@@ -1,5 +1,14 @@
 # Changelog
 
+## 4.7.0
+
+- 🤫 **Private messages in the history.** With `events.whispers: true` in `config.yml`, WorldAPI records what players send with `/msg`, `/tell`, `/w`, and `/r`, and the same commands of Essentials and other chat plugins, as `player.whisper`: the sender, the recipient, and the words. Tokens and panel accounts with `logs:read` read them, since they saw these commands already. Visitors never do. `events.whisperCommands` and `events.replyCommands` list the commands. It's off by default.
+- 📍 **Local chat.** On Paper, a chat line that a chat plugin kept to the players nearby, or to a channel, says `channel: local` and names in `heard` who got it. Every other line says `channel: public`.
+- 🔎 **Several words at once.** `GET /events` takes `words`, separated by commas, and finds events with any of them, or with every one with `match=all`. Case, accents, ё, and colors don't matter, and only the values count, never the keys: `text=message` no longer finds every chat line.
+- 👥 **A player's conversations.** `GET /events?involving=Alex` finds Alex's events and the private messages sent to Alex, so a talk between two players reads in one list.
+- 💬 **The panel's chat shows private and local messages.** Accounts with `logs:read` see private messages beside the chat, marked and with their recipient, and local lines say who heard them. A player field narrows the history to their lines and the messages sent to them, and a channel picker to public, local, or private chat.
+- 🔒 **A webhook with `*` leaves private messages out.** It posts them only when it names `player.whisper`.
+
 ## 4.6.2
 
 - ⬆️ **Updated libraries.** WorldAPI builds on Paper 26.3 build 259 and NeoForge 26.3.0.115, with the admin panel's newest packages.
